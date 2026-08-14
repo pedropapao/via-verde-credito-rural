@@ -1,51 +1,31 @@
 {{define "content"}}
 {{with .Data}}
-{{if not .UpgradeReady}}<div class="alert error"><strong>Cadastro 360 aguardando ativação.</strong> Execute uma vez o arquivo <code>supabase/03_upgrade_dossie_360.sql</code> no SQL Editor do Supabase para habilitar documentos, KML e campos ambientais.</div>{{end}}
+<section class="hero-card attention-hero">
+  <div><span class="eyebrow light">CENTRAL DE ATENÇÃO</span><h2>{{.TotalUnique}} projeto(s) precisam de acompanhamento.</h2><p>Aqui aparecem automaticamente operações com documento pendente, sem atualização recente ou com tarefa vencida.</p></div>
+  <a class="btn light" href="/kanban">Abrir pipeline</a>
+</section>
 
-<div class="properties-layout">
-  <section class="properties-list">
-    <div class="section-head page-section-head"><div><span class="eyebrow">IMÓVEIS RURAIS</span><h3>Cadastro permanente de propriedades</h3><p>Documentação, área, situação fundiária, recursos hídricos e georreferência reaproveitados em novos projetos.</p></div></div>
-    <div class="property-cards">
-      {{range .Properties}}
-      {{$pid := .ID}}{{$files := index $.Data.FilesByProperty $pid}}{{$map := index $.Data.Maps $pid}}{{$mapstat := index $.Data.MapStats $pid}}
-      <article class="card property-card">
-        <div class="property-head"><div><span class="badge neutral">{{if .Tenure}}{{.Tenure}}{{else}}Regime a confirmar{{end}}</span><h3>{{.Name}}</h3><p>{{.City}}/{{.State}} · {{printf "%.4f" .AreaHa}} ha</p></div><div class="property-doc-score"><span>CAR</span><strong>{{if .CAR}}✓{{else}}!{{end}}</strong></div></div>
-        <div class="info-grid property-info">
-          <div><span>Proprietário</span><strong>{{if .OwnerName}}{{.OwnerName}}{{else}}Não informado{{end}}</strong></div>
-          <div><span>Situação CAR</span><strong>{{if .CARStatus}}{{.CARStatus}}{{else}}{{if .CAR}}Cadastrado{{else}}Pendente{{end}}{{end}}</strong></div>
-          {{if eq $.User.Role "owner"}}<div><span>Matrícula</span><strong>{{if .Registry}}{{.Registry}}{{else}}Pendente{{end}}</strong></div><div><span>Data matrícula</span><strong>{{dateBR .RegistryDate}}</strong></div><div><span>CAR</span><strong class="wrap-text">{{if .CAR}}{{.CAR}}{{else}}Pendente{{end}}</strong></div><div><span>CCIR / ITR</span><strong>{{if .CCIR}}{{.CCIR}}{{else}}—{{end}} / {{if .ITR}}{{.ITR}}{{else}}—{{end}}</strong></div>{{else}}<div class="span-2"><span>Documentação fundiária</span><strong>Detalhes restritos ao proprietário</strong></div>{{end}}
-          <div class="span-2"><span>Recursos hídricos</span><strong>{{if .WaterInfo}}{{.WaterInfo}}{{else}}Não informado{{end}}</strong></div>
-          <div class="span-2"><span>Ambiental</span><strong>{{if .EnvironmentalInfo}}{{.EnvironmentalInfo}}{{else}}Não informado{{end}}</strong></div>
-          <div class="span-2"><span>Acesso / logística</span><strong>{{if .AccessInfo}}{{.AccessInfo}}{{else}}Não informado{{end}}</strong></div>
-        </div>
-        {{if $map}}<div class="map-frame property-map">{{safe $map}}</div><div class="map-stats"><span>KML <strong>{{$mapstat}}</strong></span><span>Cadastro <strong>{{printf "%.4f" .AreaHa}} ha</strong></span></div>{{end}}
-        <div class="property-files"><div class="mini-head"><strong>Documentos do imóvel</strong><span>{{len $files}} arquivos</span></div>
-          <div class="mini-file-list">{{range $files}}<div class="mini-file {{if not .IsCurrent}}old{{end}}"><div><strong>{{if .DocumentType}}{{.DocumentType}}{{else}}Documento{{end}}</strong><small>{{.Name}}{{if .VersionLabel}} · {{.VersionLabel}}{{end}}{{if .ValidUntil}} · validade {{dateBR .ValidUntil}}{{end}}</small></div><div><a href="/property-files/{{.ID}}/download" target="_blank">Abrir</a>{{if eq $.User.Role "owner"}}<form method="post" action="/property-files/{{.ID}}/delete"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="link-danger">Excluir</button></form>{{end}}</div></div>{{else}}<p class="empty compact-empty">Nenhum documento específico do imóvel.</p>{{end}}</div>
-        </div>
-        {{if and (eq $.User.Role "owner") $.Data.UpgradeReady}}<details class="adder property-upload"><summary>+ Enviar documento / KML</summary><form method="post" enctype="multipart/form-data" action="/properties/{{$pid}}/files" class="form-grid compact-form"><input type="hidden" name="csrf" value="{{$.CSRF}}"><label>Tipo<select name="document_type"><option>KML</option><option>Matrícula</option><option>CAR</option><option>CCIR</option><option>ITR</option><option>Contrato / anuência</option><option>Licença / dispensa ambiental</option><option>Outorga / uso insignificante</option><option>Outro</option></select></label><label>Versão<input name="version_label" placeholder="Atualizada 2026, v2..."></label><label>Validade<input type="date" name="valid_until"></label><label>Arquivo<input type="file" name="file" required></label><div class="span-2"><button class="btn secondary" type="submit">Enviar ao cadastro permanente</button></div></form></details>{{end}}
-      </article>
-      {{else}}<div class="card empty">Nenhuma propriedade cadastrada.</div>{{end}}
+<div class="attention-sections">
+  <section class="card">
+    <div class="section-head"><div><span class="eyebrow">DOCUMENTOS</span><h3>Aguardando documentos</h3><p>{{len .WaitingDocs}} projeto(s)</p></div></div>
+    <div class="attention-list">
+      {{range .WaitingDocs}}<a href="/projects/{{.ID}}" class="attention-row"><span class="attention-icon yellow">!</span><div><strong>{{.Title}}</strong><p>{{.ClientName}} · {{if .Bank}}{{.Bank}}{{else}}Banco a definir{{end}}</p><small>{{.PendingDocs}} documento(s) pendente(s) · {{.Dependency}}</small></div><span class="badge warn">{{.Status}}</span></a>{{else}}<p class="empty">Nenhum projeto aguardando documentos.</p>{{end}}
     </div>
   </section>
 
-  {{if eq $.User.Role "owner"}}
-  <aside class="card sticky-form property-create"><div class="section-head"><div><span class="eyebrow">NOVO IMÓVEL</span><h3>Cadastrar propriedade</h3></div></div>
-    <form class="stack-form" method="post" action="/properties"><input type="hidden" name="csrf" value="{{$.CSRF}}">
-      <label>Produtor<select name="client_id" required><option value="">Selecione</option>{{range .Clients}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label>
-      <label>Nome da propriedade<input name="name" required></label>
-      <div class="inline-2"><label>Município<input name="city"></label><label>UF<input name="state" maxlength="2"></label></div>
-      <div class="inline-2"><label>Área total (ha)<input name="area_ha"></label><label>Proprietário registral<input name="owner_name"></label></div>
-      <label>Matrícula<input name="registry"></label><div class="inline-2"><label>Data da matrícula<input type="date" name="registry_date"></label><label>Regime de exploração<select name="tenure"><option>Própria</option><option>Arrendamento</option><option>Comodato</option><option>Parceria</option><option>Posse</option><option>Condomínio</option></select></label></div>
-      <label>CAR<input name="car"></label><div class="inline-2"><label>Situação CAR<input name="car_status" placeholder="Ativo, pendente..."></label><label>CCIR<input name="ccir"></label></div><label>ITR<input name="itr"></label>
-      <div class="inline-2"><label>Latitude<input name="latitude" placeholder="-20.123456"></label><label>Longitude<input name="longitude" placeholder="-45.123456"></label></div>
-      <label>Recursos hídricos<textarea name="water_info" rows="3" placeholder="Captação, nascente, poço, outorga/uso insignificante..."></textarea></label>
-      <label>Situação ambiental<textarea name="environmental_info" rows="3" placeholder="APP, reserva legal, licenças, observações..."></textarea></label>
-      <label>Acesso / logística<textarea name="access_info" rows="2" placeholder="Roteiro de acesso, estradas, distância..."></textarea></label>
-      <label>Observações<textarea name="notes" rows="3"></textarea></label>
-      <button class="btn primary" type="submit">Salvar propriedade</button>
-    </form>
-  </aside>
-  {{end}}
+  <section class="card">
+    <div class="section-head"><div><span class="eyebrow">TEMPO</span><h3>Sem atualização há 5+ dias</h3><p>{{len .Stale}} projeto(s)</p></div></div>
+    <div class="attention-list">
+      {{range .Stale}}<a href="/projects/{{.ID}}" class="attention-row"><span class="attention-icon red">◷</span><div><strong>{{.Title}}</strong><p>{{.ClientName}} · {{if .Phase}}{{.Phase}}{{else}}Fase a definir{{end}}</p><small>Sem movimentação há {{.StaleDays}} dia(s) · na etapa há {{.StageDays}} dia(s) · {{.Dependency}}</small></div><span class="signal-chip {{.Signal}}"><i class="signal-dot {{.Signal}}"></i>{{.SignalLabel}}</span></a>{{else}}<p class="empty">Nenhum projeto parado por 5 dias ou mais.</p>{{end}}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-head"><div><span class="eyebrow">PRAZOS</span><h3>Tarefas vencidas</h3><p>{{len .Overdue}} projeto(s)</p></div></div>
+    <div class="attention-list">
+      {{range .Overdue}}<a href="/projects/{{.ID}}" class="attention-row"><span class="attention-icon red">×</span><div><strong>{{.Title}}</strong><p>{{.ClientName}} · {{if .Bank}}{{.Bank}}{{else}}Banco a definir{{end}}</p><small>{{.OverdueTasks}} tarefa(s) vencida(s) · {{.Dependency}}</small></div><span class="badge bad">Atenção</span></a>{{else}}<p class="empty">Nenhuma tarefa vencida.</p>{{end}}
+    </div>
+  </section>
 </div>
 {{end}}
 {{end}}
