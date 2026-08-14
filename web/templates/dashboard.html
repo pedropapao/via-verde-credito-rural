@@ -1,26 +1,45 @@
 {{define "content"}}
 {{with .Data}}
-<section class="hero-card">
-  <div><span class="eyebrow light">CARTEIRA VIA VERDE</span><h2>Controle técnico e operacional da consultoria.</h2><p>Visão consolidada dos projetos de crédito rural, pendências e movimentações do dia.</p></div>
-  {{if eq $.User.Role "owner"}}<a class="btn light" href="/projects/new">+ Novo projeto</a>{{end}}
+<section class="hero-card executive-hero">
+  <div><span class="eyebrow light">CARTEIRA VIA VERDE</span><h2>Controle técnico, financeiro e operacional em tempo real.</h2><p>Projetos, pendências, documentos, valores e movimentações em uma única visão.</p></div>
+  {{if eq $.User.Role "owner"}}<div class="hero-actions"><a class="btn light" href="/projects/new">+ Novo projeto</a><a class="btn glass" href="/reports/daily">Relatório do dia</a></div>{{end}}
 </section>
-<section class="kpi-grid">
-  <article class="kpi"><span>Projetos mapeados</span><strong>{{len .Projects}}</strong><small>Carteira cadastrada</small></article>
-  <article class="kpi"><span>Valor financiado</span><strong>{{money .TotalFinanced}}</strong><small>Soma dos projetos</small></article>
-  <article class="kpi"><span>Em acompanhamento</span><strong>{{.Active}}</strong><small>Operações ativas</small></article>
+
+<section class="kpi-grid executive-kpis">
+  <article class="kpi"><span>Valor em carteira</span><strong>{{money .TotalFinanced}}</strong><small>{{.Active}} operações ativas</small></article>
+  <article class="kpi"><span>Valor contratado</span><strong>{{money .TotalContracted}}</strong><small>{{.Contracted}} projetos contratados</small></article>
+  <article class="kpi"><span>Pendências abertas</span><strong>{{.PendingTasks}}</strong><small class="{{if .OverdueTasks}}danger-text{{end}}">{{.OverdueTasks}} vencidas</small></article>
   <article class="kpi"><span>Movimentações hoje</span><strong>{{.TodayCount}}</strong><small>{{money .TodayValue}}</small></article>
 </section>
-<div class="two-col">
+
+<section class="status-board">
+  <a href="/projects?status=Em+elaboração"><span>Em elaboração</span><strong>{{.Draft}}</strong></a>
+  <a href="/projects"><span>Aguardando docs.</span><strong>{{.WaitingDocs}}</strong></a>
+  <a href="/projects?status=Enviado+ao+banco"><span>Banco / análise</span><strong>{{.Sent}}</strong></a>
+  <a href="/projects?status=Aprovado"><span>Aprovados</span><strong>{{.Approved}}</strong></a>
+  <a href="/projects?status=Contratado"><span>Contratados</span><strong>{{.Contracted}}</strong></a>
+  <a href="/projects?status=Reprovado"><span>Reprovados</span><strong>{{.Rejected}}</strong></a>
+</section>
+
+<div class="two-col dashboard-main">
   <section class="card">
     <div class="section-head"><div><span class="eyebrow">PROJETOS</span><h3>Carteira recente</h3></div><a href="/projects">Ver todos →</a></div>
     <div class="table-wrap"><table><thead><tr><th>Projeto</th><th>Banco</th><th>Status</th><th>Financiamento</th></tr></thead><tbody>
-      {{range .Projects}}<tr><td><a class="table-title" href="/projects/{{.ID}}">{{.Title}}</a><small>{{.Activity}}</small></td><td>{{.Bank}}</td><td><span class="badge {{statusClass .Status}}">{{.Status}}</span></td><td>{{money .FinancedValue}}</td></tr>{{else}}<tr><td colspan="4" class="empty">Nenhum projeto cadastrado.</td></tr>{{end}}
+      {{range .Projects}}<tr><td><a class="table-title" href="/projects/{{.ID}}">{{.Title}}</a><small>{{.ClientName}} · {{.Activity}}</small></td><td>{{.Bank}}</td><td><span class="badge {{statusClass .Status}}">{{.Status}}</span></td><td>{{money .FinancedValue}}</td></tr>{{else}}<tr><td colspan="4" class="empty">Nenhum projeto cadastrado.</td></tr>{{end}}
     </tbody></table></div>
   </section>
+  <section class="card">
+    <div class="section-head"><div><span class="eyebrow">PRIORIDADES</span><h3>Pendências mais próximas</h3></div></div>
+    <div class="task-list dashboard-tasks">{{range .DueTasks}}<article class="task-row"><div><span class="priority {{.Priority}}">{{.Priority}}</span><strong>{{.Title}}</strong><small>{{if .Responsible}}{{.Responsible}}{{else}}Sem responsável{{end}}{{if .DueAt}} · até {{dateBR .DueAt}}{{end}}</small></div><span class="badge {{statusClass .Status}}">{{.Status}}</span></article>{{else}}<p class="empty">Nenhuma pendência aberta.</p>{{end}}</div>
+  </section>
+</div>
+
+<div class="two-col">
   <section class="card">
     <div class="section-head"><div><span class="eyebrow">RELATÓRIO</span><h3>Últimas movimentações</h3></div><a href="/reports/daily">Abrir relatório →</a></div>
     <div class="activity-list">{{range .RecentReports}}<div class="activity"><span class="dot"></span><div><strong>{{.Producer}}</strong><p>{{.ProjectType}} · {{.Bank}}</p><small>{{dateBR .Date}} · {{.Situation}}</small></div><b>{{money .Value}}</b></div>{{else}}<p class="empty">Sem lançamentos.</p>{{end}}</div>
   </section>
+  {{if eq $.User.Role "owner"}}<section class="card financial-summary"><div class="section-head"><div><span class="eyebrow">GESTÃO</span><h3>Resumo operacional</h3></div></div><div class="metric-list"><div><span>Projetos ativos</span><strong>{{.Active}}</strong></div><div><span>Comissões registradas</span><strong>{{money .ExpectedCommission}}</strong></div><div><span>Pendências vencidas</span><strong>{{.OverdueTasks}}</strong></div><div><span>Valor movimentado hoje</span><strong>{{money .TodayValue}}</strong></div></div></section>{{end}}
 </div>
 {{end}}
 {{end}}
