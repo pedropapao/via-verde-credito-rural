@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/fs"
 	"net/http"
 	"net/url"
@@ -35,7 +34,7 @@ type ViewerTask struct {
 type ViewerProject struct {
 	Project         Project
 	Client          Client
-	Property        Property360
+	Property        Property
 	Checklist       []ChecklistItem
 	History         []ProjectHistory
 	Tasks           []ViewerTask
@@ -179,7 +178,7 @@ func (a *App) viewerProjectDetail(w http.ResponseWriter, r *http.Request) {
 	_ = a.sb.Select(r.Context(), "clients", "select=*&"+eq("id", p.ClientID)+"&limit=1", &clients)
 	if len(clients) > 0 { v.Client = clients[0] }
 	if p.PropertyID != "" {
-		var props []Property360
+		var props []Property
 		_ = a.sb.Select(r.Context(), "properties", "select=*&"+eq("id", p.PropertyID)+"&limit=1", &props)
 		if len(props) > 0 { v.Property = props[0] }
 	}
@@ -321,5 +320,3 @@ func nowViewer() time.Time {
 	if err != nil { return time.Now() }
 	return time.Now().In(loc)
 }
-
-func viewerDebug(v any) string { return fmt.Sprint(v) }
