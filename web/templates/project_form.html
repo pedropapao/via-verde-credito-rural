@@ -6,17 +6,21 @@
 <label>Produtor<select name="client_id" required><option value="">Selecione</option>{{range .Clients}}<option value="{{.ID}}" {{if eq .ID $.Data.Project.ClientID}}selected{{end}}>{{.Name}}</option>{{end}}</select></label>
 <label>Propriedade<select name="property_id"><option value="">Não vinculada</option>{{range .Properties}}<option value="{{.ID}}" {{if eq .ID $.Data.Project.PropertyID}}selected{{end}}>{{.Name}} — {{.City}}/{{.State}}</option>{{end}}</select></label>
 <label class="span-2">Título do projeto<input name="title" required value="{{.Project.Title}}" placeholder="Ex.: Custeio de soja — Fazenda Boa Esperança"></label>
-<label>Modalidade<select name="modality" required><option value="">Selecione</option>{{range $x := (list "Custeio agrícola" "Custeio pecuário" "Investimento" "Comercialização" "Industrialização")}}<option {{if eq $x $.Data.Project.Modality}}selected{{end}}>{{$x}}</option>{{end}}</select></label>
+<label>Modalidade<select name="modality" required><option value="">Selecione</option>{{range $x := (list "Custeio agrícola" "Custeio pecuário" "Aquisição de animais" "Investimento" "Comercialização" "Industrialização")}}<option {{if eq $x $.Data.Project.Modality}}selected{{end}}>{{$x}}</option>{{end}}</select></label>
 <label>Atividade<input name="activity" value="{{.Project.Activity}}" placeholder="Soja, café, bovinocultura..."></label>
 </div></div>
-<div class="form-section"><div><span class="step">02</span><h3>Financiamento</h3><p>Instituição, linha, valores e condições.</p></div><div class="form-grid">
-<label>Banco<input name="bank" value="{{.Project.Bank}}" placeholder="Sicoob, Cresol, BB..."></label><label>Programa / linha<input name="program" value="{{.Project.Program}}" placeholder="Pronamp, Moderfrota..."></label>
+<div class="form-section"><div><span class="step">02</span><h3>Financiamento</h3><p>Instituição, linha, valores, prazo, carência e pagamento.</p></div><div class="form-grid">
+<label>Banco<input name="bank" value="{{.Project.Bank}}" placeholder="Sicoob, Cresol, BB..."></label><label>Programa / linha<input name="program" value="{{.Project.Program}}" placeholder="Pronamp, Moderfrota, RenovAgro..."></label>
 <label>Valor total (R$)<input name="total_value" value="{{printf "%.2f" .Project.TotalValue}}"></label><label>Valor financiado (R$)<input name="financed_value" value="{{printf "%.2f" .Project.FinancedValue}}"></label>
-<label>Taxa (% a.a.)<input name="interest_rate" value="{{printf "%.2f" .Project.InterestRate}}"></label><label>Prazo (meses)<input name="term_months" type="number" min="0" value="{{.Project.TermMonths}}"></label>
+<label>Recursos próprios (R$)<input name="own_resources" value="{{printf "%.2f" .Project.OwnResources}}"></label><label>Taxa (% a.a.)<input name="interest_rate" value="{{printf "%.2f" .Project.InterestRate}}"></label>
+<label>Prazo (meses)<input name="term_months" type="number" min="0" value="{{.Project.TermMonths}}"></label><label>Carência (meses)<input name="grace_months" type="number" min="0" value="{{.Project.GraceMonths}}"></label>
+<label>Periodicidade de pagamento<input name="payment_frequency" value="{{.Project.PaymentFrequency}}" placeholder="Anual, semestral, parcela única..."></label><label>Responsável interno<input name="responsible" value="{{.Project.Responsible}}" placeholder="Pedro, Gabriel..."></label>
 </div></div>
-<div class="form-section"><div><span class="step">03</span><h3>Acompanhamento</h3><p>Status interno, fase e memória técnica.</p></div><div class="form-grid">
-<label>Status<select name="status">{{range $x := (list "Em andamento" "Em elaboração" "Enviado ao banco" "Em análise" "Aprovado" "Contratado" "Reprovado" "Concluído")}}<option {{if eq $x $.Data.Project.Status}}selected{{end}}>{{$x}}</option>{{end}}</select></label><label>Fase<input name="phase" value="{{.Project.Phase}}" placeholder="Aguardando documentos, análise de crédito..."></label>
-<label class="span-2">Resumo técnico<textarea name="technical_summary" rows="5">{{.Project.TechnicalSummary}}</textarea></label><label class="span-2">Alertas / pendências<textarea name="alerts" rows="4">{{.Project.Alerts}}</textarea></label>
+<div class="form-section"><div><span class="step">03</span><h3>Acompanhamento</h3><p>Status, datas, fase e memória técnica.</p></div><div class="form-grid">
+<label>Status<select name="status">{{range $x := (list "Em andamento" "Em elaboração" "Aguardando documentos" "Enviado ao banco" "Em análise" "Aprovado" "Contratado" "Reprovado" "Concluído")}}<option {{if eq $x $.Data.Project.Status}}selected{{end}}>{{$x}}</option>{{end}}</select></label><label>Fase<input name="phase" value="{{.Project.Phase}}" placeholder="Aguardando matrícula, análise de crédito..."></label>
+<label>Data de envio ao banco<input type="date" name="sent_at" value="{{.Project.SentAt}}"></label><label>Data de contratação<input type="date" name="contracted_at" value="{{.Project.ContractedAt}}"></label>
+<label class="span-2">Resumo técnico<textarea name="technical_summary" rows="5">{{.Project.TechnicalSummary}}</textarea></label><label class="span-2">Alertas / pendências gerais<textarea name="alerts" rows="4">{{.Project.Alerts}}</textarea></label>
+<label class="span-2">Nota interna restrita ao proprietário<textarea name="sensitive_notes" rows="3" placeholder="Informações que não devem aparecer para visualizadores...">{{.Project.SensitiveNotes}}</textarea></label>
 </div></div>
 <div class="form-actions"><a class="btn ghost" href="/projects">Cancelar</a><button class="btn primary" type="submit">{{if .Edit}}Salvar alterações{{else}}Criar projeto{{end}}</button></div>
 </form>
