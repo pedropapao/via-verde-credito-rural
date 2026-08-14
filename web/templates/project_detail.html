@@ -1,11 +1,19 @@
 {{define "content"}}
 {{with .Data}}
 {{$projectID := .Project.ID}}
-<div class="page-actions"><a class="btn ghost" href="/projects">← Voltar aos projetos</a></div>
+<div class="page-actions project-view-actions">
+  <a class="btn ghost" href="/projects">← Voltar aos projetos</a>
+  <textarea id="project-summary-copy" class="copy-source" aria-hidden="true">{{.CopySummary}}</textarea>
+  <button class="btn secondary" type="button" data-copy-target="#project-summary-copy">Copiar resumo</button>
+</div>
 
-<section class="project-banner">
+<section class="project-banner project-monitor-banner">
   <div>
-    <span class="badge {{statusClass .Project.Status}}">{{.Project.Status}}</span>
+    <div class="project-signal-line">
+      <span class="signal-chip {{.Signal}}"><i class="signal-dot {{.Signal}}"></i>{{.SignalLabel}}</span>
+      <span class="badge {{statusClass .Project.Status}}">{{.Project.Status}}</span>
+      {{if gt .StaleDays 0}}<span class="stale-badge {{if ge .StaleDays 7}}danger{{end}}">Sem movimentação há {{.StaleDays}} dia(s)</span>{{else}}<span class="stale-badge fresh">Atualizado hoje</span>{{end}}
+    </div>
     <h2>{{.Project.Title}}</h2>
     <p>{{if .Client.Name}}{{.Client.Name}}{{else}}{{.Project.ClientName}}{{end}}{{if .Property.Name}} · {{.Property.Name}}{{end}}</p>
   </div>
@@ -14,9 +22,9 @@
 
 <section class="kpi-grid compact">
   <article class="kpi"><span>Status</span><strong class="smaller">{{.Project.Status}}</strong></article>
-  <article class="kpi"><span>Banco</span><strong class="smaller">{{if .Project.Bank}}{{.Project.Bank}}{{else}}—{{end}}</strong></article>
-  <article class="kpi"><span>Modalidade</span><strong class="smaller">{{.Project.Modality}}</strong></article>
   <article class="kpi"><span>Documentos</span><strong>{{.DocCompletion}}%</strong><small>{{.CompletedDocs}} de {{.RequiredDocs}} conferidos</small></article>
+  <article class="kpi"><span>Pendências</span><strong>{{.PendingDocs}}</strong><small>documentos ainda pendentes</small></article>
+  <article class="kpi"><span>Última movimentação</span><strong class="smaller">{{dateBR .LastActivity}}</strong><small>{{if gt .OverdueTasks 0}}{{.OverdueTasks}} tarefa(s) vencida(s){{else}}Sem tarefa vencida{{end}}</small></article>
 </section>
 
 <div class="two-col project-cols">
@@ -29,7 +37,7 @@
       <div><span>Atividade</span><strong>{{if .Project.Activity}}{{.Project.Activity}}{{else}}—{{end}}</strong></div>
       <div><span>Programa / linha</span><strong>{{if .Project.Program}}{{.Project.Program}}{{else}}—{{end}}</strong></div>
       <div><span>Valor financiado</span><strong>{{money .Project.FinancedValue}}</strong></div>
-      <div><span>Última atualização</span><strong>{{dateBR .Project.UpdatedAt}}</strong></div>
+      <div><span>Responsável</span><strong>{{if .Project.Responsible}}{{.Project.Responsible}}{{else}}—{{end}}</strong></div>
     </div>
     {{if .Project.Alerts}}<div class="notice-box"><strong>Pendência / observação atual</strong><p>{{.Project.Alerts}}</p></div>{{end}}
   </section>
@@ -60,12 +68,20 @@
 
 <div class="two-col project-cols">
   <section class="card">
-    <div class="section-head"><div><span class="eyebrow">HISTÓRICO</span><h3>O que já aconteceu</h3></div></div>
-    <div class="activity-list">
+    <div class="section-head"><div><span class="eyebrow">LINHA DO TEMPO</span><h3>Histórico do projeto</h3><p>Movimentações registradas do mais recente para o mais antigo.</p></div></div>
+    <div class="timeline visual-timeline">
       {{range .History}}
-      <div class="activity"><span class="dot"></span><div><strong>{{.Title}}</strong><p>{{if .EventType}}{{.EventType}}{{else}}Atualização{{end}}</p><small>{{dateBR .EventDate}}{{if .Details}} · {{.Details}}{{end}}</small></div></div>
+      <article>
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <span class="timeline-date">{{dateBR .EventDate}}</span>
+          <strong>{{.Title}}</strong>
+          <small class="timeline-type">{{if .EventType}}{{.EventType}}{{else}}Atualização{{end}}</small>
+          {{if .Details}}<p>{{.Details}}</p>{{end}}
+        </div>
+      </article>
       {{else}}
-      <div class="activity"><span class="dot"></span><div><strong>Projeto cadastrado</strong><p>Início do acompanhamento</p><small>{{dateBR .Project.CreatedAt}}</small></div></div>
+      <article><div class="timeline-dot"></div><div class="timeline-content"><span class="timeline-date">{{dateBR .Project.CreatedAt}}</span><strong>Projeto cadastrado</strong><small class="timeline-type">Início do acompanhamento</small></div></article>
       {{end}}
     </div>
   </section>
