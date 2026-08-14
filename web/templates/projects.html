@@ -1,19 +1,20 @@
 {{define "content"}}
 {{with .Data}}
-{{$status := .Status}}{{$bank := .Bank}}{{$modality := .Modality}}
+{{$status := .Status}}{{$bank := .Bank}}
 <div class="page-actions projects-toolbar">
   <form method="get" action="/projects" class="filter-bar">
-    <input name="q" value="{{.Q}}" placeholder="Buscar produtor, projeto, propriedade, banco...">
+    <input name="q" value="{{.Q}}" placeholder="Buscar projeto, produtor, propriedade ou banco...">
     <select name="status"><option value="">Todos os status</option>{{range .Statuses}}<option {{if eq . $status}}selected{{end}}>{{.}}</option>{{end}}</select>
     <select name="bank"><option value="">Todos os bancos</option>{{range .Banks}}<option {{if eq . $bank}}selected{{end}}>{{.}}</option>{{end}}</select>
-    <select name="modality"><option value="">Todas as modalidades</option>{{range .Modalities}}<option {{if eq . $modality}}selected{{end}}>{{.}}</option>{{end}}</select>
     <button class="btn secondary" type="submit">Filtrar</button>
     <a class="btn ghost" href="/projects">Limpar</a>
   </form>
-  {{if eq $.User.Role "owner"}}<a class="btn primary" href="/projects/new">+ Novo projeto</a>{{end}}
 </div>
-<section class="card no-pad"><div class="table-wrap"><table class="large-table"><thead><tr><th>Projeto / produtor</th><th>Propriedade</th><th>Modalidade</th><th>Banco</th><th>Fase</th><th>Status</th><th>Financiamento</th></tr></thead><tbody>
-{{range .Projects}}<tr><td><a class="table-title" href="/projects/{{.ID}}">{{.Title}}</a><small>{{if .ClientName}}{{.ClientName}}{{else}}Produtor a confirmar{{end}}</small></td><td>{{if .PropertyName}}{{.PropertyName}}{{else}}—{{end}}</td><td>{{.Modality}}<small>{{.Activity}}</small></td><td>{{.Bank}}</td><td>{{if .Phase}}{{.Phase}}{{else}}—{{end}}</td><td><span class="badge {{statusClass .Status}}">{{.Status}}</span></td><td>{{money .FinancedValue}}</td></tr>{{else}}<tr><td colspan="7" class="empty">Nenhum projeto encontrado com os filtros informados.</td></tr>{{end}}
-</tbody></table></div></section>
+<section class="card no-pad">
+  <div class="section-head pad"><div><span class="eyebrow">CARTEIRA</span><h3>{{len .Projects}} projetos encontrados</h3><p>Clique em um projeto para acompanhar status, checklist documental e histórico.</p></div></div>
+  <div class="table-wrap"><table class="large-table"><thead><tr><th>Projeto / produtor</th><th>Propriedade</th><th>Banco</th><th>Fase atual</th><th>Status</th><th>Atualizado</th></tr></thead><tbody>
+  {{range .Projects}}<tr><td><a class="table-title" href="/projects/{{.ID}}">{{.Title}}</a><small>{{if .ClientName}}{{.ClientName}}{{else}}Produtor a confirmar{{end}}</small></td><td>{{if .PropertyName}}{{.PropertyName}}{{else}}—{{end}}</td><td>{{if .Bank}}{{.Bank}}{{else}}—{{end}}</td><td>{{if .Phase}}{{.Phase}}{{else}}—{{end}}</td><td><span class="badge {{statusClass .Status}}">{{.Status}}</span></td><td>{{dateBR .UpdatedAt}}</td></tr>{{else}}<tr><td colspan="6" class="empty">Nenhum projeto encontrado com os filtros informados.</td></tr>{{end}}
+  </tbody></table></div>
+</section>
 {{end}}
 {{end}}
