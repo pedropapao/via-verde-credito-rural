@@ -1,8 +1,53 @@
 {{define "content"}}
 {{with .Data}}
-<div class="page-actions"><form class="date-filter" method="get"><label>Filtrar data<input type="date" name="date" value="{{.Date}}"></label><button class="btn ghost" type="submit">Aplicar</button><a class="btn ghost" href="/reports/daily">Todos</a></form>{{if eq $.User.Role "owner"}}<a class="btn secondary" href="/reports/daily/export.csv{{if .Date}}?date={{.Date}}{{end}}">Exportar CSV</a>{{end}}</div>
-<section class="kpi-grid compact"><article class="kpi"><span>Lançamentos</span><strong>{{len .Rows}}</strong></article><article class="kpi"><span>Valor dos projetos</span><strong>{{money .Total}}</strong></article>{{if eq $.User.Role "owner"}}<article class="kpi"><span>Comissão calculada</span><strong>{{money .Commission}}</strong></article>{{else}}<article class="kpi"><span>Acesso</span><strong class="smaller">Visualização</strong><small>Dados financeiros internos protegidos</small></article>{{end}}<article class="kpi"><span>Referência</span><strong class="smaller">{{if .Date}}{{dateBR .Date}}{{else}}Histórico completo{{end}}</strong></article></section>
-<section class="card no-pad"><div class="section-head pad"><div><span class="eyebrow">CONTROLE DIÁRIO</span><h3>Financiamentos em exercício</h3><p>Mudanças relevantes de status dos projetos também podem gerar lançamentos automáticos.</p></div></div><div class="table-wrap"><table class="daily-table"><thead><tr><th>N°</th><th>Data</th><th>Valor</th><th>Banco</th><th>Indicação</th><th>Produtor</th><th>Tipo</th><th>Envio</th><th>Situação</th>{{if eq $.User.Role "owner"}}<th>Comissão</th>{{end}}<th>Observações</th></tr></thead><tbody>{{range .Rows}}<tr><td>{{.Number}}</td><td>{{dateBR .Date}}</td><td>{{money .Value}}</td><td>{{.Bank}}</td><td>{{.Referral}}</td><td><strong>{{.Producer}}</strong></td><td>{{.ProjectType}}</td><td>{{dateBR .SentDate}}</td><td><span class="badge {{statusClass .Situation}}">{{.Situation}}</span></td>{{if eq $.User.Role "owner"}}<td>{{money .Commission}}</td>{{end}}<td class="notes-cell">{{.Notes}}</td></tr>{{else}}<tr><td colspan="11" class="empty">Nenhum lançamento.</td></tr>{{end}}</tbody></table></div></section>
-{{if eq $.User.Role "owner"}}<section class="card"><div class="section-head"><div><span class="eyebrow">NOVO LANÇAMENTO</span><h3>Adicionar ao relatório</h3></div></div><form method="post" action="/reports/daily" class="form-grid report-form"><input type="hidden" name="csrf" value="{{$.CSRF}}"><label>N°<input type="number" name="number"></label><label>Data<input type="date" name="date"></label><label>Valor (R$)<input name="value"></label><label>Banco<input name="bank"></label><label>Indicação<input name="referral"></label><label>Produtor<input name="producer" required></label><label class="span-2">Tipo / projeto<input name="project_type"></label><label>Data de envio<input type="date" name="sent_date"></label><label>Situação<input name="situation" value="EM ANDAMENTO"></label><label>Comissão (%)<input name="commission_rate" value="0,50"></label><label>% Pedro<input name="pedro_percent"></label><label>Quem pagou<input name="paid_by"></label><label class="span-2">Observações<textarea name="notes" rows="3"></textarea></label><div class="span-2"><button class="btn primary" type="submit">Adicionar lançamento</button></div></form></section>{{end}}
+<div class="page-actions">
+  <form class="date-filter" method="get" action="/reports/daily"><label>Data<input type="date" name="date" value="{{.Date}}"></label><button class="btn ghost" type="submit">Abrir dia</button></form>
+</div>
+
+<section class="kpi-grid compact">
+  <article class="kpi"><span>Itens do dia</span><strong>{{.Total}}</strong></article>
+  <article class="kpi"><span>Pendentes</span><strong>{{.Pending}}</strong></article>
+  <article class="kpi"><span>Concluídos</span><strong>{{.Done}}</strong></article>
+  <article class="kpi"><span>Atrasados</span><strong>{{.Overdue}}</strong></article>
+</section>
+
+<div class="two-col wide-left">
+  <section class="card">
+    <div class="section-head"><div><span class="eyebrow">CHECKLIST DO DIA</span><h3>{{dateBR .Date}}</h3><p>Visão simples das atividades e pendências que os responsáveis precisam acompanhar.</p></div></div>
+    <div class="task-list">
+      {{range .Tasks}}
+      <article class="task-row">
+        <div>
+          <span class="priority {{.Priority}}">{{if .Priority}}{{.Priority}}{{else}}Normal{{end}}</span>
+          <strong>{{.Title}}</strong>
+          <small>{{if .ProjectTitle}}{{.ProjectTitle}}{{else}}Projeto{{end}}{{if .Producer}} · {{.Producer}}{{end}}{{if .Responsible}} · Responsável: {{.Responsible}}{{end}}{{if .DueAt}} · {{dateBR .DueAt}}{{end}}</small>
+        </div>
+        <div class="inline-actions">
+          <span class="badge {{if eq .Status "Concluída"}}ok{{else}}warn{{end}}">{{.Status}}</span>
+          {{if eq $.User.Role "owner"}}
+          <form method="post" action="/reports/daily/tasks/{{.ID}}/toggle"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="btn ghost" type="submit">{{if eq .Status "Concluída"}}Reabrir{{else}}Concluir{{end}}</button></form>
+          <form method="post" action="/reports/daily/tasks/{{.ID}}/delete"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="link-danger" type="submit">Excluir</button></form>
+          {{end}}
+        </div>
+      </article>
+      {{else}}<p class="empty">Nenhum item previsto para esta data.</p>{{end}}
+    </div>
+  </section>
+
+  {{if eq $.User.Role "owner"}}
+  <section class="card">
+    <div class="section-head"><div><span class="eyebrow">NOVO ITEM</span><h3>Adicionar ao checklist</h3><p>Este é o único lançamento operacional do painel.</p></div></div>
+    <form method="post" action="/reports/daily/tasks" class="stack-form">
+      <input type="hidden" name="csrf" value="{{$.CSRF}}">
+      <label>Projeto<select name="project_id" required><option value="">Selecione</option>{{range .Projects}}<option value="{{.ID}}">{{.Title}} — {{.ClientName}}</option>{{end}}</select></label>
+      <label>Atividade<input name="title" required placeholder="Ex.: cobrar matrícula atualizada"></label>
+      <label>Responsável<input name="responsible" placeholder="Pedro, banco, cliente..."></label>
+      <label>Data<input type="date" name="due_at" value="{{.Date}}"></label>
+      <label>Prioridade<select name="priority"><option>Normal</option><option>Alta</option><option>Urgente</option></select></label>
+      <button class="btn primary" type="submit">Adicionar ao checklist</button>
+    </form>
+  </section>
+  {{end}}
+</div>
 {{end}}
 {{end}}
