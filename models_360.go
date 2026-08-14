@@ -37,6 +37,7 @@ type Project360View struct {
 	Client Client
 	Property Property
 	Files []ProjectFile
+	PropertyFiles []PropertyFile360
 	Budget []BudgetItem
 	Revenues []ProjectRevenue
 	Metrics ProjectMetrics
