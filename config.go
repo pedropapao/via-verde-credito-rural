@@ -58,12 +58,16 @@ func LoadConfig() (Config, error) {
 	if days < 1 {
 		days = 14
 	}
+	secretKey := env("SUPABASE_SECRET_KEY", "")
+	if secretKey == "" {
+		secretKey = env("SUPABASE_SERVICE_ROLE_KEY", "")
+	}
 	c := Config{
 		Port:               env("PORT", "8080"),
 		AppEnv:             env("APP_ENV", "development"),
 		BaseURL:            strings.TrimRight(env("APP_BASE_URL", ""), "/"),
 		SupabaseURL:        strings.TrimRight(env("SUPABASE_URL", ""), "/"),
-		SupabaseServiceKey: env("SUPABASE_SERVICE_ROLE_KEY", ""),
+		SupabaseServiceKey: secretKey,
 		StorageBucket:      env("SUPABASE_STORAGE_BUCKET", "via-verde-files"),
 		AdminName:          env("ADMIN_NAME", "Pedro Massoli"),
 		AdminUsername:      env("ADMIN_USERNAME", "pedro.massoli"),
@@ -71,7 +75,7 @@ func LoadConfig() (Config, error) {
 		SessionDays:        days,
 	}
 	if c.SupabaseURL == "" || c.SupabaseServiceKey == "" {
-		return c, errors.New("SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY ainda não foram configurados")
+		return c, errors.New("SUPABASE_URL e SUPABASE_SECRET_KEY ainda não foram configurados")
 	}
 	return c, nil
 }
