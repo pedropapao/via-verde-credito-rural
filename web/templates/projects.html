@@ -11,9 +11,16 @@
   </form>
 </div>
 <section class="card no-pad">
-  <div class="section-head pad"><div><span class="eyebrow">CARTEIRA</span><h3>{{len .Projects}} projetos encontrados</h3><p>Clique em um projeto para acompanhar status, checklist documental e histórico.</p></div></div>
-  <div class="table-wrap"><table class="large-table"><thead><tr><th>Projeto / produtor</th><th>Propriedade</th><th>Banco</th><th>Fase atual</th><th>Status</th><th>Atualizado</th></tr></thead><tbody>
-  {{range .Projects}}<tr><td><a class="table-title" href="/projects/{{.ID}}">{{.Title}}</a><small>{{if .ClientName}}{{.ClientName}}{{else}}Produtor a confirmar{{end}}</small></td><td>{{if .PropertyName}}{{.PropertyName}}{{else}}—{{end}}</td><td>{{if .Bank}}{{.Bank}}{{else}}—{{end}}</td><td>{{if .Phase}}{{.Phase}}{{else}}—{{end}}</td><td><span class="badge {{statusClass .Status}}">{{.Status}}</span></td><td>{{dateBR .UpdatedAt}}</td></tr>{{else}}<tr><td colspan="6" class="empty">Nenhum projeto encontrado com os filtros informados.</td></tr>{{end}}
+  <div class="section-head pad"><div><span class="eyebrow">CARTEIRA</span><h3>{{len .Projects}} projetos encontrados</h3><p>O semáforo mostra rapidamente o que está em dia, o que precisa de acompanhamento e o que exige atenção.</p></div></div>
+  <div class="table-wrap"><table class="large-table"><thead><tr><th>Sinal</th><th>Projeto / produtor</th><th>Banco</th><th>Fase atual</th><th>Status</th><th>Última movimentação</th></tr></thead><tbody>
+  {{range .Projects}}<tr>
+    <td><span class="signal-wrap"><i class="signal-dot {{.Signal}}"></i><small>{{.SignalLabel}}</small></span></td>
+    <td><a class="table-title" href="/projects/{{.ID}}">{{.Title}}</a><small>{{if .ClientName}}{{.ClientName}}{{else}}Produtor a confirmar{{end}}{{if gt .PendingDocs 0}} · {{.PendingDocs}} doc(s) pendente(s){{end}}</small></td>
+    <td>{{if .Bank}}{{.Bank}}{{else}}—{{end}}</td>
+    <td>{{if .Phase}}{{.Phase}}{{else}}—{{end}}</td>
+    <td><span class="badge {{statusClass .Status}}">{{.Status}}</span>{{if gt .OverdueTasks 0}}<small class="danger-text">{{.OverdueTasks}} tarefa(s) vencida(s)</small>{{end}}</td>
+    <td>{{dateBR .LastActivity}}{{if gt .StaleDays 0}}<small class="stale-text {{if ge .StaleDays 7}}danger-text{{end}}">Parado há {{.StaleDays}} dia(s)</small>{{else}}<small class="fresh-text">Atualizado hoje</small>{{end}}</td>
+  </tr>{{else}}<tr><td colspan="6" class="empty">Nenhum projeto encontrado com os filtros informados.</td></tr>{{end}}
   </tbody></table></div>
 </section>
 {{end}}
