@@ -9,6 +9,7 @@
   <link rel="icon" href="/static/logo.png">
   <link rel="stylesheet" href="/static/app.css">
   <link rel="stylesheet" href="/static/upgrade.css">
+  <link rel="stylesheet" href="/static/monitor.css">
   <script defer src="/static/app.js"></script>
 </head>
 <body>
@@ -35,7 +36,7 @@
   <main class="main">
     <header class="topbar">
       <button class="menu-toggle" type="button" data-menu-toggle aria-label="Abrir menu">☰</button>
-      <div><span class="eyebrow">ACOMPANHAMENTO VIA VERDE</span><h1>{{.Title}}</h1></div>
+      <div><span class="eyebrow">ACOMPANHAMENTO DE CRÉDITO RURAL</span><h1>{{.Title}}</h1></div>
       <div class="topbar-right"><span class="role-chip">{{roleLabel .User.Role}}</span></div>
     </header>
     {{if .Flash}}<div class="alert success">{{.Flash}}</div>{{end}}
@@ -46,8 +47,8 @@
 {{else}}
 <div class="auth-shell">
   <div class="auth-visual">
-    <div class="auth-brand"><img src="/static/logo.png" alt="Via Verde"><div><strong>Via Verde</strong><span>Acompanhamento de Projetos</span></div></div>
-    <div class="auth-copy"><span class="eyebrow light">ACESSO RESTRITO</span><h1>Acompanhe os projetos rurais em um só lugar.</h1><p>Status, histórico, checklist documental e atividades do dia com acesso controlado.</p></div>
+    <div class="auth-brand"><img src="/static/logo.png" alt="Via Verde"><div><strong>Via Verde</strong><span>Acompanhamento</span></div></div>
+    <div class="auth-copy"><span class="eyebrow light">GESTÃO E TRANSPARÊNCIA</span><h1>Projetos rurais acompanhados em um só lugar.</h1><p>Status, histórico, checklist documental e prioridades do dia com acesso controlado.</p></div>
     <div class="auth-footer">Via Verde Consultoria Agropecuária</div>
   </div>
   <div class="auth-panel">
