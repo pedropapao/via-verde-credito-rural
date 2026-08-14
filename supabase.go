@@ -24,13 +24,21 @@ func NewSupabase(baseURL, key string) *Supabase {
 	return &Supabase{BaseURL: strings.TrimRight(baseURL, "/"), Key: key, Client: &http.Client{Timeout: 30 * time.Second}}
 }
 
+func (s *Supabase) setAuthHeaders(req *http.Request) {
+	req.Header.Set("apikey", s.Key)
+	// As chaves novas sb_secret_* são opacas e devem ser enviadas no header apikey.
+	// A service_role legada é um JWT e continua compatível com Authorization: Bearer.
+	if !strings.HasPrefix(s.Key, "sb_secret_") {
+		req.Header.Set("Authorization", "Bearer "+s.Key)
+	}
+}
+
 func (s *Supabase) do(ctx context.Context, method, endpoint string, body io.Reader, contentType string, extra map[string]string) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, method, s.BaseURL+endpoint, body)
 	if err != nil {
 		return nil, 0, err
 	}
-	req.Header.Set("apikey", s.Key)
-	req.Header.Set("Authorization", "Bearer "+s.Key)
+	s.setAuthHeaders(req)
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
@@ -145,8 +153,7 @@ func (s *Supabase) Download(ctx context.Context, bucket, objectPath string) ([]b
 	if err != nil {
 		return nil, "", err
 	}
-	req.Header.Set("apikey", s.Key)
-	req.Header.Set("Authorization", "Bearer "+s.Key)
+	s.setAuthHeaders(req)
 	resp, err := s.Client.Do(req)
 	if err != nil {
 		return nil, "", err
