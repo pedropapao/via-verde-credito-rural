@@ -1,155 +1,27 @@
 package main
 
 type BudgetItem struct {
-	ID               string  `json:"id,omitempty"`
-	ProjectID        string  `json:"project_id,omitempty"`
-	Category         string  `json:"category,omitempty"`
-	Item             string  `json:"item,omitempty"`
-	AcquisitionStart string  `json:"acquisition_start,omitempty"`
-	AcquisitionEnd   string  `json:"acquisition_end,omitempty"`
-	UseStart         string  `json:"use_start,omitempty"`
-	UseEnd           string  `json:"use_end,omitempty"`
-	Unit             string  `json:"unit,omitempty"`
-	Quantity         float64 `json:"quantity,omitempty"`
-	UnitValue        float64 `json:"unit_value,omitempty"`
-	TotalValue       float64 `json:"total_value,omitempty"`
-	OwnResources     float64 `json:"own_resources,omitempty"`
-	FinancedValue    float64 `json:"financed_value,omitempty"`
-	PriceSource      string  `json:"price_source,omitempty"`
-	Notes            string  `json:"notes,omitempty"`
-	CreatedAt        string  `json:"created_at,omitempty"`
+	ID string `json:"id,omitempty"`; ProjectID string `json:"project_id,omitempty"`; Category string `json:"category,omitempty"`; Item string `json:"item,omitempty"`; AcquisitionStart string `json:"acquisition_start,omitempty"`; AcquisitionEnd string `json:"acquisition_end,omitempty"`; UseStart string `json:"use_start,omitempty"`; UseEnd string `json:"use_end,omitempty"`; Unit string `json:"unit,omitempty"`; Quantity float64 `json:"quantity,omitempty"`; UnitValue float64 `json:"unit_value,omitempty"`; TotalValue float64 `json:"total_value,omitempty"`; OwnResources float64 `json:"own_resources,omitempty"`; FinancedValue float64 `json:"financed_value,omitempty"`; PriceSource string `json:"price_source,omitempty"`; Notes string `json:"notes,omitempty"`; CreatedAt string `json:"created_at,omitempty"`
 }
 
-type ProjectRevenue struct {
-	ID         string  `json:"id,omitempty"`
-	ProjectID  string  `json:"project_id,omitempty"`
-	Product    string  `json:"product,omitempty"`
-	Period     string  `json:"period,omitempty"`
-	Unit       string  `json:"unit,omitempty"`
-	Quantity   float64 `json:"quantity,omitempty"`
-	UnitPrice  float64 `json:"unit_price,omitempty"`
-	TotalValue float64 `json:"total_value,omitempty"`
-	Source     string  `json:"source,omitempty"`
-	Notes      string  `json:"notes,omitempty"`
-	CreatedAt  string  `json:"created_at,omitempty"`
-}
+type ProjectRevenue struct { ID string `json:"id,omitempty"`; ProjectID string `json:"project_id,omitempty"`; Product string `json:"product,omitempty"`; Period string `json:"period,omitempty"`; Unit string `json:"unit,omitempty"`; Quantity float64 `json:"quantity,omitempty"`; UnitPrice float64 `json:"unit_price,omitempty"`; TotalValue float64 `json:"total_value,omitempty"`; Source string `json:"source,omitempty"`; Notes string `json:"notes,omitempty"`; CreatedAt string `json:"created_at,omitempty"` }
 
-type ProjectMetrics struct {
-	ID               string  `json:"id,omitempty"`
-	ProjectID        string  `json:"project_id,omitempty"`
-	ActivityType     string  `json:"activity_type,omitempty"`
-	AreaHa           float64 `json:"area_ha,omitempty"`
-	Productivity     float64 `json:"productivity,omitempty"`
-	ProductivityUnit string  `json:"productivity_unit,omitempty"`
-	AnimalCount      int     `json:"animal_count,omitempty"`
-	InitialWeightKg  float64 `json:"initial_weight_kg,omitempty"`
-	FinalWeightKg    float64 `json:"final_weight_kg,omitempty"`
-	GMDKgDay         float64 `json:"gmd_kg_day,omitempty"`
-	CycleDays        int     `json:"cycle_days,omitempty"`
-	CarcassYieldPct  float64 `json:"carcass_yield_pct,omitempty"`
-	MortalityPct     float64 `json:"mortality_pct,omitempty"`
-	StockingRate     float64 `json:"stocking_rate,omitempty"`
-	OtherDebts       float64 `json:"other_debts,omitempty"`
-	OtherIncome      float64 `json:"other_income,omitempty"`
-	AnnualPayment    float64 `json:"annual_payment,omitempty"`
-	Notes            string  `json:"notes,omitempty"`
-	UpdatedAt        string  `json:"updated_at,omitempty"`
-}
+type ProjectMetrics struct { ID string `json:"id,omitempty"`; ProjectID string `json:"project_id,omitempty"`; ActivityType string `json:"activity_type,omitempty"`; AreaHa float64 `json:"area_ha,omitempty"`; Productivity float64 `json:"productivity,omitempty"`; ProductivityUnit string `json:"productivity_unit,omitempty"`; AnimalCount int `json:"animal_count,omitempty"`; InitialWeightKg float64 `json:"initial_weight_kg,omitempty"`; FinalWeightKg float64 `json:"final_weight_kg,omitempty"`; GMDKgDay float64 `json:"gmd_kg_day,omitempty"`; CycleDays int `json:"cycle_days,omitempty"`; CarcassYieldPct float64 `json:"carcass_yield_pct,omitempty"`; MortalityPct float64 `json:"mortality_pct,omitempty"`; StockingRate float64 `json:"stocking_rate,omitempty"`; OtherDebts float64 `json:"other_debts,omitempty"`; OtherIncome float64 `json:"other_income,omitempty"`; AnnualPayment float64 `json:"annual_payment,omitempty"`; Notes string `json:"notes,omitempty"`; UpdatedAt string `json:"updated_at,omitempty"` }
 
-type ProjectTask struct {
-	ID          string `json:"id,omitempty"`
-	ProjectID   string `json:"project_id,omitempty"`
-	Title       string `json:"title,omitempty"`
-	Category    string `json:"category,omitempty"`
-	Responsible string `json:"responsible,omitempty"`
-	RequestedAt string `json:"requested_at,omitempty"`
-	DueAt       string `json:"due_at,omitempty"`
-	Status      string `json:"status,omitempty"`
-	Priority    string `json:"priority,omitempty"`
-	Notes       string `json:"notes,omitempty"`
-	CreatedAt   string `json:"created_at,omitempty"`
-	CompletedAt string `json:"completed_at,omitempty"`
-}
+type ProjectTask struct { ID string `json:"id,omitempty"`; ProjectID string `json:"project_id,omitempty"`; Title string `json:"title,omitempty"`; Category string `json:"category,omitempty"`; Responsible string `json:"responsible,omitempty"`; RequestedAt string `json:"requested_at,omitempty"`; DueAt string `json:"due_at,omitempty"`; Status string `json:"status,omitempty"`; Priority string `json:"priority,omitempty"`; Notes string `json:"notes,omitempty"`; CreatedAt string `json:"created_at,omitempty"`; CompletedAt string `json:"completed_at,omitempty"` }
 
-type ProjectHistory struct {
-	ID        string `json:"id,omitempty"`
-	ProjectID string `json:"project_id,omitempty"`
-	EventDate string `json:"event_date,omitempty"`
-	EventType string `json:"event_type,omitempty"`
-	Title     string `json:"title,omitempty"`
-	Details   string `json:"details,omitempty"`
-	UserID    string `json:"user_id,omitempty"`
-}
+type ProjectHistory struct { ID string `json:"id,omitempty"`; ProjectID string `json:"project_id,omitempty"`; EventDate string `json:"event_date,omitempty"`; EventType string `json:"event_type,omitempty"`; Title string `json:"title,omitempty"`; Details string `json:"details,omitempty"`; UserID string `json:"user_id,omitempty"` }
 
-type ChecklistItem struct {
-	ID           string `json:"id,omitempty"`
-	ProjectID    string `json:"project_id,omitempty"`
-	Code         string `json:"code,omitempty"`
-	DocumentName string `json:"document_name,omitempty"`
-	Required     bool   `json:"required,omitempty"`
-	Status       string `json:"status,omitempty"`
-	ValidUntil   string `json:"valid_until,omitempty"`
-	Notes        string `json:"notes,omitempty"`
-	SourceRule   string `json:"source_rule,omitempty"`
-	CreatedAt    string `json:"created_at,omitempty"`
-}
+type ChecklistItem struct { ID string `json:"id,omitempty"`; ProjectID string `json:"project_id,omitempty"`; Code string `json:"code,omitempty"`; DocumentName string `json:"document_name,omitempty"`; Required bool `json:"required,omitempty"`; Status string `json:"status,omitempty"`; ValidUntil string `json:"valid_until,omitempty"`; Notes string `json:"notes,omitempty"`; SourceRule string `json:"source_rule,omitempty"`; CreatedAt string `json:"created_at,omitempty"` }
 
-type ProjectSection struct {
-	ID           string `json:"id,omitempty"`
-	ProjectID    string `json:"project_id,omitempty"`
-	SectionKey   string `json:"section_key,omitempty"`
-	SectionTitle string `json:"section_title,omitempty"`
-	Content      string `json:"content,omitempty"`
-	Status       string `json:"status,omitempty"`
-	UpdatedAt    string `json:"updated_at,omitempty"`
-}
+type ProjectSection struct { ID string `json:"id,omitempty"`; ProjectID string `json:"project_id,omitempty"`; SectionKey string `json:"section_key,omitempty"`; SectionTitle string `json:"section_title,omitempty"`; Content string `json:"content,omitempty"`; Status string `json:"status,omitempty"`; UpdatedAt string `json:"updated_at,omitempty"` }
 
-type PropertyFile struct {
-	ID           string `json:"id,omitempty"`
-	PropertyID   string `json:"property_id,omitempty"`
-	DocumentType string `json:"document_type,omitempty"`
-	Name         string `json:"name,omitempty"`
-	VersionLabel string `json:"version_label,omitempty"`
-	ValidFrom    string `json:"valid_from,omitempty"`
-	ValidUntil   string `json:"valid_until,omitempty"`
-	StoragePath  string `json:"storage_path,omitempty"`
-	ContentType  string `json:"content_type,omitempty"`
-	SizeBytes    int64  `json:"size_bytes,omitempty"`
-	UploadedBy   string `json:"uploaded_by,omitempty"`
-	CreatedAt    string `json:"created_at,omitempty"`
-}
+type ProjectFile360 struct { ID string `json:"id,omitempty"`; ProjectID string `json:"project_id,omitempty"`; Name string `json:"name,omitempty"`; StoragePath string `json:"storage_path,omitempty"`; ContentType string `json:"content_type,omitempty"`; SizeBytes int64 `json:"size_bytes,omitempty"`; UploadedBy string `json:"uploaded_by,omitempty"`; DocumentType string `json:"document_type,omitempty"`; VersionLabel string `json:"version_label,omitempty"`; ValidUntil string `json:"valid_until,omitempty"`; IsCurrent bool `json:"is_current,omitempty"`; CreatedAt string `json:"created_at,omitempty"` }
+
+type Property360 struct { ID string `json:"id,omitempty"`; ClientID string `json:"client_id,omitempty"`; Name string `json:"name,omitempty"`; City string `json:"city,omitempty"`; State string `json:"state,omitempty"`; AreaHa float64 `json:"area_ha,omitempty"`; Registry string `json:"registry,omitempty"`; CAR string `json:"car,omitempty"`; CCIR string `json:"ccir,omitempty"`; ITR string `json:"itr,omitempty"`; Tenure string `json:"tenure,omitempty"`; Notes string `json:"notes,omitempty"`; Latitude float64 `json:"latitude,omitempty"`; Longitude float64 `json:"longitude,omitempty"`; WaterInfo string `json:"water_info,omitempty"`; EnvironmentalInfo string `json:"environmental_info,omitempty"`; AccessInfo string `json:"access_info,omitempty"`; OwnerName string `json:"owner_name,omitempty"`; RegistryDate string `json:"registry_date,omitempty"`; CARStatus string `json:"car_status,omitempty"`; CreatedAt string `json:"created_at,omitempty"` }
 
 type Project360View struct {
-	Project          Project
-	Client           Client
-	Property         Property
-	Files            []ProjectFile
-	Budget           []BudgetItem
-	Revenues         []ProjectRevenue
-	Metrics          ProjectMetrics
-	Tasks            []ProjectTask
-	History          []ProjectHistory
-	Checklist        []ChecklistItem
-	Sections         []ProjectSection
-	BudgetTotal      float64
-	BudgetOwn        float64
-	BudgetFinanced   float64
-	RevenueTotal     float64
-	OperatingMargin  float64
-	DebtCoverage     float64
-	CostPerHa        float64
-	RevenuePerHa     float64
-	CostPerAnimal    float64
-	RevenuePerAnimal float64
-	ProjectedArrobas float64
-	Completeness     int
-	DocCompleteness  int
-	TechCompleteness int
-	FinCompleteness  int
-	PendingCount     int
-	OverdueCount     int
-	ViabilityLabel   string
-	MapSVG           string
-	KMLAreaHa        float64
-	KMLPerimeterM    float64
+	Project Project; Client Client; Property Property360; Files []ProjectFile360; Budget []BudgetItem; Revenues []ProjectRevenue; Metrics ProjectMetrics; Tasks []ProjectTask; History []ProjectHistory; Checklist []ChecklistItem; Sections []ProjectSection
+	BudgetTotal float64; BudgetOwn float64; BudgetFinanced float64; RevenueTotal float64; OperatingMargin float64; DebtCoverage float64; CostPerHa float64; RevenuePerHa float64; CostPerAnimal float64; RevenuePerAnimal float64; ProjectedArrobas float64
+	Completeness int; DocCompleteness int; TechCompleteness int; FinCompleteness int; PendingCount int; OverdueCount int; ViabilityLabel string; MapSVG string; KMLAreaHa float64; KMLPerimeterM float64
 }
