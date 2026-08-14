@@ -22,10 +22,32 @@
 
 <section class="kpi-grid compact">
   <article class="kpi"><span>Status</span><strong class="smaller">{{.Project.Status}}</strong></article>
+  <article class="kpi"><span>Tempo na etapa</span><strong class="smaller" data-stage-days data-project-updated="{{.Project.UpdatedAt}}">Calculando...</strong><small>desde a última mudança de andamento</small></article>
+  <article class="kpi"><span>Dependência atual</span><strong class="smaller">{{if .Project.Responsible}}{{.Project.Responsible}}{{else}}A definir{{end}}</strong><small>de quem depende o próximo avanço</small></article>
   <article class="kpi"><span>Documentos</span><strong>{{.DocCompletion}}%</strong><small>{{.CompletedDocs}} de {{.RequiredDocs}} conferidos</small></article>
-  <article class="kpi"><span>Pendências</span><strong>{{.PendingDocs}}</strong><small>documentos ainda pendentes</small></article>
-  <article class="kpi"><span>Última movimentação</span><strong class="smaller">{{dateBR .LastActivity}}</strong><small>{{if gt .OverdueTasks 0}}{{.OverdueTasks}} tarefa(s) vencida(s){{else}}Sem tarefa vencida{{end}}</small></article>
 </section>
+
+{{if eq $.User.Role "owner"}}
+<section class="card quick-progress-card">
+  <div class="section-head"><div><span class="eyebrow">ATUALIZAÇÃO RÁPIDA</span><h3>Atualizar andamento do projeto</h3><p>Somente o essencial. Toda alteração fica registrada automaticamente no histórico.</p></div></div>
+  <form method="post" action="/projects/{{.Project.ID}}/progress" class="quick-progress-form">
+    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+    <label>Status
+      <select name="status">
+        {{if .Project.Status}}<option selected>{{.Project.Status}}</option>{{end}}
+        <option>Em preparação</option><option>Aguardando documentos</option><option>Enviado ao banco</option><option>Em análise</option><option>Aprovado</option><option>Contratado</option><option>Reprovado</option>
+      </select>
+    </label>
+    <label>Fase atual<input name="phase" value="{{.Project.Phase}}" placeholder="Ex.: análise de crédito, contratação..."></label>
+    <label>De quem depende agora?
+      <input name="responsible" value="{{.Project.Responsible}}" list="dependency-options" placeholder="Pedro, Cliente, Banco...">
+      <datalist id="dependency-options"><option value="Pedro"><option value="Cliente"><option value="Banco"><option value="Cartório"><option value="Vendedor"><option value="Contabilidade"><option value="Outro"></datalist>
+    </label>
+    <label class="span-2">Observação / próxima ação<textarea name="alerts" rows="2" placeholder="Ex.: aguardando matrícula atualizada do cliente">{{.Project.Alerts}}</textarea></label>
+    <div class="quick-progress-submit"><button class="btn primary" type="submit">Salvar andamento</button></div>
+  </form>
+</section>
+{{end}}
 
 <div class="two-col project-cols">
   <section class="card">
@@ -37,7 +59,7 @@
       <div><span>Atividade</span><strong>{{if .Project.Activity}}{{.Project.Activity}}{{else}}—{{end}}</strong></div>
       <div><span>Programa / linha</span><strong>{{if .Project.Program}}{{.Project.Program}}{{else}}—{{end}}</strong></div>
       <div><span>Valor financiado</span><strong>{{money .Project.FinancedValue}}</strong></div>
-      <div><span>Responsável</span><strong>{{if .Project.Responsible}}{{.Project.Responsible}}{{else}}—{{end}}</strong></div>
+      <div><span>Última movimentação</span><strong>{{dateBR .LastActivity}}</strong></div>
     </div>
     {{if .Project.Alerts}}<div class="notice-box"><strong>Pendência / observação atual</strong><p>{{.Project.Alerts}}</p></div>{{end}}
   </section>
@@ -69,9 +91,9 @@
 <div class="two-col project-cols">
   <section class="card">
     <div class="section-head"><div><span class="eyebrow">LINHA DO TEMPO</span><h3>Histórico do projeto</h3><p>Movimentações registradas do mais recente para o mais antigo.</p></div></div>
-    <div class="timeline visual-timeline">
+    <div class="timeline visual-timeline" data-project-timeline>
       {{range .History}}
-      <article>
+      <article data-event-date="{{.EventDate}}" data-event-type="{{.EventType}}">
         <div class="timeline-dot"></div>
         <div class="timeline-content">
           <span class="timeline-date">{{dateBR .EventDate}}</span>
@@ -81,7 +103,7 @@
         </div>
       </article>
       {{else}}
-      <article><div class="timeline-dot"></div><div class="timeline-content"><span class="timeline-date">{{dateBR .Project.CreatedAt}}</span><strong>Projeto cadastrado</strong><small class="timeline-type">Início do acompanhamento</small></div></article>
+      <article data-event-date="{{.Project.CreatedAt}}" data-event-type="Cadastro"><div class="timeline-dot"></div><div class="timeline-content"><span class="timeline-date">{{dateBR .Project.CreatedAt}}</span><strong>Projeto cadastrado</strong><small class="timeline-type">Início do acompanhamento</small></div></article>
       {{end}}
     </div>
   </section>
