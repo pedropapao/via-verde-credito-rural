@@ -1,5 +1,6 @@
 -- VIA VERDE CRÉDITO RURAL v3.0 - UPGRADE DOSSIÊ 360
 -- Execute UMA VEZ no SQL Editor do Supabase após 01_schema.sql e 02_seed_via_verde.sql.
+-- O script é idempotente: pode ser executado novamente sem apagar dados.
 
 create extension if not exists pgcrypto;
 
@@ -19,6 +20,10 @@ alter table public.projects add column if not exists sent_at date;
 alter table public.projects add column if not exists contracted_at date;
 alter table public.projects add column if not exists responsible text;
 alter table public.projects add column if not exists sensitive_notes text;
+
+alter table public.daily_reports add column if not exists project_id uuid references public.projects(id) on delete set null;
+alter table public.daily_reports add column if not exists event_type text;
+create index if not exists daily_reports_project_idx on public.daily_reports(project_id);
 
 create table if not exists public.project_budget_items (
   id uuid primary key default gen_random_uuid(),
@@ -133,8 +138,10 @@ create table if not exists public.property_files (
   content_type text,
   size_bytes bigint not null default 0,
   uploaded_by uuid references public.users(id) on delete set null,
+  is_current boolean not null default true,
   created_at timestamptz not null default now()
 );
+alter table public.property_files add column if not exists is_current boolean not null default true;
 create index if not exists property_files_property_idx on public.property_files(property_id);
 
 alter table public.project_files add column if not exists document_type text;
@@ -153,7 +160,6 @@ create table if not exists public.project_sections (
   unique(project_id, section_key)
 );
 
--- RLS: o navegador não acessa diretamente; o backend usa chave secreta.
 alter table public.project_budget_items enable row level security;
 alter table public.project_revenues enable row level security;
 alter table public.project_metrics enable row level security;
@@ -163,12 +169,10 @@ alter table public.project_checklist enable row level security;
 alter table public.property_files enable row level security;
 alter table public.project_sections enable row level security;
 
--- Índices de pesquisa e operação
 create index if not exists projects_bank_idx on public.projects(bank);
 create index if not exists projects_modality_idx on public.projects(modality);
 create index if not exists properties_city_idx on public.properties(city);
 
--- Função auxiliar para manter total do item coerente quando o backend não informar explicitamente.
 create or replace function public.vv_budget_total()
 returns trigger language plpgsql as $$
 begin
