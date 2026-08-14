@@ -1,4 +1,51 @@
 {{define "content"}}
-{{with .Data}}<div class="two-col wide-left"><section class="card no-pad"><div class="section-head pad"><div><span class="eyebrow">IMÓVEIS RURAIS</span><h3>Propriedades cadastradas</h3></div></div><div class="table-wrap"><table><thead><tr><th>Propriedade</th><th>Município</th><th>Área</th><th>Matrícula</th><th>CAR</th><th>Exploração</th></tr></thead><tbody>{{range .Properties}}<tr><td><strong>{{.Name}}</strong></td><td>{{.City}}/{{.State}}</td><td>{{printf "%.2f" .AreaHa}} ha</td><td>{{if .Registry}}{{.Registry}}{{else}}—{{end}}</td><td>{{if .CAR}}{{.CAR}}{{else}}Pendente{{end}}</td><td>{{.Tenure}}</td></tr>{{else}}<tr><td colspan="6" class="empty">Nenhuma propriedade cadastrada.</td></tr>{{end}}</tbody></table></div></section>
-{{if eq $.User.Role "owner"}}<section class="card"><div class="section-head"><div><span class="eyebrow">NOVO</span><h3>Cadastrar propriedade</h3></div></div><form class="stack-form" method="post" action="/properties"><input type="hidden" name="csrf" value="{{$.CSRF}}"><label>Produtor<select name="client_id" required><option value="">Selecione</option>{{range .Clients}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label><label>Nome da propriedade<input name="name" required></label><div class="inline-2"><label>Município<input name="city"></label><label>UF<input name="state" maxlength="2"></label></div><label>Área total (ha)<input name="area_ha"></label><label>Matrícula<input name="registry"></label><label>CAR<input name="car"></label><div class="inline-2"><label>CCIR<input name="ccir"></label><label>ITR<input name="itr"></label></div><label>Regime de exploração<select name="tenure"><option>Própria</option><option>Arrendamento</option><option>Comodato</option><option>Parceria</option><option>Posse</option></select></label><label>Observações<textarea name="notes" rows="3"></textarea></label><button class="btn primary" type="submit">Salvar propriedade</button></form></section>{{end}}</div>{{end}}
+{{with .Data}}
+{{if not .UpgradeReady}}<div class="alert error"><strong>Cadastro 360 aguardando ativação.</strong> Execute uma vez o arquivo <code>supabase/03_upgrade_dossie_360.sql</code> no SQL Editor do Supabase para habilitar documentos, KML e campos ambientais.</div>{{end}}
+
+<div class="properties-layout">
+  <section class="properties-list">
+    <div class="section-head page-section-head"><div><span class="eyebrow">IMÓVEIS RURAIS</span><h3>Cadastro permanente de propriedades</h3><p>Documentação, área, situação fundiária, recursos hídricos e georreferência reaproveitados em novos projetos.</p></div></div>
+    <div class="property-cards">
+      {{range .Properties}}
+      {{$pid := .ID}}{{$files := index $.Data.FilesByProperty $pid}}{{$map := index $.Data.Maps $pid}}{{$mapstat := index $.Data.MapStats $pid}}
+      <article class="card property-card">
+        <div class="property-head"><div><span class="badge neutral">{{if .Tenure}}{{.Tenure}}{{else}}Regime a confirmar{{end}}</span><h3>{{.Name}}</h3><p>{{.City}}/{{.State}} · {{printf "%.4f" .AreaHa}} ha</p></div><div class="property-doc-score"><span>CAR</span><strong>{{if .CAR}}✓{{else}}!{{end}}</strong></div></div>
+        <div class="info-grid property-info">
+          <div><span>Proprietário</span><strong>{{if .OwnerName}}{{.OwnerName}}{{else}}Não informado{{end}}</strong></div>
+          <div><span>Situação CAR</span><strong>{{if .CARStatus}}{{.CARStatus}}{{else}}{{if .CAR}}Cadastrado{{else}}Pendente{{end}}{{end}}</strong></div>
+          {{if eq $.User.Role "owner"}}<div><span>Matrícula</span><strong>{{if .Registry}}{{.Registry}}{{else}}Pendente{{end}}</strong></div><div><span>Data matrícula</span><strong>{{dateBR .RegistryDate}}</strong></div><div><span>CAR</span><strong class="wrap-text">{{if .CAR}}{{.CAR}}{{else}}Pendente{{end}}</strong></div><div><span>CCIR / ITR</span><strong>{{if .CCIR}}{{.CCIR}}{{else}}—{{end}} / {{if .ITR}}{{.ITR}}{{else}}—{{end}}</strong></div>{{else}}<div class="span-2"><span>Documentação fundiária</span><strong>Detalhes restritos ao proprietário</strong></div>{{end}}
+          <div class="span-2"><span>Recursos hídricos</span><strong>{{if .WaterInfo}}{{.WaterInfo}}{{else}}Não informado{{end}}</strong></div>
+          <div class="span-2"><span>Ambiental</span><strong>{{if .EnvironmentalInfo}}{{.EnvironmentalInfo}}{{else}}Não informado{{end}}</strong></div>
+          <div class="span-2"><span>Acesso / logística</span><strong>{{if .AccessInfo}}{{.AccessInfo}}{{else}}Não informado{{end}}</strong></div>
+        </div>
+        {{if $map}}<div class="map-frame property-map">{{safe $map}}</div><div class="map-stats"><span>KML <strong>{{$mapstat}}</strong></span><span>Cadastro <strong>{{printf "%.4f" .AreaHa}} ha</strong></span></div>{{end}}
+        <div class="property-files"><div class="mini-head"><strong>Documentos do imóvel</strong><span>{{len $files}} arquivos</span></div>
+          <div class="mini-file-list">{{range $files}}<div class="mini-file {{if not .IsCurrent}}old{{end}}"><div><strong>{{if .DocumentType}}{{.DocumentType}}{{else}}Documento{{end}}</strong><small>{{.Name}}{{if .VersionLabel}} · {{.VersionLabel}}{{end}}{{if .ValidUntil}} · validade {{dateBR .ValidUntil}}{{end}}</small></div><div><a href="/property-files/{{.ID}}/download" target="_blank">Abrir</a>{{if eq $.User.Role "owner"}}<form method="post" action="/property-files/{{.ID}}/delete"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="link-danger">Excluir</button></form>{{end}}</div></div>{{else}}<p class="empty compact-empty">Nenhum documento específico do imóvel.</p>{{end}}</div>
+        </div>
+        {{if and (eq $.User.Role "owner") $.Data.UpgradeReady}}<details class="adder property-upload"><summary>+ Enviar documento / KML</summary><form method="post" enctype="multipart/form-data" action="/properties/{{$pid}}/files" class="form-grid compact-form"><input type="hidden" name="csrf" value="{{$.CSRF}}"><label>Tipo<select name="document_type"><option>KML</option><option>Matrícula</option><option>CAR</option><option>CCIR</option><option>ITR</option><option>Contrato / anuência</option><option>Licença / dispensa ambiental</option><option>Outorga / uso insignificante</option><option>Outro</option></select></label><label>Versão<input name="version_label" placeholder="Atualizada 2026, v2..."></label><label>Validade<input type="date" name="valid_until"></label><label>Arquivo<input type="file" name="file" required></label><div class="span-2"><button class="btn secondary" type="submit">Enviar ao cadastro permanente</button></div></form></details>{{end}}
+      </article>
+      {{else}}<div class="card empty">Nenhuma propriedade cadastrada.</div>{{end}}
+    </div>
+  </section>
+
+  {{if eq $.User.Role "owner"}}
+  <aside class="card sticky-form property-create"><div class="section-head"><div><span class="eyebrow">NOVO IMÓVEL</span><h3>Cadastrar propriedade</h3></div></div>
+    <form class="stack-form" method="post" action="/properties"><input type="hidden" name="csrf" value="{{$.CSRF}}">
+      <label>Produtor<select name="client_id" required><option value="">Selecione</option>{{range .Clients}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label>
+      <label>Nome da propriedade<input name="name" required></label>
+      <div class="inline-2"><label>Município<input name="city"></label><label>UF<input name="state" maxlength="2"></label></div>
+      <div class="inline-2"><label>Área total (ha)<input name="area_ha"></label><label>Proprietário registral<input name="owner_name"></label></div>
+      <label>Matrícula<input name="registry"></label><div class="inline-2"><label>Data da matrícula<input type="date" name="registry_date"></label><label>Regime de exploração<select name="tenure"><option>Própria</option><option>Arrendamento</option><option>Comodato</option><option>Parceria</option><option>Posse</option><option>Condomínio</option></select></label></div>
+      <label>CAR<input name="car"></label><div class="inline-2"><label>Situação CAR<input name="car_status" placeholder="Ativo, pendente..."></label><label>CCIR<input name="ccir"></label></div><label>ITR<input name="itr"></label>
+      <div class="inline-2"><label>Latitude<input name="latitude" placeholder="-20.123456"></label><label>Longitude<input name="longitude" placeholder="-45.123456"></label></div>
+      <label>Recursos hídricos<textarea name="water_info" rows="3" placeholder="Captação, nascente, poço, outorga/uso insignificante..."></textarea></label>
+      <label>Situação ambiental<textarea name="environmental_info" rows="3" placeholder="APP, reserva legal, licenças, observações..."></textarea></label>
+      <label>Acesso / logística<textarea name="access_info" rows="2" placeholder="Roteiro de acesso, estradas, distância..."></textarea></label>
+      <label>Observações<textarea name="notes" rows="3"></textarea></label>
+      <button class="btn primary" type="submit">Salvar propriedade</button>
+    </form>
+  </aside>
+  {{end}}
+</div>
+{{end}}
 {{end}}
