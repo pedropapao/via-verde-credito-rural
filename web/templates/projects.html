@@ -1,11 +1,12 @@
 {{define "content"}}
 {{with .Data}}
+{{$status := .Status}}{{$bank := .Bank}}{{$modality := .Modality}}
 <div class="page-actions projects-toolbar">
   <form method="get" action="/projects" class="filter-bar">
     <input name="q" value="{{.Q}}" placeholder="Buscar produtor, projeto, propriedade, banco...">
-    <select name="status"><option value="">Todos os status</option>{{range .Statuses}}<option {{if eq . $.Status}}selected{{end}}>{{.}}</option>{{end}}</select>
-    <select name="bank"><option value="">Todos os bancos</option>{{range .Banks}}<option {{if eq . $.Bank}}selected{{end}}>{{.}}</option>{{end}}</select>
-    <select name="modality"><option value="">Todas as modalidades</option>{{range .Modalities}}<option {{if eq . $.Modality}}selected{{end}}>{{.}}</option>{{end}}</select>
+    <select name="status"><option value="">Todos os status</option>{{range .Statuses}}<option {{if eq . $status}}selected{{end}}>{{.}}</option>{{end}}</select>
+    <select name="bank"><option value="">Todos os bancos</option>{{range .Banks}}<option {{if eq . $bank}}selected{{end}}>{{.}}</option>{{end}}</select>
+    <select name="modality"><option value="">Todas as modalidades</option>{{range .Modalities}}<option {{if eq . $modality}}selected{{end}}>{{.}}</option>{{end}}</select>
     <button class="btn secondary" type="submit">Filtrar</button>
     <a class="btn ghost" href="/projects">Limpar</a>
   </form>
