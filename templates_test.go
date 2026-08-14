@@ -5,20 +5,20 @@ import (
 	"testing"
 )
 
-func TestTemplatesDoDossie360CompilamEExecutam(t *testing.T) {
+func TestTemplatesDoPainelDeVisualizacaoCompilamEExecutam(t *testing.T) {
 	a := NewApp(Config{}, nil)
 	if len(a.templates) < 10 {
 		t.Fatalf("templates carregados insuficientes: %d", len(a.templates))
 	}
 	u := &User{Name:"Pedro", Role:"owner"}
 	cases := []struct{name string; data any}{
-		{"dashboard", Dashboard360{}},
-		{"projects", map[string]any{"Projects":[]Project{},"Q":"","Status":"","Bank":"","Modality":"","Banks":[]string{},"Modalities":[]string{},"Statuses":[]string{}}},
+		{"dashboard", ViewerDashboard{}},
+		{"projects", map[string]any{"Projects":[]Project{},"Q":"","Status":"","Bank":"","Banks":[]string{},"Statuses":[]string{}}},
 		{"project_form", map[string]any{"Project":Project{},"Clients":[]Client{},"Properties":[]Property{},"Edit":false}},
-		{"project_detail", Project360View{Project:Project{ID:"00000000-0000-0000-0000-000000000001",Title:"Teste",Status:"Em elaboração"},ActiveTab:"resumo",UpgradeReady:true}},
+		{"project_detail", ViewerProject{Project:Project{ID:"00000000-0000-0000-0000-000000000001",Title:"Teste",Status:"Em andamento"}}},
 		{"clients", []Client{}},
 		{"properties", map[string]any{"Properties":[]Property{},"Clients":[]Client{},"FilesByProperty":map[string][]PropertyFile360{},"Maps":map[string]string{},"MapStats":map[string]string{},"UpgradeReady":true}},
-		{"daily", map[string]any{"Rows":[]DailyReport{},"Date":"","Total":0.0,"Commission":0.0}},
+		{"daily", DailyChecklistView{Projects:[]Project{}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T){
