@@ -2,13 +2,13 @@
 {{with .Data}}
 <section class="hero-card executive-hero">
   <div><span class="eyebrow light">PAINEL VIA VERDE</span><h2>Acompanhamento simples e transparente dos projetos.</h2><p>Veja quantos projetos existem, em que etapa estão, quais precisam de atenção e o que foi concluído hoje.</p></div>
-  <a class="btn light" href="/projects">Ver todos os projetos</a>
+  <div class="hero-actions"><a class="btn light" href="/kanban">Abrir pipeline</a><a class="btn glass" href="/reports/summary">Relatório do dia</a></div>
 </section>
 
 <section class="attention-strip">
-  <div><span class="attention-icon yellow">!</span><span>Aguardando documentos</span><strong>{{.AttentionWaitingDocs}}</strong></div>
-  <div><span class="attention-icon red">◷</span><span>Sem atualização há 5+ dias</span><strong>{{.AttentionStale}}</strong></div>
-  <div><span class="attention-icon red">×</span><span>Projetos com tarefa vencida</span><strong>{{.AttentionOverdueProjects}}</strong></div>
+  <a href="/attention"><span class="attention-icon yellow">!</span><span>Aguardando documentos</span><strong>{{.AttentionWaitingDocs}}</strong></a>
+  <a href="/attention"><span class="attention-icon red">◷</span><span>Sem atualização há 5+ dias</span><strong>{{.AttentionStale}}</strong></a>
+  <a href="/attention"><span class="attention-icon red">×</span><span>Projetos com tarefa vencida</span><strong>{{.AttentionOverdueProjects}}</strong></a>
 </section>
 
 <section class="kpi-grid executive-kpis">
@@ -51,7 +51,7 @@
 </div>
 
 <section class="card today-done-card">
-  <div class="section-head"><div><span class="eyebrow">O QUE FOI FEITO HOJE</span><h3>Entregas e movimentações concluídas</h3><p>Registro automático do que avançou nos projetos ao longo do dia.</p></div></div>
+  <div class="section-head"><div><span class="eyebrow">O QUE FOI FEITO HOJE</span><h3>Entregas e movimentações concluídas</h3><p>Registro automático do que avançou nos projetos ao longo do dia.</p></div><a href="/reports/summary">Abrir relatório completo →</a></div>
   <div class="today-done-grid">
     {{range .TodayEvents}}
       <article><span class="done-check">✓</span><div><strong>{{.Title}}</strong><p>{{if .ProjectTitle}}{{.ProjectTitle}}{{else}}Projeto{{end}}{{if .Producer}} · {{.Producer}}{{end}}</p><small>{{.EventType}}{{if .Details}} · {{.Details}}{{end}}</small></div></article>
