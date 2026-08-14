@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/fs"
 	"net/http"
 	"net/url"
@@ -10,25 +11,45 @@ import (
 )
 
 type ViewerDashboard struct {
-	Projects      []Project
-	TotalProjects int
-	Draft         int
-	WaitingDocs   int
-	Sent          int
-	Analysis      int
-	Approved      int
-	Contracted    int
-	Rejected      int
-	TodayTasks    []ViewerTask
-	TodayPending  int
-	TodayDone     int
-	Overdue       int
+	Projects                  []ViewerProjectRow
+	TotalProjects             int
+	Draft                     int
+	WaitingDocs               int
+	Sent                      int
+	Analysis                  int
+	Approved                  int
+	Contracted                int
+	Rejected                  int
+	TodayTasks                []ViewerTask
+	TodayPending              int
+	TodayDone                 int
+	Overdue                   int
+	TodayEvents               []ViewerHistoryEntry
+	AttentionWaitingDocs      int
+	AttentionStale            int
+	AttentionOverdueProjects  int
 }
 
 type ViewerTask struct {
 	ProjectTask
 	ProjectTitle string
 	Producer     string
+}
+
+type ViewerHistoryEntry struct {
+	ProjectHistory
+	ProjectTitle string
+	Producer     string
+}
+
+type ViewerProjectRow struct {
+	Project
+	Signal       string
+	SignalLabel  string
+	StaleDays    int
+	LastActivity string
+	PendingDocs  int
+	OverdueTasks int
 }
 
 type ViewerProject struct {
@@ -42,6 +63,12 @@ type ViewerProject struct {
 	PendingDocs     int
 	CompletedDocs   int
 	RequiredDocs    int
+	Signal          string
+	SignalLabel     string
+	StaleDays       int
+	LastActivity    string
+	OverdueTasks    int
+	CopySummary     string
 }
 
 type DailyChecklistView struct {
@@ -90,8 +117,17 @@ func (a *App) viewerDashboard(w http.ResponseWriter, r *http.Request) {
 	_ = a.sb.Select(r.Context(), "projects", "select=*&"+order("updated_at", true), &projects)
 	a.enrichProjects(r, projects)
 
-	d := ViewerDashboard{Projects: firstProjectsViewer(projects, 8), TotalProjects: len(projects)}
-	for _, p := range projects {
+	var tasks []ProjectTask
+	_ = a.sb.Select(r.Context(), "project_tasks", "select=*&"+order("due_at", false), &tasks)
+	var checklist []ChecklistItem
+	_ = a.sb.Select(r.Context(), "project_checklist", "select=*&"+order("created_at", false), &checklist)
+	var history []ProjectHistory
+	_ = a.sb.Select(r.Context(), "project_history", "select=*&"+order("event_date", true), &history)
+
+	rows := buildViewerProjectRows(projects, checklist, tasks, history)
+	d := ViewerDashboard{Projects: firstProjectRowsViewer(rows, 8), TotalProjects: len(projects)}
+	for _, row := range rows {
+		p := row.Project
 		s := strings.ToLower(strings.TrimSpace(p.Status))
 		phase := strings.ToLower(strings.TrimSpace(p.Phase))
 		switch {
@@ -110,10 +146,17 @@ func (a *App) viewerDashboard(w http.ResponseWriter, r *http.Request) {
 		default:
 			d.Draft++
 		}
+		if row.PendingDocs > 0 || strings.Contains(phase, "document") || strings.Contains(phase, "pend") {
+			d.AttentionWaitingDocs++
+		}
+		if row.StaleDays >= 5 && !viewerProjectClosed(p.Status) {
+			d.AttentionStale++
+		}
+		if row.OverdueTasks > 0 {
+			d.AttentionOverdueProjects++
+		}
 	}
 
-	var tasks []ProjectTask
-	_ = a.sb.Select(r.Context(), "project_tasks", "select=*&"+order("due_at", false), &tasks)
 	projectMap := make(map[string]Project, len(projects))
 	for _, p := range projects { projectMap[p.ID] = p }
 	today := nowViewer().Format("2006-01-02")
@@ -130,32 +173,51 @@ func (a *App) viewerDashboard(w http.ResponseWriter, r *http.Request) {
 			if len(d.TodayTasks) < 10 { d.TodayTasks = append(d.TodayTasks, row) }
 		}
 	}
+	for _, h := range history {
+		if viewerDateKey(h.EventDate) != today || !viewerCompletedHistory(h) { continue }
+		entry := ViewerHistoryEntry{ProjectHistory: h}
+		if p, ok := projectMap[h.ProjectID]; ok {
+			entry.ProjectTitle = p.Title
+			entry.Producer = p.ClientName
+		}
+		d.TodayEvents = append(d.TodayEvents, entry)
+		if len(d.TodayEvents) >= 10 { break }
+	}
 	a.render(w, r, "dashboard", ViewData{Title: "Painel de projetos", Data: d})
 }
 
-func firstProjectsViewer(in []Project, n int) []Project {
+func firstProjectRowsViewer(in []ViewerProjectRow, n int) []ViewerProjectRow {
 	if len(in) <= n { return in }
 	return in[:n]
 }
 
 func (a *App) viewerProjects(w http.ResponseWriter, r *http.Request) {
-	var rows []Project
-	_ = a.sb.Select(r.Context(), "projects", "select=*&"+order("updated_at", true), &rows)
-	a.enrichProjects(r, rows)
+	var projects []Project
+	_ = a.sb.Select(r.Context(), "projects", "select=*&"+order("updated_at", true), &projects)
+	a.enrichProjects(r, projects)
+	var tasks []ProjectTask
+	_ = a.sb.Select(r.Context(), "project_tasks", "select=*&"+order("due_at", false), &tasks)
+	var checklist []ChecklistItem
+	_ = a.sb.Select(r.Context(), "project_checklist", "select=*&"+order("created_at", false), &checklist)
+	var history []ProjectHistory
+	_ = a.sb.Select(r.Context(), "project_history", "select=*&"+order("event_date", true), &history)
+	rows := buildViewerProjectRows(projects, checklist, tasks, history)
+
 	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 	status := strings.TrimSpace(r.URL.Query().Get("status"))
 	bank := strings.TrimSpace(r.URL.Query().Get("bank"))
-	filtered := make([]Project, 0, len(rows))
+	filtered := make([]ViewerProjectRow, 0, len(rows))
 	banks := map[string]bool{}
 	statuses := map[string]bool{}
-	for _, p := range rows {
+	for _, row := range rows {
+		p := row.Project
 		if p.Bank != "" { banks[p.Bank] = true }
 		if p.Status != "" { statuses[p.Status] = true }
 		hay := strings.ToLower(p.Title+" "+p.ClientName+" "+p.PropertyName+" "+p.Activity+" "+p.Bank+" "+p.Status+" "+p.Phase)
 		if q != "" && !strings.Contains(hay, q) { continue }
 		if status != "" && p.Status != status { continue }
 		if bank != "" && p.Bank != bank { continue }
-		filtered = append(filtered, p)
+		filtered = append(filtered, row)
 	}
 	a.render(w, r, "projects", ViewData{Title: "Projetos", Data: map[string]any{
 		"Projects": filtered, "Q": r.URL.Query().Get("q"), "Status": status, "Bank": bank,
@@ -201,6 +263,17 @@ func (a *App) viewerProjectDetail(w http.ResponseWriter, r *http.Request) {
 		if viewerChecklistDone(c.Status) { v.CompletedDocs++ } else { v.PendingDocs++ }
 	}
 	if v.RequiredDocs > 0 { v.DocCompletion = v.CompletedDocs * 100 / v.RequiredDocs }
+	row := buildViewerProjectRows([]Project{p}, v.Checklist, tasks, v.History)
+	if len(row) > 0 {
+		v.Signal = row[0].Signal
+		v.SignalLabel = row[0].SignalLabel
+		v.StaleDays = row[0].StaleDays
+		v.LastActivity = row[0].LastActivity
+		v.OverdueTasks = row[0].OverdueTasks
+	}
+	producer := v.Client.Name
+	if producer == "" { producer = p.ClientName }
+	v.CopySummary = viewerProjectSummary(v, producer)
 	a.render(w, r, "project_detail", ViewData{Title: p.Title, Data: v})
 }
 
@@ -313,6 +386,104 @@ func makeViewerTask(t ProjectTask, pm map[string]Project) ViewerTask {
 func viewerTaskDone(v string) bool {
 	x := strings.ToLower(strings.TrimSpace(v))
 	return strings.Contains(x, "concl") || strings.Contains(x, "feito") || strings.Contains(x, "resolvido")
+}
+
+func buildViewerProjectRows(projects []Project, checklist []ChecklistItem, tasks []ProjectTask, history []ProjectHistory) []ViewerProjectRow {
+	pendingDocs := map[string]int{}
+	for _, c := range checklist {
+		if c.Required && !viewerChecklistDone(c.Status) { pendingDocs[c.ProjectID]++ }
+	}
+	today := nowViewer().Format("2006-01-02")
+	overdue := map[string]int{}
+	for _, t := range tasks {
+		if t.DueAt != "" && t.DueAt < today && !viewerTaskDone(t.Status) { overdue[t.ProjectID]++ }
+	}
+	latest := map[string]string{}
+	for _, h := range history {
+		if h.ProjectID == "" || h.EventDate == "" { continue }
+		if cur := latest[h.ProjectID]; cur == "" || viewerTimeAfter(h.EventDate, cur) { latest[h.ProjectID] = h.EventDate }
+	}
+	rows := make([]ViewerProjectRow, 0, len(projects))
+	for _, p := range projects {
+		last := latest[p.ID]
+		if last == "" { last = p.UpdatedAt }
+		if last == "" { last = p.CreatedAt }
+		days := viewerDaysSince(last)
+		signal, label := viewerProjectSignal(p, pendingDocs[p.ID], overdue[p.ID], days)
+		rows = append(rows, ViewerProjectRow{Project: p, Signal: signal, SignalLabel: label, StaleDays: days, LastActivity: last, PendingDocs: pendingDocs[p.ID], OverdueTasks: overdue[p.ID]})
+	}
+	return rows
+}
+
+func viewerProjectSignal(p Project, pendingDocs, overdueTasks, staleDays int) (string, string) {
+	if viewerProjectClosed(p.Status) { return "gray", "Encerrado" }
+	if overdueTasks > 0 || staleDays >= 7 { return "red", "Atenção" }
+	phase := strings.ToLower(p.Phase)
+	if pendingDocs > 0 || staleDays >= 3 || strings.Contains(phase, "document") || strings.Contains(phase, "pend") { return "yellow", "Acompanhar" }
+	return "green", "Em dia"
+}
+
+func viewerProjectClosed(status string) bool {
+	x := strings.ToLower(strings.TrimSpace(status))
+	return strings.Contains(x, "contrat") || strings.Contains(x, "conclu") || strings.Contains(x, "reprov") || strings.Contains(x, "negad")
+}
+
+func viewerTimeAfter(a, b string) bool {
+	ta, oka := parseViewerTime(a)
+	tb, okb := parseViewerTime(b)
+	if !oka { return false }
+	if !okb { return true }
+	return ta.After(tb)
+}
+
+func viewerDaysSince(v string) int {
+	t, ok := parseViewerTime(v)
+	if !ok { return 0 }
+	now := nowViewer()
+	t = t.In(now.Location())
+	startNow := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	startT := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, now.Location())
+	if startT.After(startNow) { return 0 }
+	return int(startNow.Sub(startT).Hours() / 24)
+}
+
+func parseViewerTime(v string) (time.Time, bool) {
+	v = strings.TrimSpace(v)
+	if v == "" { return time.Time{}, false }
+	for _, layout := range []string{time.RFC3339Nano, time.RFC3339, "2006-01-02"} {
+		if t, err := time.Parse(layout, v); err == nil { return t, true }
+	}
+	return time.Time{}, false
+}
+
+func viewerDateKey(v string) string {
+	t, ok := parseViewerTime(v)
+	if !ok { return "" }
+	return t.In(nowViewer().Location()).Format("2006-01-02")
+}
+
+func viewerCompletedHistory(h ProjectHistory) bool {
+	x := strings.ToLower(h.Title + " " + h.Details + " " + h.EventType)
+	return strings.Contains(x, "conclu") || strings.Contains(x, "recebid") || strings.Contains(x, "dispens") || strings.Contains(x, "aprov") || strings.Contains(x, "enviado")
+}
+
+func viewerProjectSummary(v ViewerProject, producer string) string {
+	property := v.Property.Name
+	if property == "" { property = v.Project.PropertyName }
+	parts := []string{
+		fmt.Sprintf("%s — %s", producer, v.Project.Title),
+		fmt.Sprintf("Banco: %s", defaultString(v.Project.Bank, "a confirmar")),
+		fmt.Sprintf("Modalidade: %s", defaultString(v.Project.Modality, "a confirmar")),
+		fmt.Sprintf("Status: %s", defaultString(v.Project.Status, "a confirmar")),
+		fmt.Sprintf("Fase atual: %s", defaultString(v.Project.Phase, "a definir")),
+		fmt.Sprintf("Propriedade: %s", defaultString(property, "a confirmar")),
+		fmt.Sprintf("Valor financiado: %s", formatMoney(v.Project.FinancedValue)),
+		fmt.Sprintf("Documentação: %d%% concluída (%d pendente(s))", v.DocCompletion, v.PendingDocs),
+	}
+	if v.OverdueTasks > 0 { parts = append(parts, fmt.Sprintf("Pendências vencidas: %d", v.OverdueTasks)) }
+	if v.StaleDays > 0 { parts = append(parts, fmt.Sprintf("Última movimentação: há %d dia(s)", v.StaleDays)) } else { parts = append(parts, "Última movimentação: hoje") }
+	if strings.TrimSpace(v.Project.Alerts) != "" { parts = append(parts, "Observação: "+strings.TrimSpace(v.Project.Alerts)) }
+	return strings.Join(parts, "\n")
 }
 
 func nowViewer() time.Time {
