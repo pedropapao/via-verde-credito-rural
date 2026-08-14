@@ -1,0 +1,67 @@
+{{define "base"}}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{{.Title}} · Via Verde</title>
+  <link rel="icon" href="/static/logo.png">
+  <link rel="stylesheet" href="/static/app.css">
+  <script defer src="/static/app.js"></script>
+</head>
+<body>
+{{if .User}}
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="/">
+      <span class="brand-mark"><img src="/static/logo.png" alt="Via Verde"></span>
+      <span><strong>Via Verde</strong><small>Crédito Rural</small></span>
+    </a>
+    <nav class="nav">
+      <a class="{{if eq .CurrentPath "/"}}active{{end}}" href="/"><span>▦</span>Visão geral</a>
+      <a class="{{if hasPrefix .CurrentPath "/projects"}}active{{end}}" href="/projects"><span>▣</span>Projetos</a>
+      <a class="{{if hasPrefix .CurrentPath "/clients"}}active{{end}}" href="/clients"><span>♟</span>Produtores</a>
+      <a class="{{if hasPrefix .CurrentPath "/properties"}}active{{end}}" href="/properties"><span>⌂</span>Propriedades</a>
+      <a class="{{if hasPrefix .CurrentPath "/documents"}}active{{end}}" href="/documents"><span>▤</span>Documentos</a>
+      <a class="{{if hasPrefix .CurrentPath "/reports/daily"}}active{{end}}" href="/reports/daily"><span>✓</span>Relatório do dia</a>
+      <a class="{{if hasPrefix .CurrentPath "/rules"}}active{{end}}" href="/rules"><span>§</span>Regras / MCR</a>
+      {{if eq .User.Role "owner"}}<a class="{{if hasPrefix .CurrentPath "/users"}}active{{end}}" href="/users"><span>◉</span>Acessos</a>{{end}}
+    </nav>
+    <div class="sidebar-foot">
+      <div class="user-mini"><span class="avatar">{{slice .User.Name 0 1}}</span><span><strong>{{.User.Name}}</strong><small>{{roleLabel .User.Role}}</small></span></div>
+      <a href="/settings">Meu perfil</a>
+      <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="link-button" type="submit">Sair</button></form>
+      <small class="version">v{{.Version}}</small>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <button class="menu-toggle" type="button" data-menu-toggle aria-label="Abrir menu">☰</button>
+      <div><span class="eyebrow">GESTÃO DE CRÉDITO RURAL</span><h1>{{.Title}}</h1></div>
+      <div class="topbar-right"><span class="role-chip">{{roleLabel .User.Role}}</span></div>
+    </header>
+    {{if .Flash}}<div class="alert success">{{.Flash}}</div>{{end}}
+    {{if .Error}}<div class="alert error">{{.Error}}</div>{{end}}
+    {{template "content" .}}
+  </main>
+</div>
+{{else}}
+<div class="auth-shell">
+  <div class="auth-visual">
+    <div class="auth-brand"><img src="/static/logo.png" alt="Via Verde"><div><strong>Via Verde</strong><span>Crédito Rural</span></div></div>
+    <div class="auth-copy"><span class="eyebrow light">GESTÃO TÉCNICA E FINANCEIRA</span><h1>Projetos rurais em um só lugar.</h1><p>Carteira, documentos, propriedades, relatórios e acessos organizados com segurança.</p></div>
+    <div class="auth-footer">Via Verde Consultoria Agropecuária</div>
+  </div>
+  <div class="auth-panel">
+    <div class="auth-card">
+      {{if .Flash}}<div class="alert success">{{.Flash}}</div>{{end}}
+      {{if .Error}}<div class="alert error">{{.Error}}</div>{{end}}
+      {{template "content" .}}
+    </div>
+  </div>
+</div>
+{{end}}
+</body>
+</html>
+{{end}}

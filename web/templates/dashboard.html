@@ -1,0 +1,26 @@
+{{define "content"}}
+{{with .Data}}
+<section class="hero-card">
+  <div><span class="eyebrow light">CARTEIRA VIA VERDE</span><h2>Controle técnico e operacional da consultoria.</h2><p>Visão consolidada dos projetos de crédito rural, pendências e movimentações do dia.</p></div>
+  {{if eq $.User.Role "owner"}}<a class="btn light" href="/projects/new">+ Novo projeto</a>{{end}}
+</section>
+<section class="kpi-grid">
+  <article class="kpi"><span>Projetos mapeados</span><strong>{{len .Projects}}</strong><small>Carteira cadastrada</small></article>
+  <article class="kpi"><span>Valor financiado</span><strong>{{money .TotalFinanced}}</strong><small>Soma dos projetos</small></article>
+  <article class="kpi"><span>Em acompanhamento</span><strong>{{.Active}}</strong><small>Operações ativas</small></article>
+  <article class="kpi"><span>Movimentações hoje</span><strong>{{.TodayCount}}</strong><small>{{money .TodayValue}}</small></article>
+</section>
+<div class="two-col">
+  <section class="card">
+    <div class="section-head"><div><span class="eyebrow">PROJETOS</span><h3>Carteira recente</h3></div><a href="/projects">Ver todos →</a></div>
+    <div class="table-wrap"><table><thead><tr><th>Projeto</th><th>Banco</th><th>Status</th><th>Financiamento</th></tr></thead><tbody>
+      {{range .Projects}}<tr><td><a class="table-title" href="/projects/{{.ID}}">{{.Title}}</a><small>{{.Activity}}</small></td><td>{{.Bank}}</td><td><span class="badge {{statusClass .Status}}">{{.Status}}</span></td><td>{{money .FinancedValue}}</td></tr>{{else}}<tr><td colspan="4" class="empty">Nenhum projeto cadastrado.</td></tr>{{end}}
+    </tbody></table></div>
+  </section>
+  <section class="card">
+    <div class="section-head"><div><span class="eyebrow">RELATÓRIO</span><h3>Últimas movimentações</h3></div><a href="/reports/daily">Abrir relatório →</a></div>
+    <div class="activity-list">{{range .RecentReports}}<div class="activity"><span class="dot"></span><div><strong>{{.Producer}}</strong><p>{{.ProjectType}} · {{.Bank}}</p><small>{{dateBR .Date}} · {{.Situation}}</small></div><b>{{money .Value}}</b></div>{{else}}<p class="empty">Sem lançamentos.</p>{{end}}</div>
+  </section>
+</div>
+{{end}}
+{{end}}

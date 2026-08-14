@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: via-verde-credito-rural
+    runtime: go
+    plan: free
+    buildCommand: go test ./... && go build -o bin/via-verde .
+    startCommand: ./bin/via-verde
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_BASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: via-verde-files
+      - key: ADMIN_NAME
+        value: Pedro Massoli
+      - key: ADMIN_USERNAME
+        value: pedro.massoli
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_DAYS
+        value: 14

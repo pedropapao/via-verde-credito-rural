@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Via Verde: executar local",
+      "type": "shell",
+      "command": "go run .",
+      "group": "build",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Via Verde: testar",
+      "type": "shell",
+      "command": "go test ./...",
+      "group": "test",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Via Verde: publicar atualização",
+      "type": "shell",
+      "command": "${workspaceFolder}\\ATUALIZAR_SITE.bat",
+      "group": "build"
+    }
+  ]
+}

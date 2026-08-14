@@ -1,0 +1,3 @@
+{{define "content"}}
+{{with .Data}}<section class="card"><div class="section-head"><div><span class="eyebrow">ARQUIVO CENTRAL</span><h3>Documentos armazenados</h3><p>Arquivos enviados aos dossiês dos projetos.</p></div></div><div class="file-grid big">{{range .Files}}<article class="file-card"><div class="file-icon">▤</div><div><strong>{{.Name}}</strong><small>{{index $.Data.ProjectNames .ProjectID}} · {{bytes .SizeBytes}} · {{dateBR .CreatedAt}}</small></div><div class="file-actions"><a href="/files/{{.ID}}/download" target="_blank">Abrir</a></div></article>{{else}}<p class="empty">Nenhum documento armazenado.</p>{{end}}</div></section>{{end}}
+{{end}}

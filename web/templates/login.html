@@ -1,0 +1,9 @@
+{{define "content"}}
+<div class="auth-card-head"><span class="eyebrow">ACESSO RESTRITO</span><h2>Entrar no sistema</h2><p>Use seu usuário e senha para acessar a carteira da Via Verde.</p></div>
+<form method="post" action="/login{{with .Data}}{{with .Next}}?next={{.}}{{end}}{{end}}" class="stack-form">
+  <label>Usuário<input name="username" autocomplete="username" required value="{{with .Data}}{{.Username}}{{end}}" placeholder="pedro.massoli"></label>
+  <label>Senha<input name="password" type="password" autocomplete="current-password" required placeholder="Sua senha"></label>
+  <button class="btn primary wide" type="submit">Entrar</button>
+</form>
+<p class="muted tiny">Não existe cadastro público. Novos acessos são criados somente por convite do proprietário.</p>
+{{end}}

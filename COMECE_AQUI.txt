@@ -1,0 +1,27 @@
+VIA VERDE CRÉDITO RURAL — WEB v2.0
+==================================
+
+Esta versão NÃO é aplicativo Windows. Ela foi feita para ficar na internet.
+
+PERFIL PRINCIPAL
+Nome: Pedro Massoli
+Usuário: pedro.massoli
+Senha: você define no Render em ADMIN_PASSWORD
+
+PARA PUBLICAR
+1) Abra docs\DEPLOY_GRATIS_PASSO_A_PASSO.md
+2) Crie o projeto gratuito no Supabase
+3) Execute supabase\01_schema.sql
+4) Execute supabase\02_seed_via_verde.sql
+5) Publique esta pasta num repositório privado do GitHub
+6) Conecte o repositório ao Render usando render.yaml
+7) Defina as variáveis secretas
+8) Abra a URL do site e entre como pedro.massoli
+
+PARA ALTERAR PELO VS CODE
+- ABRIR_NO_VSCODE.bat
+- TESTAR_PROJETO.bat
+- ATUALIZAR_SITE.bat
+
+IMPORTANTE
+Nunca envie o arquivo .env nem a SUPABASE_SERVICE_ROLE_KEY para o GitHub.
