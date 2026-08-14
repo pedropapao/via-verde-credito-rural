@@ -1,8 +1,14 @@
 {{define "content"}}
 {{with .Data}}
 <section class="hero-card executive-hero">
-  <div><span class="eyebrow light">PAINEL VIA VERDE</span><h2>Acompanhamento simples e transparente dos projetos.</h2><p>Veja quantos projetos existem, em que etapa estão, o histórico de cada operação e o checklist do dia.</p></div>
+  <div><span class="eyebrow light">PAINEL VIA VERDE</span><h2>Acompanhamento simples e transparente dos projetos.</h2><p>Veja quantos projetos existem, em que etapa estão, quais precisam de atenção e o que foi concluído hoje.</p></div>
   <a class="btn light" href="/projects">Ver todos os projetos</a>
+</section>
+
+<section class="attention-strip">
+  <div><span class="attention-icon yellow">!</span><span>Aguardando documentos</span><strong>{{.AttentionWaitingDocs}}</strong></div>
+  <div><span class="attention-icon red">◷</span><span>Sem atualização há 5+ dias</span><strong>{{.AttentionStale}}</strong></div>
+  <div><span class="attention-icon red">×</span><span>Projetos com tarefa vencida</span><strong>{{.AttentionOverdueProjects}}</strong></div>
 </section>
 
 <section class="kpi-grid executive-kpis">
@@ -25,8 +31,14 @@
 <div class="two-col dashboard-main">
   <section class="card">
     <div class="section-head"><div><span class="eyebrow">PROJETOS</span><h3>Últimos projetos atualizados</h3></div><a href="/projects">Ver todos →</a></div>
-    <div class="table-wrap"><table><thead><tr><th>Projeto</th><th>Banco</th><th>Fase</th><th>Status</th></tr></thead><tbody>
-      {{range .Projects}}<tr><td><a class="table-title" href="/projects/{{.ID}}">{{.Title}}</a><small>{{.ClientName}}{{if .PropertyName}} · {{.PropertyName}}{{end}}</small></td><td>{{if .Bank}}{{.Bank}}{{else}}—{{end}}</td><td>{{if .Phase}}{{.Phase}}{{else}}—{{end}}</td><td><span class="badge {{statusClass .Status}}">{{.Status}}</span></td></tr>{{else}}<tr><td colspan="4" class="empty">Nenhum projeto cadastrado.</td></tr>{{end}}
+    <div class="table-wrap"><table><thead><tr><th>Sinal</th><th>Projeto</th><th>Banco</th><th>Fase</th><th>Última movimentação</th></tr></thead><tbody>
+      {{range .Projects}}<tr>
+        <td><span class="signal-wrap"><i class="signal-dot {{.Signal}}"></i><small>{{.SignalLabel}}</small></span></td>
+        <td><a class="table-title" href="/projects/{{.ID}}">{{.Title}}</a><small>{{.ClientName}}{{if .PropertyName}} · {{.PropertyName}}{{end}}</small></td>
+        <td>{{if .Bank}}{{.Bank}}{{else}}—{{end}}</td>
+        <td>{{if .Phase}}{{.Phase}}{{else}}—{{end}}</td>
+        <td>{{dateBR .LastActivity}}{{if gt .StaleDays 0}}<small class="stale-text {{if ge .StaleDays 7}}danger-text{{end}}">Parado há {{.StaleDays}} dia(s)</small>{{else}}<small class="fresh-text">Atualizado hoje</small>{{end}}</td>
+      </tr>{{else}}<tr><td colspan="5" class="empty">Nenhum projeto cadastrado.</td></tr>{{end}}
     </tbody></table></div>
   </section>
 
@@ -37,5 +49,16 @@
     </div>
   </section>
 </div>
+
+<section class="card today-done-card">
+  <div class="section-head"><div><span class="eyebrow">O QUE FOI FEITO HOJE</span><h3>Entregas e movimentações concluídas</h3><p>Registro automático do que avançou nos projetos ao longo do dia.</p></div></div>
+  <div class="today-done-grid">
+    {{range .TodayEvents}}
+      <article><span class="done-check">✓</span><div><strong>{{.Title}}</strong><p>{{if .ProjectTitle}}{{.ProjectTitle}}{{else}}Projeto{{end}}{{if .Producer}} · {{.Producer}}{{end}}</p><small>{{.EventType}}{{if .Details}} · {{.Details}}{{end}}</small></div></article>
+    {{else}}
+      <p class="empty">Ainda não há movimentações concluídas registradas hoje.</p>
+    {{end}}
+  </div>
+</section>
 {{end}}
 {{end}}
