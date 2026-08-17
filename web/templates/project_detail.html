@@ -22,37 +22,51 @@
 
 <section class="kpi-grid compact">
   <article class="kpi"><span>Status</span><strong class="smaller">{{.Project.Status}}</strong></article>
-  <article class="kpi"><span>Tempo na etapa</span><strong class="smaller" data-stage-days data-project-updated="{{.Project.UpdatedAt}}">Calculando...</strong><small>desde a última mudança de andamento</small></article>
-  <article class="kpi"><span>Dependência atual</span><strong class="smaller">{{if .Project.Responsible}}{{.Project.Responsible}}{{else}}A definir{{end}}</strong><small>de quem depende o próximo avanço</small></article>
-  <article class="kpi"><span>Documentos</span><strong>{{.DocCompletion}}%</strong><small>{{.CompletedDocs}} de {{.RequiredDocs}} conferidos</small></article>
+  <article class="kpi"><span>Tempo na etapa</span><strong class="smaller" data-stage-days data-project-updated="{{.Project.UpdatedAt}}">Calculando...</strong><small>desde a última mudança</small></article>
+  <article class="kpi"><span>Depende agora de</span><strong class="smaller">{{if .Project.Responsible}}{{.Project.Responsible}}{{else}}A definir{{end}}</strong></article>
+  <article class="kpi"><span>Documentação</span><strong>{{.DocCompletion}}%</strong><small>{{.CompletedDocs}} de {{.RequiredDocs}} conferidos</small></article>
 </section>
 
+<div class="project-focus">
+  <section class="project-focus-main">
+    <span class="eyebrow">SITUAÇÃO ATUAL</span>
+    <h3>{{if .Project.Phase}}{{.Project.Phase}}{{else}}Fase ainda não definida{{end}}</h3>
+    <p>{{if .Project.TechnicalSummary}}{{.Project.TechnicalSummary}}{{else}}Projeto em acompanhamento. Consulte o histórico abaixo para ver as últimas movimentações.{{end}}</p>
+  </section>
+  <section class="project-focus-side">
+    <span>Próximo avanço depende de</span>
+    <strong>{{if .Project.Responsible}}{{.Project.Responsible}}{{else}}A definir{{end}}</strong>
+    {{if .Project.Alerts}}<p>{{.Project.Alerts}}</p>{{else}}<p>Sem observação ou pendência específica registrada.</p>{{end}}
+  </section>
+</div>
+
 {{if eq $.User.Role "owner"}}
-<section class="card quick-progress-card">
-  <div class="section-head"><div><span class="eyebrow">ATUALIZAÇÃO RÁPIDA</span><h3>Atualizar andamento do projeto</h3><p>Somente o essencial. Toda alteração fica registrada automaticamente no histórico.</p></div></div>
-  <form method="post" action="/projects/{{.Project.ID}}/progress" class="quick-progress-form">
-    <input type="hidden" name="csrf" value="{{$.CSRF}}">
-    <label>Status
-      <select name="status">
-        {{if .Project.Status}}<option selected>{{.Project.Status}}</option>{{end}}
-        <option>Em preparação</option><option>Aguardando documentos</option><option>Enviado ao banco</option><option>Em análise</option><option>Aprovado</option><option>Contratado</option><option>Reprovado</option>
-      </select>
-    </label>
-    <label>Fase atual<input name="phase" value="{{.Project.Phase}}" placeholder="Ex.: análise de crédito, contratação..."></label>
-    <label>De quem depende agora?
-      <input name="responsible" value="{{.Project.Responsible}}" list="dependency-options" placeholder="Pedro, Cliente, Banco...">
-      <datalist id="dependency-options"><option value="Pedro"><option value="Cliente"><option value="Banco"><option value="Cartório"><option value="Vendedor"><option value="Contabilidade"><option value="Outro"></datalist>
-    </label>
-    <label class="span-2">Observação / próxima ação<textarea name="alerts" rows="2" placeholder="Ex.: aguardando matrícula atualizada do cliente">{{.Project.Alerts}}</textarea></label>
-    <div class="quick-progress-submit"><button class="btn primary" type="submit">Salvar andamento</button></div>
-  </form>
-</section>
+<details class="card quick-progress-card">
+  <summary>Atualizar andamento do projeto</summary>
+  <div class="quick-progress-body">
+    <form method="post" action="/projects/{{.Project.ID}}/progress" class="quick-progress-form">
+      <input type="hidden" name="csrf" value="{{$.CSRF}}">
+      <label>Status
+        <select name="status">
+          {{if .Project.Status}}<option selected>{{.Project.Status}}</option>{{end}}
+          <option>Em preparação</option><option>Aguardando documentos</option><option>Enviado ao banco</option><option>Em análise</option><option>Aprovado</option><option>Contratado</option><option>Reprovado</option>
+        </select>
+      </label>
+      <label>Fase atual<input name="phase" value="{{.Project.Phase}}" placeholder="Ex.: análise de crédito, contratação..."></label>
+      <label>De quem depende agora?
+        <input name="responsible" value="{{.Project.Responsible}}" list="dependency-options" placeholder="Pedro, Cliente, Banco...">
+        <datalist id="dependency-options"><option value="Pedro"><option value="Cliente"><option value="Banco"><option value="Cartório"><option value="Vendedor"><option value="Contabilidade"><option value="Outro"></datalist>
+      </label>
+      <label class="span-2">Observação / próxima ação<textarea name="alerts" rows="2" placeholder="Ex.: aguardando matrícula atualizada do cliente">{{.Project.Alerts}}</textarea></label>
+      <div class="quick-progress-submit"><button class="btn primary" type="submit">Salvar andamento</button></div>
+    </form>
+  </div>
+</details>
 {{end}}
 
 <div class="two-col project-cols">
   <section class="card">
-    <div class="section-head"><div><span class="eyebrow">ANDAMENTO</span><h3>Resumo do projeto</h3></div></div>
-    <div class="prose">{{if .Project.TechnicalSummary}}{{.Project.TechnicalSummary}}{{else}}Sem resumo cadastrado.{{end}}</div>
+    <div class="section-head"><div><span class="eyebrow">DADOS PRINCIPAIS</span><h3>Resumo da operação</h3></div></div>
     <div class="meta-grid">
       <div><span>Produtor</span><strong>{{if .Client.Name}}{{.Client.Name}}{{else}}{{.Project.ClientName}}{{end}}</strong></div>
       <div><span>Propriedade</span><strong>{{if .Property.Name}}{{.Property.Name}}{{else}}{{if .Project.PropertyName}}{{.Project.PropertyName}}{{else}}—{{end}}{{end}}</strong></div>
@@ -61,15 +75,14 @@
       <div><span>Valor financiado</span><strong>{{money .Project.FinancedValue}}</strong></div>
       <div><span>Última movimentação</span><strong>{{dateBR .LastActivity}}</strong></div>
     </div>
-    {{if .Project.Alerts}}<div class="notice-box"><strong>Pendência / observação atual</strong><p>{{.Project.Alerts}}</p></div>{{end}}
   </section>
 
   <section class="card">
-    <div class="section-head"><div><span class="eyebrow">CHECKLIST DOCUMENTAL</span><h3>Documentos necessários</h3></div><span class="completion-pill">{{.DocCompletion}}%</span></div>
+    <div class="section-head"><div><span class="eyebrow">CHECKLIST DOCUMENTAL</span><h3>O que falta</h3></div><span class="completion-pill">{{.DocCompletion}}%</span></div>
     <div class="task-list">
       {{range .Checklist}}
       <article class="task-row">
-        <div><strong>{{.DocumentName}}</strong><small>{{if .Required}}Obrigatório{{else}}Quando aplicável{{end}}{{if .SourceRule}} · {{.SourceRule}}{{end}}</small></div>
+        <div><strong>{{.DocumentName}}</strong><small>{{if .Required}}Obrigatório{{else}}Quando aplicável{{end}}</small></div>
         {{if eq $.User.Role "owner"}}
         <form method="post" action="/projects/{{$projectID}}/checklist/{{.ID}}" class="inline-actions">
           <input type="hidden" name="csrf" value="{{$.CSRF}}">
@@ -90,7 +103,7 @@
 
 <div class="two-col project-cols">
   <section class="card">
-    <div class="section-head"><div><span class="eyebrow">LINHA DO TEMPO</span><h3>Histórico do projeto</h3><p>Movimentações registradas do mais recente para o mais antigo.</p></div></div>
+    <div class="section-head"><div><span class="eyebrow">HISTÓRICO</span><h3>Linha do tempo</h3><p>Do mais recente para o mais antigo.</p></div></div>
     <div class="timeline visual-timeline" data-project-timeline>
       {{range .History}}
       <article data-event-date="{{.EventDate}}" data-event-type="{{.EventType}}">
@@ -109,7 +122,7 @@
   </section>
 
   <section class="card">
-    <div class="section-head"><div><span class="eyebrow">ATIVIDADES</span><h3>Checklist ligado ao projeto</h3></div><a href="/reports/daily">Ver checklist diário →</a></div>
+    <div class="section-head"><div><span class="eyebrow">ATIVIDADES</span><h3>Próximas ações</h3></div><a href="/reports/daily">Ver checklist diário →</a></div>
     <div class="task-list">
       {{range .Tasks}}<article class="task-row"><div><strong>{{.Title}}</strong><small>{{if .Responsible}}{{.Responsible}} · {{end}}{{dateBR .DueAt}}</small></div><span class="badge {{if eq .Status "Concluída"}}ok{{else}}warn{{end}}">{{.Status}}</span></article>{{else}}<p class="empty">Nenhuma atividade vinculada a este projeto.</p>{{end}}
     </div>
