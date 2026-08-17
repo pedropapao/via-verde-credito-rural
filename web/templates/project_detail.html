@@ -84,13 +84,14 @@
       <article class="task-row">
         <div><strong>{{.DocumentName}}</strong><small>{{if .Required}}Obrigatório{{else}}Quando aplicável{{end}}</small></div>
         {{if eq $.User.Role "owner"}}
-        <form method="post" action="/projects/{{$projectID}}/checklist/{{.ID}}" class="inline-actions">
+        <form method="post" action="/projects/{{$projectID}}/checklist/{{.ID}}" class="inline-actions checklist-status-form">
           <input type="hidden" name="csrf" value="{{$.CSRF}}">
-          <select name="status" onchange="this.form.submit()">
-            <option {{if eq .Status "Pendente"}}selected{{end}}>Pendente</option>
-            <option {{if eq .Status "Recebido"}}selected{{end}}>Recebido</option>
-            <option {{if eq .Status "Dispensado"}}selected{{end}}>Dispensado</option>
+          <select name="status" data-checklist-autosubmit aria-label="Status de {{.DocumentName}}">
+            <option value="Pendente" {{if eq .Status "Pendente"}}selected{{end}}>Pendente</option>
+            <option value="Recebido" {{if eq .Status "Recebido"}}selected{{end}}>Recebido</option>
+            <option value="Dispensado" {{if eq .Status "Dispensado"}}selected{{end}}>Dispensado</option>
           </select>
+          <button class="btn tiny secondary" type="submit">Salvar</button>
         </form>
         {{else}}
         <span class="badge {{if eq .Status "Pendente"}}warn{{else}}ok{{end}}">{{.Status}}</span>
