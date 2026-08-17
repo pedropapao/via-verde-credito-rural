@@ -1,27 +1,33 @@
 {{define "content"}}
 {{with .Data}}
 <section class="hero-card attention-hero">
-  <div><span class="eyebrow light">CENTRAL DE ATENÇÃO</span><h2>{{.TotalUnique}} projeto(s) precisam de acompanhamento.</h2><p>Aqui aparecem automaticamente operações com documento pendente, sem atualização recente ou com tarefa vencida.</p></div>
+  <div><span class="eyebrow light">CENTRAL DE ATENÇÃO</span><h2>{{.TotalUnique}} projeto(s) precisam de acompanhamento.</h2><p>Use esta tela para saber rapidamente o que está travado e por quê.</p></div>
   <a class="btn light" href="/kanban">Abrir pipeline</a>
 </section>
 
+<section class="attention-strip">
+  <a href="#docs"><span class="attention-icon yellow">!</span><span>Aguardando documentos</span><strong>{{len .WaitingDocs}}</strong></a>
+  <a href="#tempo"><span class="attention-icon red">◷</span><span>Sem atualização há 5+ dias</span><strong>{{len .Stale}}</strong></a>
+  <a href="#prazos"><span class="attention-icon red">×</span><span>Com tarefa vencida</span><strong>{{len .Overdue}}</strong></a>
+</section>
+
 <div class="attention-sections">
-  <section class="card">
-    <div class="section-head"><div><span class="eyebrow">DOCUMENTOS</span><h3>Aguardando documentos</h3><p>{{len .WaitingDocs}} projeto(s)</p></div></div>
+  <section class="card" id="docs">
+    <div class="section-head"><div><span class="eyebrow">DOCUMENTOS</span><h3>Aguardando documentos</h3><p>Projetos que ainda dependem de documentação.</p></div></div>
     <div class="attention-list">
       {{range .WaitingDocs}}<a href="/projects/{{.ID}}" class="attention-row"><span class="attention-icon yellow">!</span><div><strong>{{.Title}}</strong><p>{{.ClientName}} · {{if .Bank}}{{.Bank}}{{else}}Banco a definir{{end}}</p><small>{{.PendingDocs}} documento(s) pendente(s) · {{.Dependency}}</small></div><span class="badge warn">{{.Status}}</span></a>{{else}}<p class="empty">Nenhum projeto aguardando documentos.</p>{{end}}
     </div>
   </section>
 
-  <section class="card">
-    <div class="section-head"><div><span class="eyebrow">TEMPO</span><h3>Sem atualização há 5+ dias</h3><p>{{len .Stale}} projeto(s)</p></div></div>
+  <section class="card" id="tempo">
+    <div class="section-head"><div><span class="eyebrow">TEMPO</span><h3>Sem atualização há 5+ dias</h3><p>Projetos que merecem uma conferência de andamento.</p></div></div>
     <div class="attention-list">
       {{range .Stale}}<a href="/projects/{{.ID}}" class="attention-row"><span class="attention-icon red">◷</span><div><strong>{{.Title}}</strong><p>{{.ClientName}} · {{if .Phase}}{{.Phase}}{{else}}Fase a definir{{end}}</p><small>Sem movimentação há {{.StaleDays}} dia(s) · na etapa há {{.StageDays}} dia(s) · {{.Dependency}}</small></div><span class="signal-chip {{.Signal}}"><i class="signal-dot {{.Signal}}"></i>{{.SignalLabel}}</span></a>{{else}}<p class="empty">Nenhum projeto parado por 5 dias ou mais.</p>{{end}}
     </div>
   </section>
 
-  <section class="card">
-    <div class="section-head"><div><span class="eyebrow">PRAZOS</span><h3>Tarefas vencidas</h3><p>{{len .Overdue}} projeto(s)</p></div></div>
+  <section class="card" id="prazos">
+    <div class="section-head"><div><span class="eyebrow">PRAZOS</span><h3>Tarefas vencidas</h3><p>Projetos com alguma atividade fora do prazo.</p></div></div>
     <div class="attention-list">
       {{range .Overdue}}<a href="/projects/{{.ID}}" class="attention-row"><span class="attention-icon red">×</span><div><strong>{{.Title}}</strong><p>{{.ClientName}} · {{if .Bank}}{{.Bank}}{{else}}Banco a definir{{end}}</p><small>{{.OverdueTasks}} tarefa(s) vencida(s) · {{.Dependency}}</small></div><span class="badge bad">Atenção</span></a>{{else}}<p class="empty">Nenhuma tarefa vencida.</p>{{end}}
     </div>
