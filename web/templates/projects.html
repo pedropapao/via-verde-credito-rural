@@ -10,18 +10,40 @@
     <a class="btn ghost" href="/projects">Limpar</a>
   </form>
 </div>
-<section class="card no-pad">
-  <div class="section-head pad"><div><span class="eyebrow">CARTEIRA</span><h3>{{len .Projects}} projetos encontrados</h3><p>O semáforo mostra rapidamente o que está em dia, o que precisa de acompanhamento e o que exige atenção.</p></div></div>
-  <div class="table-wrap"><table class="large-table"><thead><tr><th>Sinal</th><th>Projeto / produtor</th><th>Banco</th><th>Fase atual</th><th>Status</th><th>Última movimentação</th></tr></thead><tbody>
-  {{range .Projects}}<tr>
-    <td><span class="signal-wrap"><i class="signal-dot {{.Signal}}"></i><small>{{.SignalLabel}}</small></span></td>
-    <td><a class="table-title" href="/projects/{{.ID}}">{{.Title}}</a><small>{{if .ClientName}}{{.ClientName}}{{else}}Produtor a confirmar{{end}}{{if gt .PendingDocs 0}} · {{.PendingDocs}} doc(s) pendente(s){{end}}</small></td>
-    <td>{{if .Bank}}{{.Bank}}{{else}}—{{end}}</td>
-    <td>{{if .Phase}}{{.Phase}}{{else}}—{{end}}</td>
-    <td><span class="badge {{statusClass .Status}}">{{.Status}}</span>{{if gt .OverdueTasks 0}}<small class="danger-text">{{.OverdueTasks}} tarefa(s) vencida(s)</small>{{end}}</td>
-    <td>{{dateBR .LastActivity}}{{if gt .StaleDays 0}}<small class="stale-text {{if ge .StaleDays 7}}danger-text{{end}}">Parado há {{.StaleDays}} dia(s)</small>{{else}}<small class="fresh-text">Atualizado hoje</small>{{end}}</td>
-  </tr>{{else}}<tr><td colspan="6" class="empty">Nenhum projeto encontrado com os filtros informados.</td></tr>{{end}}
-  </tbody></table></div>
+
+<section class="card">
+  <div class="section-head"><div><span class="eyebrow">CARTEIRA</span><h3>{{len .Projects}} projetos encontrados</h3><p>Cada linha mostra de forma rápida a etapa, quem precisa agir e se existe alguma pendência.</p></div><a href="/kanban">Ver no pipeline →</a></div>
+
+  <div class="projects-list-head">
+    <span></span><span>Projeto</span><span>Banco / status</span><span>Fase atual</span><span>Depende de</span><span class="hide-lg">Situação</span><span></span>
+  </div>
+  <div class="project-list-visual">
+    {{range .Projects}}
+    <a class="project-list-card" href="/projects/{{.ID}}">
+      <span class="signal-bar {{.Signal}}"></span>
+      <div class="project-list-main">
+        <span class="signal-chip {{.Signal}}"><i class="signal-dot {{.Signal}}"></i>{{.SignalLabel}}</span>
+        <strong>{{.Title}}</strong>
+        <small>{{if .ClientName}}{{.ClientName}}{{else}}Produtor a confirmar{{end}}{{if .PropertyName}} · {{.PropertyName}}{{end}}</small>
+      </div>
+      <div class="project-list-meta">
+        <span>Banco / status</span><strong>{{if .Bank}}{{.Bank}}{{else}}Banco a definir{{end}}</strong><small>{{.Status}}</small>
+      </div>
+      <div class="project-list-meta">
+        <span>Fase atual</span><strong>{{if .Phase}}{{.Phase}}{{else}}A definir{{end}}</strong>
+      </div>
+      <div class="project-list-meta hide-mobile">
+        <span>Depende de</span><strong>{{if .Responsible}}{{.Responsible}}{{else}}A definir{{end}}</strong>
+      </div>
+      <div class="project-list-meta hide-lg">
+        <span>Situação</span>
+        {{if gt .OverdueTasks 0}}<strong class="danger-text">{{.OverdueTasks}} tarefa(s) vencida(s)</strong>{{else if gt .PendingDocs 0}}<strong>{{.PendingDocs}} doc. pendente(s)</strong>{{else}}<strong>Sem pendência crítica</strong>{{end}}
+        {{if gt .StaleDays 0}}<small>Sem movimentação há {{.StaleDays}} dia(s)</small>{{else}}<small>Atualizado hoje</small>{{end}}
+      </div>
+      <span class="project-list-arrow">›</span>
+    </a>
+    {{else}}<p class="empty">Nenhum projeto encontrado com os filtros informados.</p>{{end}}
+  </div>
 </section>
 {{end}}
 {{end}}
