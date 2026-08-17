@@ -36,6 +36,21 @@
     });
   });
 
+  document.querySelectorAll('[data-checklist-autosubmit]').forEach((select) => {
+    select.addEventListener('change', () => {
+      const form = select.closest('form');
+      if (!form || select.dataset.saving === '1') return;
+      select.dataset.saving = '1';
+      select.disabled = true;
+      const saveButton = form.querySelector('button[type="submit"]');
+      if (saveButton) {
+        saveButton.disabled = true;
+        saveButton.textContent = 'Salvando...';
+      }
+      form.requestSubmit();
+    });
+  });
+
   const stageTarget = document.querySelector('[data-stage-days]');
   if (stageTarget) {
     let sourceDate = stageTarget.dataset.projectUpdated || '';
