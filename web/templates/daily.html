@@ -1,10 +1,11 @@
 {{define "content"}}
 {{with .Data}}
-<div class="page-actions">
+<div class="daily-top">
+  <div><span class="eyebrow">CHECKLIST DIÁRIO</span><h3>{{dateBR .Date}}</h3><p class="page-note">Veja primeiro o que está pendente, atrasado ou concluído.</p></div>
   <form class="date-filter" method="get" action="/reports/daily"><label>Data<input type="date" name="date" value="{{.Date}}"></label><button class="btn ghost" type="submit">Abrir dia</button></form>
 </div>
 
-<section class="kpi-grid compact">
+<section class="kpi-grid compact daily-status-grid">
   <article class="kpi"><span>Itens do dia</span><strong>{{.Total}}</strong></article>
   <article class="kpi"><span>Pendentes</span><strong>{{.Pending}}</strong></article>
   <article class="kpi"><span>Concluídos</span><strong>{{.Done}}</strong></article>
@@ -12,15 +13,15 @@
 </section>
 
 <div class="two-col wide-left">
-  <section class="card">
-    <div class="section-head"><div><span class="eyebrow">CHECKLIST DO DIA</span><h3>{{dateBR .Date}}</h3><p>Visão simples das atividades e pendências que os responsáveis precisam acompanhar.</p></div></div>
+  <section class="card daily-check-card">
+    <div class="section-head"><div><span class="eyebrow">ATIVIDADES</span><h3>O que precisa ser acompanhado</h3></div><a href="/reports/summary">Ver relatório do dia →</a></div>
     <div class="task-list">
       {{range .Tasks}}
       <article class="task-row">
         <div>
           <span class="priority {{.Priority}}">{{if .Priority}}{{.Priority}}{{else}}Normal{{end}}</span>
           <strong>{{.Title}}</strong>
-          <small>{{if .ProjectTitle}}{{.ProjectTitle}}{{else}}Projeto{{end}}{{if .Producer}} · {{.Producer}}{{end}}{{if .Responsible}} · Responsável: {{.Responsible}}{{end}}{{if .DueAt}} · {{dateBR .DueAt}}{{end}}</small>
+          <small>{{if .ProjectTitle}}{{.ProjectTitle}}{{else}}Projeto{{end}}{{if .Producer}} · {{.Producer}}{{end}}{{if .Responsible}} · {{.Responsible}}{{end}}{{if .DueAt}} · prazo {{dateBR .DueAt}}{{end}}</small>
         </div>
         <div class="inline-actions">
           <span class="badge {{if eq .Status "Concluída"}}ok{{else}}warn{{end}}">{{.Status}}</span>
@@ -36,7 +37,7 @@
 
   {{if eq $.User.Role "owner"}}
   <section class="card">
-    <div class="section-head"><div><span class="eyebrow">NOVO ITEM</span><h3>Adicionar ao checklist</h3><p>Este é o único lançamento operacional do painel.</p></div></div>
+    <div class="section-head"><div><span class="eyebrow">NOVO ITEM</span><h3>Adicionar atividade</h3><p>Cadastre somente o que precisa ser acompanhado.</p></div></div>
     <form method="post" action="/reports/daily/tasks" class="stack-form">
       <input type="hidden" name="csrf" value="{{$.CSRF}}">
       <label>Projeto<select name="project_id" required><option value="">Selecione</option>{{range .Projects}}<option value="{{.ID}}">{{.Title}} — {{.ClientName}}</option>{{end}}</select></label>
