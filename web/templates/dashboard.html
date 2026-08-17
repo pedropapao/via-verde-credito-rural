@@ -1,8 +1,22 @@
 {{define "content"}}
 {{with .Data}}
-<section class="hero-card executive-hero">
-  <div><span class="eyebrow light">PAINEL VIA VERDE</span><h2>Acompanhamento simples e transparente dos projetos.</h2><p>Veja quantos projetos existem, em que etapa estão, quais precisam de atenção e o que foi concluído hoje.</p></div>
-  <div class="hero-actions"><a class="btn light" href="/kanban">Abrir pipeline</a><a class="btn glass" href="/reports/summary">Relatório do dia</a></div>
+<section class="dashboard-intro">
+  <div>
+    <span class="eyebrow light">RESUMO DA CARTEIRA</span>
+    <h2>Veja o que está andando e o que precisa de atenção.</h2>
+    <p>Uma leitura rápida para entender a situação dos projetos sem abrir cada operação.</p>
+  </div>
+  <div class="dashboard-intro-actions">
+    <a class="btn light" href="/kanban">Abrir pipeline</a>
+    <a class="btn glass" href="/reports/summary">Relatório do dia</a>
+  </div>
+</section>
+
+<section class="kpi-grid executive-kpis">
+  <article class="kpi kpi-main"><span>Total de projetos</span><strong>{{.TotalProjects}}</strong><small>carteira cadastrada</small></article>
+  <article class="kpi kpi-analysis"><span>Em análise</span><strong>{{.Analysis}}</strong><small>aguardando decisão do banco</small></article>
+  <article class="kpi kpi-approved"><span>Aprovados</span><strong>{{.Approved}}</strong><small>operações aprovadas</small></article>
+  <article class="kpi kpi-contracted"><span>Contratados</span><strong>{{.Contracted}}</strong><small>operações concluídas</small></article>
 </section>
 
 <section class="attention-strip">
@@ -11,16 +25,9 @@
   <a href="/attention"><span class="attention-icon red">×</span><span>Projetos com tarefa vencida</span><strong>{{.AttentionOverdueProjects}}</strong></a>
 </section>
 
-<section class="kpi-grid executive-kpis">
-  <article class="kpi"><span>Total de projetos</span><strong>{{.TotalProjects}}</strong><small>Carteira cadastrada</small></article>
-  <article class="kpi"><span>Pendentes hoje</span><strong>{{.TodayPending}}</strong><small>Checklist diário</small></article>
-  <article class="kpi"><span>Concluídos hoje</span><strong>{{.TodayDone}}</strong><small>Checklist diário</small></article>
-  <article class="kpi"><span>Atrasados</span><strong>{{.Overdue}}</strong><small>Itens ainda não concluídos</small></article>
-</section>
-
 <section class="status-board">
   <a href="/projects"><span>Em preparação</span><strong>{{.Draft}}</strong></a>
-  <a href="/projects"><span>Aguardando documentos</span><strong>{{.WaitingDocs}}</strong></a>
+  <a href="/projects?status=Aguardando+documentos"><span>Aguardando documentos</span><strong>{{.WaitingDocs}}</strong></a>
   <a href="/projects?status=Enviado+ao+banco"><span>Enviados ao banco</span><strong>{{.Sent}}</strong></a>
   <a href="/projects?status=Em+análise"><span>Em análise</span><strong>{{.Analysis}}</strong></a>
   <a href="/projects?status=Aprovado"><span>Aprovados</span><strong>{{.Approved}}</strong></a>
@@ -30,28 +37,35 @@
 
 <div class="two-col dashboard-main">
   <section class="card">
-    <div class="section-head"><div><span class="eyebrow">PROJETOS</span><h3>Últimos projetos atualizados</h3></div><a href="/projects">Ver todos →</a></div>
-    <div class="table-wrap"><table><thead><tr><th>Sinal</th><th>Projeto</th><th>Banco</th><th>Fase</th><th>Última movimentação</th></tr></thead><tbody>
-      {{range .Projects}}<tr>
-        <td><span class="signal-wrap"><i class="signal-dot {{.Signal}}"></i><small>{{.SignalLabel}}</small></span></td>
-        <td><a class="table-title" href="/projects/{{.ID}}">{{.Title}}</a><small>{{.ClientName}}{{if .PropertyName}} · {{.PropertyName}}{{end}}</small></td>
-        <td>{{if .Bank}}{{.Bank}}{{else}}—{{end}}</td>
-        <td>{{if .Phase}}{{.Phase}}{{else}}—{{end}}</td>
-        <td>{{dateBR .LastActivity}}{{if gt .StaleDays 0}}<small class="stale-text {{if ge .StaleDays 7}}danger-text{{end}}">Parado há {{.StaleDays}} dia(s)</small>{{else}}<small class="fresh-text">Atualizado hoje</small>{{end}}</td>
-      </tr>{{else}}<tr><td colspan="5" class="empty">Nenhum projeto cadastrado.</td></tr>{{end}}
-    </tbody></table></div>
+    <div class="section-head"><div><span class="eyebrow">PROJETOS RECENTES</span><h3>Últimas movimentações da carteira</h3></div><a href="/projects">Ver todos →</a></div>
+    <div>
+      {{range .Projects}}
+      <a class="dashboard-project-row" href="/projects/{{.ID}}">
+        <i class="signal-dot {{.Signal}}"></i>
+        <div class="project-name"><strong>{{.Title}}</strong><small>{{.ClientName}}{{if .PropertyName}} · {{.PropertyName}}{{end}}</small></div>
+        <div class="project-cell hide-md"><small>Banco</small><strong>{{if .Bank}}{{.Bank}}{{else}}—{{end}}</strong></div>
+        <div class="project-cell hide-md"><small>Fase atual</small><strong>{{if .Phase}}{{.Phase}}{{else}}A definir{{end}}</strong></div>
+        <div class="project-cell last-update"><small>Atualização</small>{{if gt .StaleDays 0}}<strong>{{.StaleDays}} dia(s)</strong>{{else}}<strong>Hoje</strong>{{end}}</div>
+      </a>
+      {{else}}<p class="empty">Nenhum projeto cadastrado.</p>{{end}}
+    </div>
   </section>
 
-  <section class="card">
-    <div class="section-head"><div><span class="eyebrow">CHECKLIST DIÁRIO</span><h3>Prioridades de hoje</h3></div><a href="/reports/daily">Abrir checklist →</a></div>
+  <section class="card daily-check-card">
+    <div class="section-head"><div><span class="eyebrow">HOJE</span><h3>Prioridades do checklist</h3></div><a href="/reports/daily">Abrir checklist →</a></div>
     <div class="task-list dashboard-tasks">
-      {{range .TodayTasks}}<article class="task-row"><div><span class="priority {{.Priority}}">{{if .Priority}}{{.Priority}}{{else}}Normal{{end}}</span><strong>{{.Title}}</strong><small>{{if .ProjectTitle}}{{.ProjectTitle}}{{else}}Projeto{{end}}{{if .Responsible}} · {{.Responsible}}{{end}}{{if .DueAt}} · {{dateBR .DueAt}}{{end}}</small></div><span class="badge {{if eq .Status "Concluída"}}ok{{else}}warn{{end}}">{{.Status}}</span></article>{{else}}<p class="empty">Nenhuma atividade para hoje.</p>{{end}}
+      {{range .TodayTasks}}
+      <article class="task-row">
+        <div><span class="priority {{.Priority}}">{{if .Priority}}{{.Priority}}{{else}}Normal{{end}}</span><strong>{{.Title}}</strong><small>{{if .ProjectTitle}}{{.ProjectTitle}}{{else}}Projeto{{end}}{{if .Responsible}} · {{.Responsible}}{{end}}</small></div>
+        <span class="badge {{if eq .Status "Concluída"}}ok{{else}}warn{{end}}">{{.Status}}</span>
+      </article>
+      {{else}}<p class="empty">Nenhuma atividade para hoje.</p>{{end}}
     </div>
   </section>
 </div>
 
 <section class="card today-done-card">
-  <div class="section-head"><div><span class="eyebrow">O QUE FOI FEITO HOJE</span><h3>Entregas e movimentações concluídas</h3><p>Registro automático do que avançou nos projetos ao longo do dia.</p></div><a href="/reports/summary">Abrir relatório completo →</a></div>
+  <div class="section-head"><div><span class="eyebrow">O QUE FOI FEITO HOJE</span><h3>Entregas e avanços registrados</h3></div><a href="/reports/summary">Ver relatório completo →</a></div>
   <div class="today-done-grid">
     {{range .TodayEvents}}
       <article><span class="done-check">✓</span><div><strong>{{.Title}}</strong><p>{{if .ProjectTitle}}{{.ProjectTitle}}{{else}}Projeto{{end}}{{if .Producer}} · {{.Producer}}{{end}}</p><small>{{.EventType}}{{if .Details}} · {{.Details}}{{end}}</small></div></article>
