@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/static/upgrade.css">
   <link rel="stylesheet" href="/static/monitor.css">
   <link rel="stylesheet" href="/static/manager.css">
+  <link rel="stylesheet" href="/static/readability.css">
   <script defer src="/static/app.js"></script>
 </head>
 <body>
@@ -22,13 +23,15 @@
       <span><strong>Via Verde</strong><small>Acompanhamento</small></span>
     </a>
     <nav class="nav">
+      <span class="nav-group">Acompanhar</span>
       <a class="{{if eq .CurrentPath "/"}}active{{end}}" href="/"><span>▦</span>Visão geral</a>
       <a class="{{if hasPrefix .CurrentPath "/projects"}}active{{end}}" href="/projects"><span>▣</span>Projetos</a>
       <a class="{{if hasPrefix .CurrentPath "/kanban"}}active{{end}}" href="/kanban"><span>▥</span>Pipeline</a>
       <a class="{{if hasPrefix .CurrentPath "/attention"}}active{{end}}" href="/attention"><span>!</span>Atenção</a>
+      <span class="nav-group">Rotina</span>
       <a class="{{if hasPrefix .CurrentPath "/reports/daily"}}active{{end}}" href="/reports/daily"><span>✓</span>Checklist diário</a>
       <a class="{{if hasPrefix .CurrentPath "/reports/summary"}}active{{end}}" href="/reports/summary"><span>≡</span>Relatório do dia</a>
-      {{if eq .User.Role "owner"}}<a class="{{if hasPrefix .CurrentPath "/users"}}active{{end}}" href="/users"><span>◉</span>Acessos</a>{{end}}
+      {{if eq .User.Role "owner"}}<span class="nav-group">Administração</span><a class="{{if hasPrefix .CurrentPath "/users"}}active{{end}}" href="/users"><span>◉</span>Acessos</a>{{end}}
     </nav>
     <div class="sidebar-foot">
       <div class="user-mini"><span class="avatar">{{slice .User.Name 0 1}}</span><span><strong>{{.User.Name}}</strong><small>{{roleLabel .User.Role}}</small></span></div>
@@ -40,7 +43,7 @@
   <main class="main">
     <header class="topbar">
       <button class="menu-toggle" type="button" data-menu-toggle aria-label="Abrir menu">☰</button>
-      <div><span class="eyebrow">ACOMPANHAMENTO DE CRÉDITO RURAL</span><h1>{{.Title}}</h1></div>
+      <div><span class="eyebrow">VIA VERDE · CRÉDITO RURAL</span><h1>{{.Title}}</h1></div>
       <div class="topbar-right"><span class="role-chip">{{roleLabel .User.Role}}</span></div>
     </header>
     {{if .Flash}}<div class="alert success">{{.Flash}}</div>{{end}}
