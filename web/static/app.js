@@ -41,12 +41,13 @@
       const form = select.closest('form');
       if (!form || select.dataset.saving === '1') return;
       select.dataset.saving = '1';
-      select.disabled = true;
+      select.setAttribute('aria-busy', 'true');
       const saveButton = form.querySelector('button[type="submit"]');
       if (saveButton) {
         saveButton.disabled = true;
         saveButton.textContent = 'Salvando...';
       }
+      // Não desabilitar o select: campos disabled não são enviados no POST.
       form.requestSubmit();
     });
   });
