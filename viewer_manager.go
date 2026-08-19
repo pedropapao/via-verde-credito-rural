@@ -34,18 +34,42 @@ type AttentionView struct {
 	TotalUnique int
 }
 
+type DailyProjectSummary struct {
+	Project          Project
+	Producer         string
+	Activities       []string
+	PendingTasks     []string
+	PendingDocuments []string
+	PendingDocs      int
+	Dependency       string
+	NextStep         string
+}
+
+type DailyPendingSummary struct {
+	ProjectID    string
+	ProjectTitle string
+	Producer     string
+	Text         string
+	Responsible string
+}
+
 type DailySummaryView struct {
 	Date            string
 	Events          []ViewerHistoryEntry
 	CompletedTasks  []ViewerTask
+	ProjectSummaries []DailyProjectSummary
+	PendingNext     []DailyPendingSummary
 	ProjectsMoved   int
+	ProjectsAdvanced int
+	TotalActions    int
 	DocsReceived    int
 	TasksDone       int
 	ProgressUpdates int
 	Sent            int
 	Approved        int
 	Contracted      int
-	SummaryText     string
+	ShortText       string
+	FullText        string
 }
 
 func (a *App) routesManager() http.Handler {
@@ -191,35 +215,143 @@ func (a *App) viewerDailySummary(w http.ResponseWriter, r *http.Request) {
 	var history []ProjectHistory
 	_ = a.sb.Select(r.Context(), "project_history", "select=*&"+order("event_date", true), &history)
 	var tasks []ProjectTask
-	_ = a.sb.Select(r.Context(), "project_tasks", "select=*&"+order("completed_at", true), &tasks)
+	_ = a.sb.Select(r.Context(), "project_tasks", "select=*&"+order("due_at", false), &tasks)
+	var checklist []ChecklistItem
+	_ = a.sb.Select(r.Context(), "project_checklist", "select=*&"+order("created_at", false), &checklist)
 
 	v := DailySummaryView{Date: date}
 	moved := map[string]bool{}
+	advanced := map[string]bool{}
+	activities := map[string][]string{}
+	completedByProject := map[string][]string{}
+	openTasks := map[string][]ProjectTask{}
+	pendingDocs := map[string][]string{}
+
+	for _, c := range checklist {
+		if c.ProjectID == "" || !c.Required || viewerChecklistDone(c.Status) { continue }
+		pendingDocs[c.ProjectID] = appendUniqueManager(pendingDocs[c.ProjectID], c.DocumentName)
+	}
+
+	for _, t := range tasks {
+		if viewerTaskDone(t.Status) {
+			key := managerDateKey(t.CompletedAt)
+			if key == "" { key = t.DueAt }
+			if key != date { continue }
+			v.TasksDone++
+			v.CompletedTasks = append(v.CompletedTasks, makeViewerTask(t, pm))
+			moved[t.ProjectID] = true
+			line := "Atividade concluída: "+t.Title
+			completedByProject[t.ProjectID] = appendUniqueManager(completedByProject[t.ProjectID], line)
+			continue
+		}
+		if t.ProjectID != "" { openTasks[t.ProjectID] = append(openTasks[t.ProjectID], t) }
+	}
+	for id := range openTasks {
+		sort.SliceStable(openTasks[id], func(i, j int) bool {
+			ai, aj := openTasks[id][i].DueAt, openTasks[id][j].DueAt
+			if ai == "" { return false }
+			if aj == "" { return true }
+			return ai < aj
+		})
+	}
+
 	for _, h := range history {
 		if managerDateKey(h.EventDate) != date { continue }
 		entry := ViewerHistoryEntry{ProjectHistory: h}
 		if p, ok := pm[h.ProjectID]; ok { entry.ProjectTitle = p.Title; entry.Producer = p.ClientName }
 		v.Events = append(v.Events, entry)
-		moved[h.ProjectID] = true
+		if h.ProjectID != "" { moved[h.ProjectID] = true }
 		low := strings.ToLower(h.EventType+" "+h.Title+" "+h.Details)
 		if strings.Contains(low, "checklist documental") && (strings.Contains(low, "recebido") || strings.Contains(low, "dispensado")) { v.DocsReceived++ }
 		if strings.Contains(low, "andamento") { v.ProgressUpdates++ }
+		if strings.Contains(low, "status:") || strings.Contains(low, "→ enviado") || strings.Contains(low, "→ em análise") || strings.Contains(low, "→ em analise") || strings.Contains(low, "→ aprovado") || strings.Contains(low, "→ contratado") { advanced[h.ProjectID] = true }
 		if strings.Contains(low, "enviado ao banco") || strings.Contains(low, "→ enviado") { v.Sent++ }
 		if strings.Contains(low, "aprovado") { v.Approved++ }
 		if strings.Contains(low, "contratado") { v.Contracted++ }
+		if line := managerHistoryActivity(h); line != "" {
+			activities[h.ProjectID] = appendUniqueManager(activities[h.ProjectID], line)
+		}
 	}
-	for _, t := range tasks {
-		if !viewerTaskDone(t.Status) { continue }
-		key := managerDateKey(t.CompletedAt)
-		if key == "" { key = t.DueAt }
-		if key != date { continue }
-		v.TasksDone++
-		v.CompletedTasks = append(v.CompletedTasks, makeViewerTask(t, pm))
-		moved[t.ProjectID] = true
+
+	for projectID, lines := range completedByProject {
+		for _, line := range lines { activities[projectID] = appendUniqueManager(activities[projectID], line) }
 	}
-	v.ProjectsMoved = len(moved)
-	v.SummaryText = managerDailySummaryText(v)
-	a.render(w, r, "rules", ViewData{Title: "Relatório automático do dia", Data: v})
+
+	ids := make([]string, 0, len(moved))
+	for id := range moved { if id != "" { ids = append(ids, id) } }
+	sort.SliceStable(ids, func(i, j int) bool {
+		pi, iok := pm[ids[i]]; pj, jok := pm[ids[j]]
+		if !iok { return false }; if !jok { return true }
+		return strings.ToLower(pi.ClientName+pi.Title) < strings.ToLower(pj.ClientName+pj.Title)
+	})
+
+	for _, id := range ids {
+		p, ok := pm[id]; if !ok { continue }
+		ps := DailyProjectSummary{
+			Project: p,
+			Producer: defaultManager(p.ClientName, "Produtor a confirmar"),
+			Activities: activities[id],
+			Dependency: managerDependency(p.Responsible),
+			PendingDocuments: pendingDocs[id],
+			PendingDocs: len(pendingDocs[id]),
+		}
+		for _, t := range openTasks[id] {
+			ps.PendingTasks = append(ps.PendingTasks, t.Title)
+			if len(ps.PendingTasks) >= 3 { break }
+		}
+		ps.NextStep = managerNextStep(p, openTasks[id], len(pendingDocs[id]))
+		if len(ps.Activities) == 0 { ps.Activities = []string{"Projeto movimentado no sistema"} }
+		v.TotalActions += len(ps.Activities)
+		v.ProjectSummaries = append(v.ProjectSummaries, ps)
+		if !viewerProjectClosed(p.Status) && ps.NextStep != "" {
+			v.PendingNext = append(v.PendingNext, DailyPendingSummary{ProjectID:id, ProjectTitle:p.Title, Producer:ps.Producer, Text:ps.NextStep, Responsible:ps.Dependency})
+		}
+	}
+	v.ProjectsMoved = len(v.ProjectSummaries)
+	v.ProjectsAdvanced = len(advanced)
+	v.ShortText = managerDailyShortText(v)
+	v.FullText = managerDailyFullText(v)
+	a.render(w, r, "rules", ViewData{Title: "Relatório do dia", Data: v})
+}
+
+func managerHistoryActivity(h ProjectHistory) string {
+	kind := strings.ToLower(strings.TrimSpace(h.EventType))
+	details := strings.TrimSpace(h.Details)
+	title := strings.TrimSpace(h.Title)
+	low := strings.ToLower(kind+" "+title+" "+details)
+	if strings.Contains(kind, "checklist diário") || strings.Contains(kind, "checklist diario") {
+		if strings.Contains(low, "status alterado para conclu") || strings.Contains(low, "item criado") || strings.Contains(low, "item removido") { return "" }
+	}
+	if strings.Contains(kind, "checklist documental") {
+		if strings.Contains(low, "recebid") { return "Documento recebido: "+title }
+		if strings.Contains(low, "dispens") { return "Documento dispensado: "+title }
+		if strings.Contains(low, "pendente") { return "Documento marcado como pendente: "+title }
+	}
+	if strings.Contains(kind, "andamento") {
+		if details != "" { return "Andamento atualizado: "+details }
+		return "Andamento atualizado"
+	}
+	if title == "" { title = defaultManager(h.EventType, "Movimentação registrada") }
+	if details != "" { return title+": "+details }
+	return title
+}
+
+func managerNextStep(p Project, tasks []ProjectTask, pendingDocs int) string {
+	if strings.TrimSpace(p.Alerts) != "" { return strings.TrimSpace(p.Alerts) }
+	if len(tasks) > 0 && strings.TrimSpace(tasks[0].Title) != "" { return strings.TrimSpace(tasks[0].Title) }
+	if pendingDocs > 0 { return "Receber e conferir os documentos pendentes" }
+	dep := strings.ToLower(strings.TrimSpace(p.Responsible))
+	stage := managerStageKey(p)
+	if strings.Contains(dep, "banco") || stage == "enviado" || stage == "analise" { return "Aguardar retorno do banco e acompanhar a proposta" }
+	if stage == "aprovado" { return "Acompanhar formalização e contratação" }
+	return "Acompanhar o próximo avanço do projeto"
+}
+
+func appendUniqueManager(items []string, value string) []string {
+	value = strings.TrimSpace(value)
+	if value == "" { return items }
+	for _, item := range items { if strings.EqualFold(strings.TrimSpace(item), value) { return items } }
+	return append(items, value)
 }
 
 func managerStageKey(p Project) string {
@@ -301,25 +433,51 @@ func managerBRDate(v string) string {
 	return v
 }
 
-func managerDailySummaryText(v DailySummaryView) string {
+func managerDailyShortText(v DailySummaryView) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Via Verde — Relatório de %s\n", managerBRDate(v.Date))
-	fmt.Fprintf(&b, "%d projeto(s) com movimentação. %d atividade(s) concluída(s), %d documento(s) recebido(s)/dispensado(s) e %d atualização(ões) de andamento.", v.ProjectsMoved, v.TasksDone, v.DocsReceived, v.ProgressUpdates)
-	if v.Sent+v.Approved+v.Contracted > 0 {
-		fmt.Fprintf(&b, " %d enviado(s) ao banco, %d aprovado(s) e %d contratado(s).", v.Sent, v.Approved, v.Contracted)
+	if v.ProjectsMoved == 0 {
+		b.WriteString("Sem movimentações registradas neste dia.")
+		return b.String()
 	}
-	if len(v.Events) > 0 {
-		b.WriteString("\n\nPrincipais movimentações:")
-		limit := len(v.Events); if limit > 8 { limit = 8 }
+	fmt.Fprintf(&b, "%d projeto(s) trabalhado(s) · %d ação(ões) registrada(s) · %d documento(s) recebido(s)/dispensado(s) · %d projeto(s) avançaram de etapa.", v.ProjectsMoved, v.TotalActions, v.DocsReceived, v.ProjectsAdvanced)
+	if v.Sent+v.Approved+v.Contracted > 0 { fmt.Fprintf(&b, " Marcos: %d enviado(s), %d aprovado(s), %d contratado(s).", v.Sent, v.Approved, v.Contracted) }
+	if len(v.PendingNext) > 0 {
+		b.WriteString("\n\nPróximos acompanhamentos:")
+		limit := len(v.PendingNext); if limit > 4 { limit = 4 }
 		for i := 0; i < limit; i++ {
-			e := v.Events[i]
-			name := e.ProjectTitle; if name == "" { name = "Projeto" }
-			fmt.Fprintf(&b, "\n• %s — %s", name, e.Title)
-			if e.Details != "" { fmt.Fprintf(&b, ": %s", e.Details) }
+			p := v.PendingNext[i]
+			fmt.Fprintf(&b, "\n• %s — %s", defaultManager(p.Producer, p.ProjectTitle), p.Text)
 		}
 	}
-	if len(v.Events) == 0 && v.TasksDone == 0 { b.WriteString("\nSem movimentações registradas neste dia.") }
 	return b.String()
+}
+
+func managerDailyFullText(v DailySummaryView) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "RELATÓRIO DO DIA — %s\n", managerBRDate(v.Date))
+	fmt.Fprintf(&b, "Via Verde Consultoria Agropecuária\n\nRESUMO\n%d projeto(s) trabalhado(s) · %d ação(ões) registrada(s) · %d atividade(s) concluída(s) · %d documento(s) recebido(s)/dispensado(s) · %d projeto(s) avançaram de etapa.\n", v.ProjectsMoved, v.TotalActions, v.TasksDone, v.DocsReceived, v.ProjectsAdvanced)
+	if v.Sent+v.Approved+v.Contracted > 0 { fmt.Fprintf(&b, "Marcos do dia: %d enviado(s) ao banco · %d aprovado(s) · %d contratado(s).\n", v.Sent, v.Approved, v.Contracted) }
+	if len(v.ProjectSummaries) == 0 {
+		b.WriteString("\nSem movimentações registradas neste dia.")
+		return b.String()
+	}
+	for _, ps := range v.ProjectSummaries {
+		fmt.Fprintf(&b, "\n%s — %s", ps.Producer, ps.Project.Title)
+		if strings.TrimSpace(ps.Project.Bank) != "" { fmt.Fprintf(&b, " — %s", ps.Project.Bank) }
+		b.WriteString("\n")
+		for _, action := range ps.Activities { fmt.Fprintf(&b, "✓ %s\n", action) }
+		fmt.Fprintf(&b, "Status: %s\n", defaultManager(ps.Project.Status, "A confirmar"))
+		fmt.Fprintf(&b, "Fase: %s\n", defaultManager(ps.Project.Phase, "A definir"))
+		fmt.Fprintf(&b, "Depende agora: %s\n", ps.Dependency)
+		if ps.PendingDocs > 0 { fmt.Fprintf(&b, "Documentos pendentes: %d\n", ps.PendingDocs) }
+		fmt.Fprintf(&b, "Próximo passo: %s\n", ps.NextStep)
+	}
+	if len(v.PendingNext) > 0 {
+		b.WriteString("\nPENDÊNCIAS PARA O PRÓXIMO ACOMPANHAMENTO\n")
+		for _, p := range v.PendingNext { fmt.Fprintf(&b, "• %s — %s (%s)\n", defaultManager(p.Producer, p.ProjectTitle), p.Text, p.Responsible) }
+	}
+	return strings.TrimSpace(b.String())
 }
 
 func defaultManager(v, fallback string) string {
