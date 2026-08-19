@@ -105,9 +105,9 @@ func (a *App) carPage(w http.ResponseWriter, r *http.Request) {
 
 	v.Found = true
 	v.Municipality = carStringProp(feature.Properties, "nom_munici", "nom_municipio", "municipio", "nm_muni", "nome_municipio")
-	v.Status = carStringProp(feature.Properties, "ind_status", "situacao", "status")
+	v.Status = carStatusLabel(carStringProp(feature.Properties, "ind_status", "situacao", "status"))
 	v.Condition = carStringProp(feature.Properties, "des_condic", "condicao", "descricao_condicao")
-	v.PropertyType = carStringProp(feature.Properties, "tipo_imove", "tipo_imovel", "des_tipo", "tipo")
+	v.PropertyType = carPropertyTypeLabel(carStringProp(feature.Properties, "ind_tipo", "tipo_imove", "tipo_imovel", "des_tipo", "tipo"))
 	v.AreaHa = carFloatProp(feature.Properties, "num_area", "area_ha", "area")
 	v.FiscalModules = carFloatProp(feature.Properties, "mod_fiscal", "modulos_fiscais")
 	v.HasGeometry = carGeometryUsable(feature.Geometry)
@@ -180,8 +180,17 @@ func carLookupCodes(car string) []string {
 	return codes
 }
 
+func carLayerUF(uf string) string {
+	if strings.EqualFold(uf, "DF") { return "DF" }
+	return strings.ToLower(uf)
+}
+
 func lookupCARPublic(ctx context.Context, car, uf string) (*carGeoFeature, error) {
-	versions := []struct{ version, typeKey string }{{"2.0.0", "typeNames"}, {"1.1.0", "typeName"}}
+	versions := []struct{ version, typeKey string }{
+		{"2.0.0", "typeNames"},
+		{"1.1.0", "typeName"},
+		{"1.0.0", "typeName"},
+	}
 	var lastErr error
 	for _, code := range carLookupCodes(car) {
 		for _, v := range versions {
@@ -199,7 +208,7 @@ func lookupCARPublicVersion(ctx context.Context, car, uf, version, typeKey strin
 	params.Set("service", "WFS")
 	params.Set("version", version)
 	params.Set("request", "GetFeature")
-	params.Set(typeKey, "sicar:sicar_imoveis_"+strings.ToLower(uf))
+	params.Set(typeKey, "sicar:sicar_imoveis_"+carLayerUF(uf))
 	params.Set("outputFormat", "application/json")
 	params.Set("srsName", "EPSG:4326")
 	if version == "2.0.0" {
@@ -212,7 +221,8 @@ func lookupCARPublicVersion(ctx context.Context, car, uf, version, typeKey strin
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, carWFSURL+"?"+params.Encode(), nil)
 	if err != nil { return nil, err }
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "ViaVerde-CreditoRural/1.0")
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("User-Agent", "Mozilla/5.0 ViaVerde-CreditoRural/1.0")
 
 	client := &http.Client{Timeout: 18 * time.Second}
 	resp, err := client.Do(req)
@@ -228,6 +238,32 @@ func lookupCARPublicVersion(ctx context.Context, car, uf, version, typeKey strin
 	if err := json.Unmarshal(body, &fc); err != nil { return nil, err }
 	if len(fc.Features) == 0 { return nil, nil }
 	return &fc.Features[0], nil
+}
+
+func carStatusLabel(v string) string {
+	s := strings.ToUpper(strings.TrimSpace(v))
+	switch s {
+	case "AT": return "Ativo"
+	case "PE": return "Pendente"
+	case "SU": return "Suspenso"
+	case "CA": return "Cancelado"
+	case "RE": return "Retificado"
+	default:
+		if s == "" { return "" }
+		return v
+	}
+}
+
+func carPropertyTypeLabel(v string) string {
+	s := strings.ToUpper(strings.TrimSpace(v))
+	switch s {
+	case "IRU": return "Imóvel Rural"
+	case "AST": return "Assentamento da Reforma Agrária"
+	case "PCT": return "Povos e Comunidades Tradicionais"
+	default:
+		if s == "" { return "" }
+		return v
+	}
 }
 
 func carStringProp(props map[string]any, keys ...string) string {
