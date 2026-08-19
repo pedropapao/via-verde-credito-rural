@@ -19,6 +19,8 @@ func TestCentralCARTemFluxoAutorizadoParaRecibo(t *testing.T) {
 		"https://www.car.gov.br/#/consultar",
 		"data-receipt-helper",
 		"data-open-whatsapp",
+		"car.meioambiente@goias.gov.br",
+		"data-state-receipt-email",
 	} {
 		if !strings.Contains(page, want) {
 			t.Fatalf("Central CAR não contém %q", want)
@@ -37,5 +39,8 @@ func TestAssistenteReciboNaoSolicitaSenhaDoProdutor(t *testing.T) {
 	}
 	if !strings.Contains(js, "https://wa.me/?text=") {
 		t.Fatal("assistente precisa permitir abrir a mensagem no WhatsApp")
+	}
+	if !strings.Contains(js, "Solicitação de cópia do Recibo de Inscrição do CAR") {
+		t.Fatal("assistente precisa preparar solicitação oficial estadual do Recibo CAR")
 	}
 }
