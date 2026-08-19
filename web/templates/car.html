@@ -1,0 +1,82 @@
+{{define "content"}}
+{{with .Data}}
+<section class="car-shell">
+  <div class="car-intro card">
+    <div>
+      <span class="eyebrow">CENTRAL CAR</span>
+      <h2>Consulte o CAR e gere o KML</h2>
+      <p>Digite o número completo do Cadastro Ambiental Rural. O Via Verde consulta a camada pública do SICAR e não salva o número nem os arquivos.</p>
+    </div>
+    <span class="car-privacy">Nada fica armazenado</span>
+  </div>
+
+  <section class="card car-search-card">
+    <form method="get" action="/car" class="car-search-form">
+      <label for="car-number">Número do CAR</label>
+      <div class="car-search-row">
+        <input id="car-number" name="number" value="{{.Query}}" placeholder="MG-0000000-XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX" autocomplete="off" spellcheck="false" required>
+        <button class="btn primary" type="submit">Consultar</button>
+      </div>
+      <small>Exemplo de formato: UF-0000000-XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX</small>
+    </form>
+  </section>
+
+  {{if .LookedUp}}
+    {{if .Error}}<div class="alert warn car-query-alert">{{.Error}}</div>{{end}}
+
+    {{if .Valid}}
+    <section class="card car-result-card">
+      <div class="car-result-head">
+        <div>
+          <span class="eyebrow">CAR CONSULTADO</span>
+          <h3>{{.CAR}}</h3>
+          <p>{{.UF}} · código municipal {{.MunicipalityCode}}</p>
+        </div>
+        {{if .Found}}<span class="badge ok">Localizado na base pública</span>{{else}}<span class="badge neutral">Consulta oficial disponível</span>{{end}}
+      </div>
+
+      {{if .Found}}
+      <div class="car-data-grid">
+        <div><span>Município</span><strong>{{if .Municipality}}{{.Municipality}}{{else}}Não informado{{end}}</strong></div>
+        <div><span>Área declarada</span><strong>{{if .AreaHa}}{{printf "%.2f ha" .AreaHa}}{{else}}Não informada{{end}}</strong></div>
+        <div><span>Situação</span><strong>{{if .Status}}{{.Status}}{{else}}Não informada{{end}}</strong></div>
+        <div><span>Condição</span><strong>{{if .Condition}}{{.Condition}}{{else}}Não informada{{end}}</strong></div>
+        <div><span>Tipo do imóvel</span><strong>{{if .PropertyType}}{{.PropertyType}}{{else}}Não informado{{end}}</strong></div>
+        <div><span>Módulos fiscais</span><strong>{{if .FiscalModules}}{{printf "%.2f" .FiscalModules}}{{else}}Não informado{{end}}</strong></div>
+      </div>
+
+      {{if .HasGeometry}}
+      <div class="car-map-preview">{{safe .MapSVG}}</div>
+      {{end}}
+      {{end}}
+
+      <div class="car-actions">
+        {{if .HasGeometry}}<a class="btn primary" href="{{.KMLURL}}">Baixar KML</a>{{end}}
+        <a class="btn ghost" href="{{.PublicURL}}" target="_blank" rel="noopener">Abrir Consulta Pública do CAR</a>
+        <a class="btn ghost" href="{{.MeuImovelURL}}" target="_blank" rel="noopener">Recibo e Demonstrativo</a>
+      </div>
+    </section>
+    {{end}}
+  {{end}}
+
+  <section class="car-help-grid">
+    <article class="card car-help-card">
+      <span class="car-step">1</span>
+      <div><strong>KML</strong><p>Quando a geometria pública estiver disponível, o Via Verde gera o KML na hora e entrega para download. O arquivo não é guardado no sistema.</p></div>
+    </article>
+    <article class="card car-help-card">
+      <span class="car-step">2</span>
+      <div><strong>Recibo e Demonstrativo</strong><p>São documentos oficiais vinculados ao detentor. O botão abre o Meu Imóvel Rural para autenticação com GOV.BR e download oficial.</p></div>
+    </article>
+    <article class="card car-help-card">
+      <span class="car-step">3</span>
+      <div><strong>Consulta Pública</strong><p>Se a consulta automática estiver temporariamente indisponível, você ainda consegue abrir diretamente o serviço público do SICAR.</p></div>
+    </article>
+  </section>
+
+  <div class="car-security-note">
+    <strong>Segurança:</strong> o Via Verde não pede senha GOV.BR e não armazena Recibo, Demonstrativo, KML ou dados de autenticação.
+  </div>
+</section>
+{{end}}
+{{end}}
