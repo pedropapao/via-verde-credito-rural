@@ -31,8 +31,10 @@
       <a class="{{if hasPrefix .CurrentPath "/projects"}}active{{end}}" href="/projects"><span>▣</span>Projetos</a>
       <a class="{{if hasPrefix .CurrentPath "/kanban"}}active{{end}}" href="/kanban"><span>▥</span>Pipeline</a>
       <a class="{{if hasPrefix .CurrentPath "/attention"}}active{{end}}" href="/attention"><span>!</span>Atenção</a>
+      {{if eq .User.Role "owner"}}
       <span class="nav-group">Ferramentas</span>
       <a class="{{if hasPrefix .CurrentPath "/car"}}active{{end}}" href="/car"><span>⌖</span>Consulta CAR</a>
+      {{end}}
       <span class="nav-group">Rotina</span>
       <a class="{{if hasPrefix .CurrentPath "/reports/daily"}}active{{end}}" href="/reports/daily"><span>✓</span>Checklist diário</a>
       <a class="{{if hasPrefix .CurrentPath "/reports/summary"}}active{{end}}" href="/reports/summary"><span>≡</span>Relatório do dia</a>
