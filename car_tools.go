@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	carPublicURL   = "https://consulta.car.gov.br/geoservices"
+	carPublicURL    = "https://consulta.car.gov.br/geoservices"
 	carMeuImovelURL = "https://meuimovelrural.sistema.gov.br/#/"
-	carWFSURL      = "https://geoserver.car.gov.br/geoserver/sicar/ows"
+	carWFSURL       = "https://geoserver.car.gov.br/geoserver/sicar/ows"
 )
 
 var carPattern = regexp.MustCompile(`^([A-Z]{2})-([0-9]{7})-([A-F0-9]{4}(?:\.[A-F0-9]{4}){7})$`)
@@ -185,7 +185,11 @@ func lookupCARPublicVersion(ctx context.Context, car, uf, version, typeKey strin
 	params.Set(typeKey, "sicar:sicar_imoveis_"+strings.ToLower(uf))
 	params.Set("outputFormat", "application/json")
 	params.Set("srsName", "EPSG:4326")
-	if version == "2.0.0" { params.Set("count", "2") } else { params.Set("maxFeatures", "2") }
+	if version == "2.0.0" {
+		params.Set("count", "2")
+	} else {
+		params.Set("maxFeatures", "2")
+	}
 	params.Set("CQL_FILTER", "cod_imovel='"+strings.ReplaceAll(car, "'", "''")+"'")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, carWFSURL+"?"+params.Encode(), nil)
@@ -198,7 +202,7 @@ func lookupCARPublicVersion(ctx context.Context, car, uf, version, typeKey strin
 	if err != nil { return nil, err }
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 		return nil, fmt.Errorf("SICAR respondeu HTTP %d", resp.StatusCode)
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
@@ -228,7 +232,8 @@ func carFloatProp(props map[string]any, keys ...string) float64 {
 			case float64:
 				return x
 			case json.Number:
-				f, _ := x.Float64(); return f
+				f, _ := x.Float64()
+				return f
 			default:
 				s := strings.ReplaceAll(strings.TrimSpace(fmt.Sprint(x)), ",", ".")
 				f, _ := strconv.ParseFloat(s, 64)
@@ -333,15 +338,20 @@ func carGeometrySVG(g carGeoJSONGeometry) string {
 		for _, ring := range poly {
 			for _, p := range ring {
 				if len(p) < 2 { continue }
-				if p[0] < minX { minX = p[0] }; if p[0] > maxX { maxX = p[0] }
-				if p[1] < minY { minY = p[1] }; if p[1] > maxY { maxY = p[1] }
+				if p[0] < minX { minX = p[0] }
+				if p[0] > maxX { maxX = p[0] }
+				if p[1] < minY { minY = p[1] }
+				if p[1] > maxY { maxY = p[1] }
 			}
 		}
 	}
 	if math.IsInf(minX, 1) || maxX == minX || maxY == minY { return "" }
 	const w, h, pad = 760.0, 360.0, 20.0
-	sx := (w-2*pad)/(maxX-minX); sy := (h-2*pad)/(maxY-minY); scale := math.Min(sx, sy)
-	cx := (minX+maxX)/2; cy := (minY+maxY)/2
+	sx := (w - 2*pad) / (maxX - minX)
+	sy := (h - 2*pad) / (maxY - minY)
+	scale := math.Min(sx, sy)
+	cx := (minX + maxX) / 2
+	cy := (minY + maxY) / 2
 	var b strings.Builder
 	b.WriteString(`<svg viewBox="0 0 760 360" role="img" aria-label="Prévia do perímetro do CAR"><rect x="0" y="0" width="760" height="360" rx="16" fill="#eef5f1"/>`)
 	for _, poly := range polys {
@@ -354,7 +364,11 @@ func carGeometrySVG(g carGeoJSONGeometry) string {
 				y := h/2 - (p[1]-cy)*scale
 				fmt.Fprintf(&b, "%.2f,%.2f ", x, y)
 			}
-			if ri == 0 { b.WriteString(`" fill="#d9ece2" stroke="#16744f" stroke-width="2"/>`) } else { b.WriteString(`" fill="#eef5f1" stroke="#16744f" stroke-width="1.5"/>`) }
+			if ri == 0 {
+				b.WriteString(`" fill="#d9ece2" stroke="#16744f" stroke-width="2"/>`)
+			} else {
+				b.WriteString(`" fill="#eef5f1" stroke="#16744f" stroke-width="1.5"/>`)
+			}
 		}
 	}
 	b.WriteString(`</svg>`)
