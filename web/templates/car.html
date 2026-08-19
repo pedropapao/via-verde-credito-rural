@@ -99,6 +99,17 @@
         </article>
       </div>
 
+      {{if eq .UF "GO"}}
+      <div class="car-state-fallback">
+        <div>
+          <span class="eyebrow">ALTERNATIVA OFICIAL · GOIÁS</span>
+          <strong>Solicitar cópia diretamente à SEMAD Goiás</strong>
+          <p>A SEMAD Goiás informa o canal <b>car.meioambiente@goias.gov.br</b> para requisição de cópia do Recibo de Inscrição do CAR. O Via Verde prepara o e-mail com este CAR; nenhum documento é enviado automaticamente.</p>
+        </div>
+        <button class="btn ghost" type="button" data-state-receipt-email data-email="car.meioambiente@goias.gov.br">Preparar e-mail para a SEMAD Goiás</button>
+      </div>
+      {{end}}
+
       <div class="car-request-box" data-receipt-request-box hidden>
         <div class="car-request-head">
           <div><strong>Mensagem pronta para o produtor</strong><p>Você pode revisar antes de enviar.</p></div>
