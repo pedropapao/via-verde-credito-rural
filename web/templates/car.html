@@ -4,8 +4,8 @@
   <div class="car-intro card">
     <div>
       <span class="eyebrow">CENTRAL CAR</span>
-      <h2>Consulte o CAR e gere o KML</h2>
-      <p>Digite o número completo do Cadastro Ambiental Rural. O Via Verde consulta a camada pública do SICAR e não salva o número nem os arquivos.</p>
+      <h2>Consulte o CAR, gere o KML e acesse os documentos oficiais</h2>
+      <p>Digite o número completo do Cadastro Ambiental Rural. O Via Verde consulta a camada pública do SICAR e não salva o número, CPF ou arquivos.</p>
     </div>
     <span class="car-privacy">Nada fica armazenado</span>
   </div>
@@ -52,8 +52,67 @@
 
       <div class="car-actions">
         {{if .HasGeometry}}<a class="btn primary" href="{{.KMLURL}}">Gerar e baixar KML</a>{{end}}
+        <button class="btn ghost" type="button" data-copy-open data-copy-text="{{.CAR}}" data-open-url="https://www.car.gov.br/#/consultar">Consultar Demonstrativo público</button>
         <a class="btn ghost" href="https://consultapublica.car.gov.br/publico/imoveis/index" target="_blank" rel="noopener">Abrir Consulta Pública do CAR</a>
-        <a class="btn ghost" href="{{.MeuImovelURL}}" target="_blank" rel="noopener">Recibo e Demonstrativo</a>
+      </div>
+    </section>
+
+    <section class="card car-receipt-card" data-receipt-helper data-car-number="{{.CAR}}">
+      <div class="car-receipt-head">
+        <div>
+          <span class="eyebrow">RECIBO OFICIAL DO CAR</span>
+          <h3>Obter a segunda via sem pedir a senha GOV.BR do produtor</h3>
+          <p>O Recibo contém dados protegidos e não é liberado apenas com o número do CAR. A forma correta é o titular autorizar você como representante e você acessar com a sua própria conta GOV.BR.</p>
+        </div>
+        <span class="car-lock">Acesso autorizado</span>
+      </div>
+
+      <div class="car-receipt-grid">
+        <article class="car-receipt-option is-primary">
+          <span class="car-step">1</span>
+          <div>
+            <strong>Já estou vinculado como representante</strong>
+            <p>Copie o CAR e abra a Central do Proprietário/Possuidor. Entre com a sua própria conta GOV.BR, abra o imóvel e use a opção <b>Recibo de inscrição</b>.</p>
+            <button class="btn primary" type="button" data-copy-open data-copy-text="{{.CAR}}" data-open-url="https://www.car.gov.br/#/central/acesso">Copiar CAR e abrir Central do SICAR</button>
+          </div>
+        </article>
+
+        <article class="car-receipt-option">
+          <span class="car-step">2</span>
+          <div>
+            <strong>Ainda não tenho acesso ao CAR do produtor</strong>
+            <p>Gere abaixo uma mensagem pronta para o produtor fazer o vínculo em <b>Gerenciar Vínculos → Vincular Representante</b>. Depois você acessa com o seu GOV.BR.</p>
+            <label class="car-cpf-label" for="car-representative-cpf">Meu CPF de representante</label>
+            <input id="car-representative-cpf" class="car-cpf-input" type="text" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off" data-representative-cpf>
+            <small>O CPF digitado fica somente nesta página e não é enviado ao Via Verde.</small>
+            <button class="btn ghost" type="button" data-build-receipt-request>Gerar pedido de vínculo</button>
+          </div>
+        </article>
+
+        <article class="car-receipt-option">
+          <span class="car-step">3</span>
+          <div>
+            <strong>Alternativa pelo Meu Imóvel Rural</strong>
+            <p>O titular também pode compartilhar o cadastro com terceiros pelo Meu Imóvel Rural, informando CPF, prazo e motivo, sem compartilhar a senha GOV.BR.</p>
+            <a class="btn ghost" href="{{.MeuImovelURL}}" target="_blank" rel="noopener">Abrir Meu Imóvel Rural</a>
+          </div>
+        </article>
+      </div>
+
+      <div class="car-request-box" data-receipt-request-box hidden>
+        <div class="car-request-head">
+          <div><strong>Mensagem pronta para o produtor</strong><p>Você pode revisar antes de enviar.</p></div>
+          <span class="badge ok">Sem senha do produtor</span>
+        </div>
+        <textarea class="car-request-message" rows="13" data-receipt-message></textarea>
+        <div class="car-access-actions">
+          <button class="btn primary" type="button" data-copy-target="[data-receipt-message]">Copiar mensagem</button>
+          <button class="btn ghost" type="button" data-open-whatsapp>Abrir no WhatsApp</button>
+        </div>
+      </div>
+
+      <div class="car-receipt-note">
+        <strong>Importante:</strong> o Via Verde não tenta burlar o GOV.BR, não captura sessão e não pede senha do produtor. Depois do vínculo, cada pessoa utiliza a própria conta GOV.BR e o titular pode remover o acesso quando quiser.
       </div>
     </section>
     {{end}}
@@ -66,16 +125,16 @@
     </article>
     <article class="card car-help-card">
       <span class="car-step">2</span>
-      <div><strong>Recibo e Demonstrativo</strong><p>São documentos oficiais vinculados ao detentor. O botão abre o Meu Imóvel Rural para autenticação com GOV.BR e download oficial.</p></div>
+      <div><strong>Recibo</strong><p>A segunda via oficial é obtida na Central do Proprietário/Possuidor pelo titular ou representante autorizado.</p></div>
     </article>
     <article class="card car-help-card">
       <span class="car-step">3</span>
-      <div><strong>Consulta Pública</strong><p>Se a consulta automática estiver temporariamente indisponível, você ainda consegue abrir diretamente a consulta oficial de imóveis do SICAR.</p></div>
+      <div><strong>Demonstrativo</strong><p>Use a consulta pública quando disponível ou a Central/Meu Imóvel Rural para os documentos vinculados ao detentor.</p></div>
     </article>
   </section>
 
   <div class="car-security-note">
-    <strong>Segurança:</strong> o Via Verde não pede senha GOV.BR e não armazena Recibo, Demonstrativo, KML ou dados de autenticação.
+    <strong>Segurança:</strong> o Via Verde não pede senha GOV.BR e não armazena Recibo, Demonstrativo, KML, CPF digitado ou dados de autenticação.
   </div>
 </section>
 {{end}}
