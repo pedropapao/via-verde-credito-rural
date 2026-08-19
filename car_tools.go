@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	carPublicURL = "https://consulta.car.gov.br/geoservices"
+	carPublicURL   = "https://consulta.car.gov.br/geoservices"
 	carMeuImovelURL = "https://meuimovelrural.sistema.gov.br/#/"
-	carWFSURL = "https://geoserver.car.gov.br/geoserver/sicar/ows"
+	carWFSURL      = "https://geoserver.car.gov.br/geoserver/sicar/ows"
 )
 
 var carPattern = regexp.MustCompile(`^([A-Z]{2})-([0-9]{7})-([A-F0-9]{4}(?:\.[A-F0-9]{4}){7})$`)
@@ -54,9 +54,9 @@ type carGeoJSON struct {
 }
 
 type carGeoFeature struct {
-	Type       string                 `json:"type"`
-	Properties map[string]any         `json:"properties"`
-	Geometry   carGeoJSONGeometry     `json:"geometry"`
+	Type       string             `json:"type"`
+	Properties map[string]any     `json:"properties"`
+	Geometry   carGeoJSONGeometry `json:"geometry"`
 }
 
 type carGeoJSONGeometry struct {
@@ -140,7 +140,7 @@ func (a *App) carKML(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/vnd.google-earth.kml+xml; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="CAR_`+safeCARFilename(car)+`.kml"`)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="CAR_%s.kml"`, safeCARFilename(car)))
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write(kml)
 }
@@ -165,14 +165,27 @@ func validUF(v string) bool {
 }
 
 func lookupCARPublic(ctx context.Context, car, uf string) (*carGeoFeature, error) {
+	versions := []struct{ version, typeKey string }{{"2.0.0", "typeNames"}, {"1.1.0", "typeName"}}
+	var lastErr error
+	for _, v := range versions {
+		feature, err := lookupCARPublicVersion(ctx, car, uf, v.version, v.typeKey)
+		if err == nil {
+			return feature, nil
+		}
+		lastErr = err
+	}
+	return nil, lastErr
+}
+
+func lookupCARPublicVersion(ctx context.Context, car, uf, version, typeKey string) (*carGeoFeature, error) {
 	params := url.Values{}
 	params.Set("service", "WFS")
-	params.Set("version", "2.0.0")
+	params.Set("version", version)
 	params.Set("request", "GetFeature")
-	params.Set("typeNames", "sicar:sicar_imoveis_"+strings.ToLower(uf))
+	params.Set(typeKey, "sicar:sicar_imoveis_"+strings.ToLower(uf))
 	params.Set("outputFormat", "application/json")
 	params.Set("srsName", "EPSG:4326")
-	params.Set("count", "2")
+	if version == "2.0.0" { params.Set("count", "2") } else { params.Set("maxFeatures", "2") }
 	params.Set("CQL_FILTER", "cod_imovel='"+strings.ReplaceAll(car, "'", "''")+"'")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, carWFSURL+"?"+params.Encode(), nil)
@@ -250,11 +263,11 @@ func carGeometryKML(car string, g carGeoJSONGeometry) ([]byte, error) {
 	polys, err := carGeometryPolygons(g)
 	if err != nil { return nil, err }
 	var b bytes.Buffer
-	b.WriteString(`<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>`)
-	xml.EscapeText(&b, []byte("CAR "+car))
-	b.WriteString(`</name><Style id="car"><LineStyle><width>2</width></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style><Placemark><name>`)
-	xml.EscapeText(&b, []byte(car))
-	b.WriteString(`</name><styleUrl>#car</styleUrl>`)
+	b.WriteString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<kml xmlns=\"http://www.opengis.net/kml/2.2\"><Document><name>")
+	_ = xml.EscapeText(&b, []byte("CAR "+car))
+	b.WriteString("</name><Style id=\"car\"><LineStyle><width>2</width></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style><Placemark><name>")
+	_ = xml.EscapeText(&b, []byte(car))
+	b.WriteString("</name><styleUrl>#car</styleUrl>")
 	if len(polys) > 1 { b.WriteString("<MultiGeometry>") }
 	for _, poly := range polys {
 		if len(poly) == 0 { continue }
@@ -345,7 +358,7 @@ func carGeometrySVG(g carGeoJSONGeometry) string {
 		}
 	}
 	b.WriteString(`</svg>`)
-	return b.String()
+	return strings.ReplaceAll(b.String(), `\"`, `"`)
 }
 
 func safeCARFilename(v string) string {
