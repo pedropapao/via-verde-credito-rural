@@ -24,7 +24,10 @@ const (
 	carWFSURL       = "https://geoserver.car.gov.br/geoserver/sicar/ows"
 )
 
-var carPattern = regexp.MustCompile(`^([A-Z]{2})-([0-9]{7})-([A-F0-9]{4}(?:\.[A-F0-9]{4}){7})$`)
+var (
+	carMunicipalityPattern = regexp.MustCompile(`^[0-9]{7}$`)
+	carHexPattern          = regexp.MustCompile(`^[A-F0-9]{32}$`)
+)
 
 type CARView struct {
 	Query            string
@@ -149,14 +152,20 @@ func normalizeCAR(v string) (car, uf, municipality string, err error) {
 	v = strings.ToUpper(strings.TrimSpace(v))
 	v = strings.ReplaceAll(v, " ", "")
 	v = strings.ReplaceAll(v, "_", "-")
-	m := carPattern.FindStringSubmatch(v)
-	if len(m) != 4 {
+	parts := strings.SplitN(v, "-", 3)
+	if len(parts) != 3 || !validUF(parts[0]) || !carMunicipalityPattern.MatchString(parts[1]) {
 		return "", "", "", errors.New("Digite o número completo do CAR no formato UF-0000000-XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.")
 	}
-	if !validUF(m[1]) {
-		return "", "", "", errors.New("A UF informada no número do CAR não é válida.")
+	compact := strings.ReplaceAll(parts[2], ".", "")
+	if !carHexPattern.MatchString(compact) {
+		return "", "", "", errors.New("O identificador final do CAR deve possuir 32 caracteres hexadecimais.")
 	}
-	return v, m[1], m[2], nil
+	groups := make([]string, 0, 8)
+	for i := 0; i < len(compact); i += 4 {
+		groups = append(groups, compact[i:i+4])
+	}
+	canonical := parts[0] + "-" + parts[1] + "-" + strings.Join(groups, ".")
+	return canonical, parts[0], parts[1], nil
 }
 
 func validUF(v string) bool {
@@ -164,17 +173,25 @@ func validUF(v string) bool {
 	return ok
 }
 
+func carLookupCodes(car string) []string {
+	codes := []string{car}
+	plain := strings.ReplaceAll(car, ".", "")
+	if plain != car { codes = append(codes, plain) }
+	return codes
+}
+
 func lookupCARPublic(ctx context.Context, car, uf string) (*carGeoFeature, error) {
 	versions := []struct{ version, typeKey string }{{"2.0.0", "typeNames"}, {"1.1.0", "typeName"}}
 	var lastErr error
-	for _, v := range versions {
-		feature, err := lookupCARPublicVersion(ctx, car, uf, v.version, v.typeKey)
-		if err == nil {
-			return feature, nil
+	for _, code := range carLookupCodes(car) {
+		for _, v := range versions {
+			feature, err := lookupCARPublicVersion(ctx, code, uf, v.version, v.typeKey)
+			if err == nil && feature != nil { return feature, nil }
+			if err != nil { lastErr = err }
 		}
-		lastErr = err
 	}
-	return nil, lastErr
+	if lastErr != nil { return nil, lastErr }
+	return nil, nil
 }
 
 func lookupCARPublicVersion(ctx context.Context, car, uf, version, typeKey string) (*carGeoFeature, error) {
@@ -232,8 +249,7 @@ func carFloatProp(props map[string]any, keys ...string) float64 {
 			case float64:
 				return x
 			case json.Number:
-				f, _ := x.Float64()
-				return f
+				f, _ := x.Float64(); return f
 			default:
 				s := strings.ReplaceAll(strings.TrimSpace(fmt.Sprint(x)), ",", ".")
 				f, _ := strconv.ParseFloat(s, 64)
@@ -314,16 +330,16 @@ func carRingAreaM2(ring [][]float64) float64 {
 	lat0 := 0.0
 	for _, p := range ring { if len(p) >= 2 { lat0 += p[1] } }
 	lat0 /= float64(len(ring))
-	const r = 6378137.0
+	const earthR = 6378137.0
 	cosLat := math.Cos(lat0 * math.Pi / 180)
 	area := 0.0
 	for i := 0; i < len(ring); i++ {
 		j := (i + 1) % len(ring)
 		if len(ring[i]) < 2 || len(ring[j]) < 2 { continue }
-		x1 := r * ring[i][0] * math.Pi / 180 * cosLat
-		y1 := r * ring[i][1] * math.Pi / 180
-		x2 := r * ring[j][0] * math.Pi / 180 * cosLat
-		y2 := r * ring[j][1] * math.Pi / 180
+		x1 := earthR * ring[i][0] * math.Pi / 180 * cosLat
+		y1 := earthR * ring[i][1] * math.Pi / 180
+		x2 := earthR * ring[j][0] * math.Pi / 180 * cosLat
+		y2 := earthR * ring[j][1] * math.Pi / 180
 		area += x1*y2 - x2*y1
 	}
 	return area / 2
