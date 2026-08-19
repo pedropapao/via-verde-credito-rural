@@ -1,49 +1,99 @@
 {{define "content"}}
 {{with .Data}}
-<div class="page-actions report-actions">
+<div class="page-actions report-actions report-actions-v2">
   <form method="get" action="/reports/summary" class="date-filter"><label>Data<input type="date" name="date" value="{{.Date}}"></label><button class="btn ghost" type="submit">Ver dia</button></form>
-  <textarea id="daily-summary-copy" class="copy-source" aria-hidden="true">{{.SummaryText}}</textarea>
-  <button class="btn primary" type="button" data-copy-target="#daily-summary-copy">Copiar relatório do dia</button>
+  <div class="report-copy-actions">
+    <textarea id="daily-summary-short" class="copy-source" aria-hidden="true">{{.ShortText}}</textarea>
+    <textarea id="daily-summary-full" class="copy-source" aria-hidden="true">{{.FullText}}</textarea>
+    <button class="btn ghost" type="button" data-copy-target="#daily-summary-short">Copiar resumo curto</button>
+    <button class="btn primary" type="button" data-copy-target="#daily-summary-full">Copiar relatório completo</button>
+  </div>
 </div>
 
-<section class="hero-card report-hero">
-  <div><span class="eyebrow light">RESUMO GERENCIAL</span><h2>{{dateBR .Date}}</h2><p>O que avançou no dia, em números e em ordem cronológica.</p></div>
+<section class="hero-card report-hero report-hero-v2">
+  <div>
+    <span class="eyebrow light">PRESTAÇÃO DE CONTAS DO DIA</span>
+    <h2>{{dateBR .Date}}</h2>
+    <p>O que foi feito, em quais projetos houve avanço e o que ficou para o próximo acompanhamento.</p>
+  </div>
 </section>
 
-<section class="kpi-grid executive-kpis report-kpis">
-  <article class="kpi kpi-main"><span>Projetos movimentados</span><strong>{{.ProjectsMoved}}</strong><small>com alguma atualização</small></article>
-  <article class="kpi"><span>Atividades concluídas</span><strong>{{.TasksDone}}</strong><small>checklist diário</small></article>
+<section class="kpi-grid executive-kpis report-kpis report-kpis-v2">
+  <article class="kpi kpi-main"><span>Projetos trabalhados</span><strong>{{.ProjectsMoved}}</strong><small>com movimentação registrada</small></article>
+  <article class="kpi"><span>Ações realizadas</span><strong>{{.TotalActions}}</strong><small>atividades e atualizações</small></article>
   <article class="kpi"><span>Documentos recebidos</span><strong>{{.DocsReceived}}</strong><small>recebidos ou dispensados</small></article>
-  <article class="kpi"><span>Atualizações de andamento</span><strong>{{.ProgressUpdates}}</strong><small>status, fase ou dependência</small></article>
+  <article class="kpi"><span>Avançaram de etapa</span><strong>{{.ProjectsAdvanced}}</strong><small>mudança de status</small></article>
 </section>
 
 {{if or .Sent .Approved .Contracted}}
-<section class="report-milestones">
+<section class="report-milestones report-milestones-v2">
   <span>Enviados ao banco <strong>{{.Sent}}</strong></span>
   <span>Aprovados <strong>{{.Approved}}</strong></span>
   <span>Contratados <strong>{{.Contracted}}</strong></span>
 </section>
 {{end}}
 
-<section class="card daily-summary-box">
-  <div class="section-head"><div><span class="eyebrow">RESUMO PRONTO</span><h3>Texto para compartilhar</h3><p>Use o botão acima para copiar e enviar no WhatsApp.</p></div></div>
-  <pre>{{.SummaryText}}</pre>
+<section class="card report-projects-card">
+  <div class="section-head report-section-head"><div><span class="eyebrow">POR PROJETO</span><h3>O que foi feito hoje</h3><p>O relatório agora organiza cada movimentação pelo projeto correspondente.</p></div></div>
+  <div class="daily-project-report-list">
+    {{range .ProjectSummaries}}
+    <article class="daily-project-report">
+      <div class="daily-project-report-head">
+        <div>
+          <span class="report-bank">{{if .Project.Bank}}{{.Project.Bank}}{{else}}Banco a confirmar{{end}}</span>
+          <h4><a href="/projects/{{.Project.ID}}">{{.Producer}} — {{.Project.Title}}</a></h4>
+        </div>
+        <span class="badge {{statusClass .Project.Status}}">{{if .Project.Status}}{{.Project.Status}}{{else}}A confirmar{{end}}</span>
+      </div>
+      <div class="daily-project-actions">
+        {{range .Activities}}<div class="daily-action-done"><span>✓</span><p>{{.}}</p></div>{{end}}
+      </div>
+      <div class="daily-project-state">
+        <div><span>Fase atual</span><strong>{{if .Project.Phase}}{{.Project.Phase}}{{else}}A definir{{end}}</strong></div>
+        <div><span>Depende agora</span><strong>{{.Dependency}}</strong></div>
+        <div><span>Documentação</span><strong>{{if .PendingDocs}}{{.PendingDocs}} pendente(s){{else}}Sem pendência registrada{{end}}</strong></div>
+      </div>
+      <div class="daily-next-step"><span>PRÓXIMO PASSO</span><strong>{{.NextStep}}</strong></div>
+      {{if .PendingTasks}}<div class="daily-open-items"><span>Pendências abertas</span>{{range .PendingTasks}}<small>• {{.}}</small>{{end}}</div>{{end}}
+      {{if .PendingDocuments}}<details class="daily-pending-docs"><summary>Ver documentos pendentes</summary><div>{{range .PendingDocuments}}<small>• {{.}}</small>{{end}}</div></details>{{end}}
+    </article>
+    {{else}}
+    <div class="report-empty-state"><strong>Nenhuma movimentação registrada neste dia.</strong><p>Quando você atualizar andamento, checklist ou concluir tarefas, elas aparecerão aqui automaticamente.</p></div>
+    {{end}}
+  </div>
 </section>
 
-<div class="two-col project-cols">
-  <section class="card">
-    <div class="section-head"><div><span class="eyebrow">MOVIMENTAÇÕES</span><h3>O que aconteceu</h3></div></div>
-    <div class="timeline visual-timeline">
-      {{range .Events}}<article><div class="timeline-dot"></div><div class="timeline-content"><strong>{{.Title}}</strong><small class="timeline-type">{{if .ProjectTitle}}{{.ProjectTitle}}{{else}}Projeto{{end}}{{if .Producer}} · {{.Producer}}{{end}}</small>{{if .Details}}<p>{{.Details}}</p>{{end}}</div></article>{{else}}<p class="empty">Nenhuma movimentação registrada neste dia.</p>{{end}}
-    </div>
-  </section>
+{{if .PendingNext}}
+<section class="card report-pending-card">
+  <div class="section-head report-section-head"><div><span class="eyebrow">PRÓXIMO ACOMPANHAMENTO</span><h3>O que ainda precisa de atenção</h3><p>Próximos passos dos projetos movimentados no dia.</p></div></div>
+  <div class="report-pending-grid">
+    {{range .PendingNext}}
+    <a class="report-pending-item" href="/projects/{{.ProjectID}}">
+      <div><strong>{{.Producer}}</strong><small>{{.ProjectTitle}}</small></div>
+      <p>{{.Text}}</p>
+      <span>{{.Responsible}}</span>
+    </a>
+    {{end}}
+  </div>
+</section>
+{{end}}
 
-  <section class="card">
-    <div class="section-head"><div><span class="eyebrow">ENTREGAS</span><h3>Atividades concluídas</h3></div></div>
-    <div class="task-list">
-      {{range .CompletedTasks}}<article class="task-row done"><div><strong>{{.Title}}</strong><small>{{if .ProjectTitle}}{{.ProjectTitle}}{{else}}Projeto{{end}}{{if .Responsible}} · {{.Responsible}}{{end}}</small></div><span class="badge ok">Concluída</span></article>{{else}}<p class="empty">Nenhuma atividade concluída neste dia.</p>{{end}}
-    </div>
+<div class="two-col project-cols report-bottom-grid">
+  <section class="card daily-summary-box">
+    <div class="section-head"><div><span class="eyebrow">RESUMO CURTO</span><h3>Mensagem rápida para WhatsApp</h3><p>Use “Copiar resumo curto” no topo.</p></div></div>
+    <pre>{{.ShortText}}</pre>
+  </section>
+  <section class="card daily-summary-box">
+    <div class="section-head"><div><span class="eyebrow">RELATÓRIO COMPLETO</span><h3>Prestação de contas detalhada</h3><p>Use “Copiar relatório completo” no topo.</p></div></div>
+    <pre>{{.FullText}}</pre>
   </section>
 </div>
+
+<details class="card report-history-details">
+  <summary>Ver histórico técnico do dia</summary>
+  <div class="timeline visual-timeline">
+    {{range .Events}}<article><div class="timeline-dot"></div><div class="timeline-content"><strong>{{.Title}}</strong><small class="timeline-type">{{if .ProjectTitle}}{{.ProjectTitle}}{{else}}Projeto{{end}}{{if .Producer}} · {{.Producer}}{{end}}</small>{{if .Details}}<p>{{.Details}}</p>{{end}}</div></article>{{else}}<p class="empty">Nenhum evento técnico registrado.</p>{{end}}
+  </div>
+</details>
 {{end}}
 {{end}}
