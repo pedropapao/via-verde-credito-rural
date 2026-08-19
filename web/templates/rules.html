@@ -4,8 +4,8 @@
   <div class="whatsapp-report-top">
     <div>
       <span class="eyebrow">RELATÓRIO DO DIA</span>
-      <h2>Mensagem pronta para WhatsApp</h2>
-      <p>Escolha a data, confira o texto e copie. Você pode editar a mensagem antes de copiar sem alterar nenhum dado do sistema.</p>
+      <h2>Pronto para mandar no WhatsApp</h2>
+      <p>Escolha a data, ajuste o texto se quiser e clique em copiar.</p>
     </div>
     <form method="get" action="/reports/summary" class="date-filter whatsapp-date-filter">
       <label>Data<input type="date" name="date" value="{{.Date}}"></label>
@@ -13,29 +13,20 @@
     </form>
   </div>
 
-  <div class="whatsapp-report-stats">
-    <span><strong>{{.ProjectsMoved}}</strong> projeto(s)</span>
-    <span><strong>{{.TotalActions}}</strong> ação(ões)</span>
-    <span><strong>{{.DocsReceived}}</strong> documento(s)</span>
-  </div>
+  <textarea id="daily-summary-whatsapp" class="whatsapp-report-textarea">📋 RELATÓRIO DO DIA — {{dateBR .Date}}
+{{if .ProjectSummaries}}{{range .ProjectSummaries}}
+✅ {{.Producer}}{{if .Project.Bank}} — {{.Project.Bank}}{{end}}
+{{if ge (len .Activities) 2}}{{range slice .Activities 0 2}}• {{.}}
+{{end}}{{else}}{{range .Activities}}• {{.}}
+{{end}}{{end}}📍 {{if .Project.Status}}{{.Project.Status}}{{else}}Status a confirmar{{end}} · {{.Dependency}}
+{{end}}{{if .PendingNext}}
+⚠️ PENDÊNCIAS
+{{range .PendingNext}}• {{.Producer}} — {{.Text}}
+{{end}}{{end}}{{else}}
+Sem movimentações registradas neste dia.{{end}}</textarea>
 
-  <textarea id="daily-summary-whatsapp" class="whatsapp-report-textarea">{{.ShortText}}</textarea>
-
-  <button class="btn primary whatsapp-copy-button" type="button" data-copy-target="#daily-summary-whatsapp">Copiar mensagem</button>
+  <button class="btn primary whatsapp-copy-button" type="button" data-copy-target="#daily-summary-whatsapp">Copiar para WhatsApp</button>
+  <small class="whatsapp-edit-note">O texto acima é editável. O que você mudar ali não altera os projetos.</small>
 </section>
-
-{{if .ProjectSummaries}}
-<details class="card whatsapp-report-details">
-  <summary>Ver movimentações usadas para montar a mensagem</summary>
-  <div class="whatsapp-source-list">
-    {{range .ProjectSummaries}}
-    <a href="/projects/{{.Project.ID}}">
-      <strong>{{.Producer}}</strong>
-      <span>{{if .Project.Bank}}{{.Project.Bank}}{{else}}Banco a confirmar{{end}} · {{if .Project.Status}}{{.Project.Status}}{{else}}Status a confirmar{{end}}</span>
-    </a>
-    {{end}}
-  </div>
-</details>
-{{end}}
 {{end}}
 {{end}}
