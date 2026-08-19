@@ -1,4 +1,20 @@
 (() => {
+  const copyText = async (text) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.focus();
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+  };
+
   const btn = document.querySelector('[data-menu-toggle]');
   const sidebar = document.getElementById('sidebar');
   if (btn && sidebar) {
@@ -15,24 +31,27 @@
       const text = typeof target.value === 'string' ? target.value : target.textContent;
       const original = copyButton.textContent;
       try {
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(text);
-        } else {
-          const area = document.createElement('textarea');
-          area.value = text;
-          area.style.position = 'fixed';
-          area.style.opacity = '0';
-          document.body.appendChild(area);
-          area.focus();
-          area.select();
-          document.execCommand('copy');
-          area.remove();
-        }
+        await copyText(text);
         copyButton.textContent = 'Copiado ✓';
       } catch (_) {
         copyButton.textContent = 'Não foi possível copiar';
       }
       window.setTimeout(() => { copyButton.textContent = original; }, 1800);
+    });
+  });
+
+  document.querySelectorAll('[data-copy-open]').forEach((openButton) => {
+    openButton.addEventListener('click', () => {
+      const text = openButton.dataset.copyText || '';
+      const url = openButton.dataset.openUrl || '';
+      const original = openButton.textContent;
+      if (text) {
+        copyText(text).then(() => {
+          openButton.textContent = 'CAR copiado ✓';
+          window.setTimeout(() => { openButton.textContent = original; }, 1800);
+        }).catch(() => {});
+      }
+      if (url) window.open(url, '_blank', 'noopener');
     });
   });
 
@@ -68,6 +87,69 @@
       stageTarget.textContent = diff === 0 ? 'Hoje' : `${diff} dia(s)`;
     } else {
       stageTarget.textContent = 'A definir';
+    }
+  }
+
+  const receiptHelper = document.querySelector('[data-receipt-helper]');
+  if (receiptHelper) {
+    const cpfInput = receiptHelper.querySelector('[data-representative-cpf]');
+    const buildButton = receiptHelper.querySelector('[data-build-receipt-request]');
+    const requestBox = receiptHelper.querySelector('[data-receipt-request-box]');
+    const messageField = receiptHelper.querySelector('[data-receipt-message]');
+    const whatsappButton = receiptHelper.querySelector('[data-open-whatsapp]');
+    const carNumber = receiptHelper.dataset.carNumber || '';
+
+    const onlyDigits = (value) => (value || '').replace(/\D/g, '').slice(0, 11);
+    const formatCPF = (value) => {
+      const digits = onlyDigits(value);
+      if (digits.length <= 3) return digits;
+      if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+      if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+      return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+    };
+    const validCPF = (value) => {
+      const cpf = onlyDigits(value);
+      if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+      const calc = (length) => {
+        let sum = 0;
+        for (let i = 0; i < length; i += 1) sum += Number(cpf[i]) * (length + 1 - i);
+        const digit = (sum * 10) % 11;
+        return digit === 10 ? 0 : digit;
+      };
+      return calc(9) === Number(cpf[9]) && calc(10) === Number(cpf[10]);
+    };
+
+    if (cpfInput) {
+      cpfInput.addEventListener('input', () => {
+        cpfInput.value = formatCPF(cpfInput.value);
+        cpfInput.removeAttribute('aria-invalid');
+      });
+    }
+
+    if (buildButton && cpfInput && requestBox && messageField) {
+      buildButton.addEventListener('click', () => {
+        const cpf = formatCPF(cpfInput.value);
+        const original = buildButton.textContent;
+        if (!validCPF(cpf)) {
+          cpfInput.setAttribute('aria-invalid', 'true');
+          cpfInput.focus();
+          buildButton.textContent = 'Confira o CPF';
+          window.setTimeout(() => { buildButton.textContent = original; }, 1800);
+          return;
+        }
+
+        messageField.value = `Olá! Preciso acessar o seu CAR para baixar a segunda via do Recibo de Inscrição e o Demonstrativo, sem utilizar ou pedir a sua senha GOV.BR.\n\nPor favor:\n1. Acesse https://www.car.gov.br/#/central/acesso\n2. Entre com a sua própria conta GOV.BR.\n3. Abra a opção “Gerenciar Vínculos”.\n4. Escolha “Vincular Representante”.\n5. Informe meu CPF: ${cpf}\n6. Vincule o representante ao CAR: ${carNumber}\n\nDepois me avise que o vínculo foi concluído. Eu acessarei a Central com a minha própria conta GOV.BR para obter o Recibo e o Demonstrativo. Você poderá remover esse vínculo posteriormente na própria Central.\n\nImportante: não preciso da sua senha GOV.BR.`;
+        requestBox.hidden = false;
+        requestBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+
+    if (whatsappButton && messageField) {
+      whatsappButton.addEventListener('click', () => {
+        const text = (messageField.value || '').trim();
+        if (!text) return;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+      });
     }
   }
 })();
