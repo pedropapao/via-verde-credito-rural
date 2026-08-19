@@ -15,8 +15,33 @@ func TestNormalizeCAR(t *testing.T) {
 	if uf != "MG" || muni != "3164605" { t.Fatalf("UF/município inesperados: %s %s", uf, muni) }
 }
 
+func TestNormalizeCARSemPontos(t *testing.T) {
+	in := "MG-3164605-6F3F1D39A7A54752B1161C3FB236E981"
+	got, _, _, err := normalizeCAR(in)
+	if err != nil { t.Fatalf("CAR sem pontos deveria ser aceito: %v", err) }
+	if got != "MG-3164605-6F3F.1D39.A7A5.4752.B116.1C3F.B236.E981" { t.Fatalf("normalização inesperada: %s", got) }
+}
+
 func TestNormalizeCARInvalido(t *testing.T) {
 	if _, _, _, err := normalizeCAR("MG-123"); err == nil { t.Fatal("esperava erro para CAR inválido") }
+}
+
+func TestCARLookupCodes(t *testing.T) {
+	codes := carLookupCodes("MG-3164605-6F3F.1D39.A7A5.4752.B116.1C3F.B236.E981")
+	if len(codes) != 2 { t.Fatalf("esperava duas variantes de busca, recebeu %d", len(codes)) }
+	if strings.Contains(codes[1], ".") { t.Fatalf("segunda variante deveria estar sem pontos: %s", codes[1]) }
+}
+
+func TestCARLayerUF(t *testing.T) {
+	if carLayerUF("MG") != "mg" { t.Fatalf("MG deveria gerar layer mg") }
+	if carLayerUF("DF") != "DF" { t.Fatalf("DF deveria preservar caixa alta") }
+}
+
+func TestCARLabels(t *testing.T) {
+	if carStatusLabel("AT") != "Ativo" { t.Fatalf("status AT não traduzido") }
+	if carStatusLabel("SU") != "Suspenso" { t.Fatalf("status SU não traduzido") }
+	if carPropertyTypeLabel("IRU") != "Imóvel Rural" { t.Fatalf("tipo IRU não traduzido") }
+	if carPropertyTypeLabel("AST") != "Assentamento da Reforma Agrária" { t.Fatalf("tipo AST não traduzido") }
 }
 
 func TestCARGeometryKML(t *testing.T) {
