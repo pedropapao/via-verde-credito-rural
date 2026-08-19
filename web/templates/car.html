@@ -17,7 +17,7 @@
         <input id="car-number" name="number" value="{{.Query}}" placeholder="MG-0000000-XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX" autocomplete="off" spellcheck="false" required>
         <button class="btn primary" type="submit">Consultar</button>
       </div>
-      <small>Exemplo de formato: UF-0000000-XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX</small>
+      <small>Também aceita o identificador final sem os pontos.</small>
     </form>
   </section>
 
@@ -45,13 +45,17 @@
         <div><span>Módulos fiscais</span><strong>{{if .FiscalModules}}{{printf "%.2f" .FiscalModules}}{{else}}Não informado{{end}}</strong></div>
       </div>
 
+      {{if or (eq .Status "Suspenso") (eq .Status "Cancelado")}}
+      <div class="alert error car-credit-alert"><strong>Atenção para crédito rural:</strong> inscrição do CAR {{.Status}}. Confira o impedimento e as exceções aplicáveis no MCR antes de prosseguir com a operação.</div>
+      {{end}}
+
       {{if .HasGeometry}}
       <div class="car-map-preview">{{.MapSVG}}</div>
       {{end}}
       {{end}}
 
       <div class="car-actions">
-        {{if .HasGeometry}}<a class="btn primary" href="{{.KMLURL}}">Baixar KML</a>{{end}}
+        {{if .HasGeometry}}<a class="btn primary" href="{{.KMLURL}}">Gerar e baixar KML</a>{{end}}
         <a class="btn ghost" href="{{.PublicURL}}" target="_blank" rel="noopener">Abrir Consulta Pública do CAR</a>
         <a class="btn ghost" href="{{.MeuImovelURL}}" target="_blank" rel="noopener">Recibo e Demonstrativo</a>
       </div>
