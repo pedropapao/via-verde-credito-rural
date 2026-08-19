@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="/static/readability.css">
   <link rel="stylesheet" href="/static/kanban_fix.css">
   <link rel="stylesheet" href="/static/report_v2.css">
+  <link rel="stylesheet" href="/static/car.css">
   <script defer src="/static/app.js"></script>
 </head>
 <body>
@@ -30,6 +31,8 @@
       <a class="{{if hasPrefix .CurrentPath "/projects"}}active{{end}}" href="/projects"><span>▣</span>Projetos</a>
       <a class="{{if hasPrefix .CurrentPath "/kanban"}}active{{end}}" href="/kanban"><span>▥</span>Pipeline</a>
       <a class="{{if hasPrefix .CurrentPath "/attention"}}active{{end}}" href="/attention"><span>!</span>Atenção</a>
+      <span class="nav-group">Ferramentas</span>
+      <a class="{{if hasPrefix .CurrentPath "/car"}}active{{end}}" href="/car"><span>⌖</span>Consulta CAR</a>
       <span class="nav-group">Rotina</span>
       <a class="{{if hasPrefix .CurrentPath "/reports/daily"}}active{{end}}" href="/reports/daily"><span>✓</span>Checklist diário</a>
       <a class="{{if hasPrefix .CurrentPath "/reports/summary"}}active{{end}}" href="/reports/summary"><span>≡</span>Relatório do dia</a>
