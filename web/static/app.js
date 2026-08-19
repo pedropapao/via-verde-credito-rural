@@ -97,6 +97,7 @@
     const requestBox = receiptHelper.querySelector('[data-receipt-request-box]');
     const messageField = receiptHelper.querySelector('[data-receipt-message]');
     const whatsappButton = receiptHelper.querySelector('[data-open-whatsapp]');
+    const stateEmailButton = receiptHelper.querySelector('[data-state-receipt-email]');
     const carNumber = receiptHelper.dataset.carNumber || '';
 
     const onlyDigits = (value) => (value || '').replace(/\D/g, '').slice(0, 11);
@@ -149,6 +150,16 @@
         const text = (messageField.value || '').trim();
         if (!text) return;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+      });
+    }
+
+    if (stateEmailButton) {
+      stateEmailButton.addEventListener('click', () => {
+        const email = stateEmailButton.dataset.email || '';
+        if (!email) return;
+        const subject = `Solicitação de cópia do Recibo de Inscrição do CAR - ${carNumber}`;
+        const body = `Prezados,\n\nSolicito orientação e, se possível, a cópia do Recibo de Inscrição do Cadastro Ambiental Rural referente ao imóvel abaixo:\n\nCAR: ${carNumber}\n\nCaso sejam necessários documentos de identificação, autorização do titular ou outros comprovantes, por favor informem os documentos e o procedimento correto para atendimento.\n\nAtenciosamente,`;
+        window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       });
     }
   }
