@@ -9,6 +9,8 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      - key: GODEBUG
+        value: tlsrsakex=1
       - key: APP_BASE_URL
         sync: false
       - key: SUPABASE_URL
