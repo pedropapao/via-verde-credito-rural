@@ -45,10 +45,6 @@
         <div><span>Módulos fiscais</span><strong>{{if .FiscalModules}}{{printf "%.2f" .FiscalModules}}{{else}}Não informado{{end}}</strong></div>
       </div>
 
-      {{if or (eq .Status "Suspenso") (eq .Status "Cancelado")}}
-      <div class="alert error car-credit-alert"><strong>Atenção para crédito rural:</strong> inscrição do CAR {{.Status}}. Confira o impedimento e as exceções aplicáveis no MCR antes de prosseguir com a operação.</div>
-      {{end}}
-
       {{if .HasGeometry}}
       <div class="car-map-preview">{{.MapSVG}}</div>
       {{end}}
@@ -56,7 +52,7 @@
 
       <div class="car-actions">
         {{if .HasGeometry}}<a class="btn primary" href="{{.KMLURL}}">Gerar e baixar KML</a>{{end}}
-        <a class="btn ghost" href="{{.PublicURL}}" target="_blank" rel="noopener">Abrir Consulta Pública do CAR</a>
+        <a class="btn ghost" href="https://consultapublica.car.gov.br/publico/imoveis/index" target="_blank" rel="noopener">Abrir Consulta Pública do CAR</a>
         <a class="btn ghost" href="{{.MeuImovelURL}}" target="_blank" rel="noopener">Recibo e Demonstrativo</a>
       </div>
     </section>
@@ -74,7 +70,7 @@
     </article>
     <article class="card car-help-card">
       <span class="car-step">3</span>
-      <div><strong>Consulta Pública</strong><p>Se a consulta automática estiver temporariamente indisponível, você ainda consegue abrir diretamente o serviço público do SICAR.</p></div>
+      <div><strong>Consulta Pública</strong><p>Se a consulta automática estiver temporariamente indisponível, você ainda consegue abrir diretamente a consulta oficial de imóveis do SICAR.</p></div>
     </article>
   </section>
 
