@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"strings"
+	""strings""
 	"testing"
 )
 
@@ -21,6 +21,7 @@ func TestTemplatesDoPainelDeVisualizacaoCompilamEExecutam(t *testing.T) {
 		{"properties", AttentionView{}},
 		{"daily", DailyChecklistView{Projects:[]Project{}}},
 		{"rules", DailySummaryView{}},
+		{"car", CARView{}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T){
