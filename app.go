@@ -83,7 +83,7 @@ func (a *App) parseTemplates() {
 		"hasPrefix": strings.HasPrefix,
 		"list":      func(v ...string) []string { return v },
 	}
-	pages := []string{"login", "dashboard", "projects", "project_form", "project_detail", "clients", "properties", "daily", "users", "invite", "rules", "settings", "documents", "setup"}
+	pages := []string{"login", "dashboard", "projects", "project_form", "project_detail", "clients", "properties", "daily", "users", "invite", "rules", "settings", "documents", "setup", "car"}
 	for _, page := range pages {
 		t, err := template.New("base").Funcs(funcs).ParseFS(webFS, "web/templates/base.html", "web/templates/"+page+".html")
 		if err != nil {
