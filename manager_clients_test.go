@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -36,11 +38,12 @@ func TestMenuTemAcessoAClientes(t *testing.T) {
 	}
 }
 
-func TestRotasGerenciaisExpoemClientes(t *testing.T) {
-	body, err := webFS.ReadFile("car_routes.go")
-	if err == nil {
-		_ = body
+func TestRotaClientesExisteNoGerenciador(t *testing.T) {
+	a := NewApp(Config{}, nil)
+	r := httptest.NewRequest(http.MethodGet, "/clients", nil)
+	w := httptest.NewRecorder()
+	a.routesManagerCAR().ServeHTTP(w, r)
+	if w.Code == http.StatusNotFound {
+		t.Fatal("rota /clients não foi registrada")
 	}
-	// A existência e compilação de routesManagerCAR com managerClientsList/clientCreate
-	// já garante que as duas rotas referenciam handlers válidos no build.
 }
