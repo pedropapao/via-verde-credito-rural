@@ -4,17 +4,21 @@
   <div class="page-actions clients-toolbar">
     <div>
       <span class="eyebrow">CARTEIRA DE PRODUTORES</span>
-      <h3>{{.Total}} cliente(s) cadastrado(s)</h3>
-      <p class="page-note">Cadastre o produtor uma vez e use o mesmo cliente nos projetos atuais e futuros.</p>
+      <h3>{{.Total}} cliente(s) ativo(s)</h3>
+      <p class="page-note">Cadastre o produtor uma vez, acompanhe o histórico e crie novos projetos já vinculados.</p>
     </div>
-    <form method="get" action="/clients" class="clients-search">
-      <input name="q" value="{{.Query}}" placeholder="Buscar nome, CPF/CNPJ, telefone ou e-mail...">
-      <button class="btn secondary" type="submit">Buscar</button>
-      {{if .Query}}<a class="btn ghost" href="/clients">Limpar</a>{{end}}
-    </form>
+    <div class="clients-toolbar-actions">
+      <form method="get" action="/clients" class="clients-search">
+        {{if .ShowArchived}}<input type="hidden" name="archived" value="1">{{end}}
+        <input name="q" value="{{.Query}}" placeholder="Buscar nome, CPF/CNPJ, telefone ou e-mail...">
+        <button class="btn secondary" type="submit">Buscar</button>
+        {{if .Query}}<a class="btn ghost" href="/clients{{if .ShowArchived}}?archived=1{{end}}">Limpar</a>{{end}}
+      </form>
+      {{if .ShowArchived}}<a class="btn ghost" href="/clients">← Ver clientes ativos</a>{{else}}<a class="btn ghost" href="/clients?archived=1">Arquivados ({{.ArchivedCount}})</a>{{end}}
+    </div>
   </div>
 
-  {{if eq $.User.Role "owner"}}
+  {{if and (eq $.User.Role "owner") (not .ShowArchived)}}
   <section class="card client-new-card">
     <div class="section-head">
       <div><span class="eyebrow">NOVO CLIENTE</span><h3>Adicionar produtor</h3><p>Somente o nome é obrigatório. Os demais dados podem ser completados depois.</p></div>
@@ -33,28 +37,31 @@
 
   <section class="card clients-list-card">
     <div class="section-head">
-      <div><span class="eyebrow">CLIENTES</span><h3>{{len .Clients}} resultado(s)</h3><p>Os projetos vinculados ao produtor são contados automaticamente.</p></div>
+      <div><span class="eyebrow">{{if .ShowArchived}}CLIENTES ARQUIVADOS{{else}}CLIENTES{{end}}</span><h3>{{len .Clients}} resultado(s)</h3><p>{{if .ShowArchived}}Clientes arquivados continuam com todo o histórico preservado.{{else}}Os projetos vinculados ao produtor são contados automaticamente.{{end}}</p></div>
     </div>
     <div class="clients-grid">
       {{range .Clients}}
-      <article class="client-card">
+      <article class="client-card {{if .Archived}}client-card-archived{{end}}">
         <div class="client-card-top">
           <span class="client-avatar">{{slice .Name 0 1}}</span>
           <div class="client-main"><strong>{{.Name}}</strong><small>{{if .Document}}{{.Document}}{{else}}CPF/CNPJ não informado{{end}}</small></div>
-          {{if gt .ActiveCount 0}}<span class="badge warn">{{.ActiveCount}} ativo(s)</span>{{else}}<span class="badge neutral">Sem projeto ativo</span>{{end}}
+          {{if .Archived}}<span class="badge neutral">Arquivado</span>{{else if gt .ActiveCount 0}}<span class="badge warn">{{.ActiveCount}} ativo(s)</span>{{else}}<span class="badge neutral">Sem projeto ativo</span>{{end}}
         </div>
         <div class="client-contact">
           <div><span>Telefone</span><strong>{{if .Phone}}{{.Phone}}{{else}}Não informado{{end}}</strong></div>
           <div><span>E-mail</span><strong>{{if .Email}}{{.Email}}{{else}}Não informado{{end}}</strong></div>
         </div>
-        {{if .Notes}}<p class="client-note">{{.Notes}}</p>{{end}}
-        <div class="client-card-foot">
+        {{if .DisplayNotes}}<p class="client-note">{{.DisplayNotes}}</p>{{end}}
+        <div class="client-card-foot client-card-actions">
           <span><b>{{.ProjectCount}}</b> projeto(s) no histórico</span>
-          <a href="/projects">Ver projetos →</a>
+          <div>
+            <a class="client-action-link" href="/clients/{{.ID}}">Abrir ficha</a>
+            {{if and (eq $.User.Role "owner") (not .Archived)}}<a class="client-action-link strong" href="/projects/new?client_id={{.ID}}">Novo projeto</a>{{end}}
+          </div>
         </div>
       </article>
       {{else}}
-      <div class="clients-empty"><strong>Nenhum cliente encontrado.</strong><span>{{if .Query}}Tente outro termo de busca.{{else}}Use o formulário acima para cadastrar o primeiro cliente.{{end}}</span></div>
+      <div class="clients-empty"><strong>Nenhum cliente encontrado.</strong><span>{{if .Query}}Tente outro termo de busca.{{else if .ShowArchived}}Ainda não há clientes arquivados.{{else}}Use o formulário acima para cadastrar o primeiro cliente.{{end}}</span></div>
       {{end}}
     </div>
   </section>

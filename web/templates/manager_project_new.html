@@ -1,0 +1,47 @@
+{{define "content"}}
+{{with .Data}}
+<div class="clients-page manager-project-page">
+  <div class="page-actions client-detail-head">
+    <div>
+      <span class="eyebrow">NOVO PROJETO</span>
+      <h3>Criar acompanhamento</h3>
+      <p class="page-note">Cadastre apenas o necessário para acompanhar o projeto. Os detalhes técnicos continuam fora deste painel.</p>
+    </div>
+    <a class="btn ghost" href="/clients">← Voltar aos clientes</a>
+  </div>
+
+  <section class="card manager-project-card">
+    <form method="post" action="/projects/new" class="manager-project-form">
+      <input type="hidden" name="csrf" value="{{$.CSRF}}">
+      <label>Cliente / produtor
+        <select name="client_id" required>
+          <option value="">Selecione</option>
+          {{range .Clients}}<option value="{{.ID}}" {{if eq .ID $.Data.Project.ClientID}}selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+      </label>
+      <label>Título do projeto<input name="title" required maxlength="180" value="{{.Project.Title}}" placeholder="Ex.: Custeio de milho — Safra 2026/27"></label>
+      <label>Modalidade
+        <select name="modality" required>
+          <option value="">Selecione</option>
+          {{range $x := (list "Custeio agrícola" "Custeio pecuário" "Aquisição de animais" "Investimento" "Comercialização" "Industrialização")}}<option {{if eq $x $.Data.Project.Modality}}selected{{end}}>{{$x}}</option>{{end}}
+        </select>
+      </label>
+      <label>Atividade<input name="activity" value="{{.Project.Activity}}" placeholder="Milho, soja, bovinocultura, irrigação..."></label>
+      <label>Banco<input name="bank" value="{{.Project.Bank}}" placeholder="BB, Sicoob, Cresol, Sicredi..."></label>
+      <label>Valor financiado estimado (R$)<input name="financed_value" value="{{printf "%.2f" .Project.FinancedValue}}" placeholder="Opcional"></label>
+      <label>Status
+        <select name="status">
+          {{range $x := (list "Em preparação" "Aguardando documentos" "Enviado ao banco" "Em análise" "Aprovado" "Contratado" "Reprovado")}}<option {{if eq $x $.Data.Project.Status}}selected{{end}}>{{$x}}</option>{{end}}
+        </select>
+      </label>
+      <label>Fase atual<input name="phase" value="{{.Project.Phase}}" placeholder="Ex.: Reunindo documentos"></label>
+      <label class="span-2">Responsável / depende de<input name="responsible" value="{{.Project.Responsible}}" placeholder="Cliente, banco, projetista, fornecedor..."></label>
+      <div class="span-2 manager-project-actions">
+        <a class="btn ghost" href="/clients">Cancelar</a>
+        <button class="btn primary" type="submit">Criar projeto</button>
+      </div>
+    </form>
+  </section>
+</div>
+{{end}}
+{{end}}

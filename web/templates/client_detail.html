@@ -1,0 +1,75 @@
+{{define "content"}}
+{{with .Data}}
+<div class="clients-page client-detail-page">
+  <div class="page-actions client-detail-head">
+    <div>
+      <span class="eyebrow">FICHA DO CLIENTE</span>
+      <h3>{{.Client.Name}}</h3>
+      <p class="page-note">{{.ProjectCount}} projeto(s) no histórico · {{.ActiveCount}} ativo(s){{if .Archived}} · cliente arquivado{{end}}</p>
+    </div>
+    <div class="client-detail-actions">
+      <a class="btn ghost" href="/clients{{if .Archived}}?archived=1{{end}}">← Voltar</a>
+      {{if and (eq $.User.Role "owner") (not .Archived)}}<a class="btn primary" href="/projects/new?client_id={{.Client.ID}}">+ Novo projeto</a>{{end}}
+    </div>
+  </div>
+
+  <div class="client-detail-grid">
+    <section class="card client-profile-card">
+      <div class="section-head"><div><span class="eyebrow">CADASTRO</span><h3>Dados do produtor</h3><p>Informações rápidas para identificação e contato.</p></div></div>
+      <div class="client-profile-list">
+        <div><span>CPF / CNPJ</span><strong>{{if .Client.Document}}{{.Client.Document}}{{else}}Não informado{{end}}</strong></div>
+        <div><span>Telefone / WhatsApp</span><strong>{{if .Client.Phone}}{{.Client.Phone}}{{else}}Não informado{{end}}</strong></div>
+        <div><span>E-mail</span><strong>{{if .Client.Email}}{{.Client.Email}}{{else}}Não informado{{end}}</strong></div>
+        <div><span>Situação</span><strong>{{if .Archived}}Arquivado{{else}}Ativo{{end}}</strong></div>
+      </div>
+      {{if .DisplayNotes}}<div class="client-detail-note"><span>Observação</span><p>{{.DisplayNotes}}</p></div>{{end}}
+    </section>
+
+    {{if eq $.User.Role "owner"}}
+    <section class="card client-edit-card">
+      <div class="section-head"><div><span class="eyebrow">EDITAR</span><h3>Atualizar cadastro</h3><p>As alterações não afetam o histórico dos projetos.</p></div></div>
+      <form method="post" action="/clients/{{.Client.ID}}/edit" class="client-edit-form">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <label>Nome do produtor / cliente<input name="name" required maxlength="160" value="{{.Client.Name}}"></label>
+        <label>CPF / CNPJ<input name="document" maxlength="32" value="{{.Client.Document}}"></label>
+        <label>Telefone / WhatsApp<input name="phone" maxlength="40" value="{{.Client.Phone}}"></label>
+        <label>E-mail<input type="email" name="email" maxlength="160" value="{{.Client.Email}}"></label>
+        <label class="span-2">Observação<textarea name="notes" rows="3" maxlength="1200">{{.DisplayNotes}}</textarea></label>
+        <div class="span-2 client-edit-actions"><button class="btn primary" type="submit">Salvar alterações</button></div>
+      </form>
+      <form method="post" action="/clients/{{.Client.ID}}/archive" class="client-archive-form">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        {{if .Archived}}
+          <div><strong>Cliente arquivado</strong><p>Reative para permitir a criação de novos projetos vinculados.</p></div>
+          <button class="btn secondary" type="submit">Reativar cliente</button>
+        {{else}}
+          <div><strong>Arquivar cliente</strong><p>O cadastro sai da lista principal, mas nenhum projeto ou histórico é apagado.</p></div>
+          <button class="btn ghost" type="submit">Arquivar</button>
+        {{end}}
+      </form>
+    </section>
+    {{end}}
+  </div>
+
+  <section class="card client-projects-card">
+    <div class="section-head client-projects-head">
+      <div><span class="eyebrow">HISTÓRICO</span><h3>Projetos deste cliente</h3><p>Abra qualquer projeto para ver checklist, andamento, histórico e pendências.</p></div>
+      {{if and (eq $.User.Role "owner") (not .Archived)}}<a class="btn secondary" href="/projects/new?client_id={{.Client.ID}}">Criar novo projeto</a>{{end}}
+    </div>
+    <div class="client-project-list">
+      {{range .Projects}}
+      <a class="client-project-row" href="/projects/{{.ID}}">
+        <div class="client-project-title"><strong>{{.Title}}</strong><small>{{if .Modality}}{{.Modality}}{{else}}Modalidade a definir{{end}} · {{if .Bank}}{{.Bank}}{{else}}Banco a definir{{end}}</small></div>
+        <div><span>Status</span><strong>{{if .Status}}{{.Status}}{{else}}A definir{{end}}</strong></div>
+        <div><span>Fase</span><strong>{{if .Phase}}{{.Phase}}{{else}}A definir{{end}}</strong></div>
+        <div><span>Valor</span><strong>{{money .FinancedValue}}</strong></div>
+        <b class="client-project-arrow">→</b>
+      </a>
+      {{else}}
+      <div class="clients-empty"><strong>Nenhum projeto vinculado.</strong><span>{{if and (eq $.User.Role "owner") (not .Archived)}}Use “Novo projeto” para iniciar o primeiro acompanhamento deste cliente.{{else}}Este cliente ainda não possui projetos.{{end}}</span></div>
+      {{end}}
+    </div>
+  </section>
+</div>
+{{end}}
+{{end}}
