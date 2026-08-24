@@ -1,0 +1,31 @@
+{{define "content"}}
+{{with .Data}}
+<div class="page-actions">
+  <div><span class="eyebrow">PIPELINE</span><h3>{{.Total}} projetos na carteira</h3><p class="page-note">As etapas aparecem em blocos completos para facilitar a leitura, sem precisar rolar a tela para os lados.</p></div>
+  <a class="btn secondary" href="/attention">Ver somente os que exigem atenção</a>
+</div>
+
+<section class="kanban-board" aria-label="Pipeline de projetos">
+  {{range .Columns}}
+  <div class="kanban-column stage-{{.Key}}">
+    <div class="kanban-head"><span>{{.Title}}</span><strong>{{len .Projects}}</strong></div>
+    <div class="kanban-cards">
+      {{range .Projects}}
+      <a class="kanban-card" href="/projects/{{.ID}}">
+        <div class="kanban-card-top"><span class="signal-chip {{.Signal}}"><i class="signal-dot {{.Signal}}"></i>{{.SignalLabel}}</span><small>{{if .Bank}}{{.Bank}}{{else}}Banco a definir{{end}}</small></div>
+        <strong>{{.Title}}</strong>
+        <p>{{if .ClientName}}{{.ClientName}}{{else}}Produtor a confirmar{{end}}</p>
+        <div class="kanban-meta"><span><b>Fase:</b> {{if .Phase}}{{.Phase}}{{else}}A definir{{end}}</span><span><b>Depende de:</b> {{.Dependency}}</span></div>
+        <div class="kanban-footer">
+          <span>Há {{.StageDays}} dia(s) nesta etapa</span>
+          {{if gt .PendingDocs 0}}<b>{{.PendingDocs}} doc. pend.</b>{{end}}
+          {{if gt .OverdueTasks 0}}<b class="danger-text">{{.OverdueTasks}} vencida(s)</b>{{end}}
+        </div>
+      </a>
+      {{else}}<div class="kanban-empty">Nenhum projeto nesta etapa.</div>{{end}}
+    </div>
+  </div>
+  {{end}}
+</section>
+{{end}}
+{{end}}
