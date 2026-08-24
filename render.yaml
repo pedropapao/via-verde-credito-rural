@@ -3,7 +3,7 @@ services:
     name: via-verde-credito-rural
     runtime: go
     plan: free
-    buildCommand: GOMAXPROCS=1 go build -p=1 -o bin/via-verde .
+    buildCommand: cp bin/via-verde-amd64 bin/via-verde && chmod +x bin/via-verde
     startCommand: ./bin/via-verde
     healthCheckPath: /health
     envVars:
