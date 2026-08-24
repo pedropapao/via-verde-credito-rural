@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"net/url"
 	"sort"
@@ -154,11 +155,11 @@ func (a *App) managerClientEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	vals := map[string]any{
-		"name": name,
+		"name":     name,
 		"document": strings.TrimSpace(r.FormValue("document")),
-		"phone": strings.TrimSpace(r.FormValue("phone")),
-		"email": strings.TrimSpace(r.FormValue("email")),
-		"notes": clientStoredNotes(r.FormValue("notes"), clientArchived(c.Notes)),
+		"phone":    strings.TrimSpace(r.FormValue("phone")),
+		"email":    strings.TrimSpace(r.FormValue("email")),
+		"notes":    clientStoredNotes(r.FormValue("notes"), clientArchived(c.Notes)),
 	}
 	if err := a.sb.Update(r.Context(), "clients", eq("id", c.ID), vals, nil); err != nil {
 		http.Error(w, "Não foi possível atualizar o cliente.", http.StatusInternalServerError)
@@ -212,9 +213,19 @@ func (a *App) managerProjectNewForm(w http.ResponseWriter, r *http.Request, p Pr
 			selectedExists = true
 		}
 	}
+
+	// Garante que um cliente recém-cadastrado e aberto pela ficha não seja perdido
+	// mesmo se a listagem geral ainda estiver em uma leitura imediatamente anterior.
+	if p.ClientID != "" && !selectedExists {
+		if c, ok := a.getManagerClient(r, p.ClientID); ok && !clientArchived(c.Notes) {
+			clients = append([]Client{c}, clients...)
+			selectedExists = true
+		}
+	}
 	if p.ClientID != "" && !selectedExists {
 		p.ClientID = ""
 	}
+
 	a.render(w, r, "manager_project_new", ViewData{Title: "Novo projeto", Error: errMsg, Data: ManagerProjectNewView{Project: p, Clients: clients}})
 }
 
@@ -224,15 +235,15 @@ func (a *App) managerProjectNewPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := Project{
-		ClientID: strings.TrimSpace(r.FormValue("client_id")),
-		Title: strings.TrimSpace(r.FormValue("title")),
-		Modality: strings.TrimSpace(r.FormValue("modality")),
-		Activity: strings.TrimSpace(r.FormValue("activity")),
-		Bank: strings.TrimSpace(r.FormValue("bank")),
+		ClientID:      strings.TrimSpace(r.FormValue("client_id")),
+		Title:         strings.TrimSpace(r.FormValue("title")),
+		Modality:      strings.TrimSpace(r.FormValue("modality")),
+		Activity:      strings.TrimSpace(r.FormValue("activity")),
+		Bank:          strings.TrimSpace(r.FormValue("bank")),
 		FinancedValue: parseFloat(r.FormValue("financed_value")),
-		Status: defaultString(strings.TrimSpace(r.FormValue("status")), "Em preparação"),
-		Phase: strings.TrimSpace(r.FormValue("phase")),
-		Responsible: strings.TrimSpace(r.FormValue("responsible")),
+		Status:        defaultString(strings.TrimSpace(r.FormValue("status")), "Em preparação"),
+		Phase:         strings.TrimSpace(r.FormValue("phase")),
+		Responsible:   strings.TrimSpace(r.FormValue("responsible")),
 	}
 	if err := validateProject(p); err != nil {
 		a.managerProjectNewForm(w, r, p, err.Error())
@@ -242,10 +253,33 @@ func (a *App) managerProjectNewPost(w http.ResponseWriter, r *http.Request) {
 		a.managerProjectNewForm(w, r, p, "Selecione um cliente ativo.")
 		return
 	}
+
+	// Insere primeiro somente campos presentes desde a versão inicial do banco.
+	// Isso torna a criação compatível mesmo quando algum campo avançado ainda não
+	// estiver disponível na instância do Supabase.
+	row := map[string]any{
+		"client_id":       p.ClientID,
+		"title":           p.Title,
+		"modality":        p.Modality,
+		"activity":        p.Activity,
+		"bank":            p.Bank,
+		"financed_value":  p.FinancedValue,
+		"status":          p.Status,
+		"phase":           p.Phase,
+	}
 	var out []Project
-	if err := a.sb.Insert(r.Context(), "projects", p, &out); err != nil || len(out) == 0 {
-		a.managerProjectNewForm(w, r, p, "Não foi possível criar o projeto.")
+	if err := a.sb.Insert(r.Context(), "projects", row, &out); err != nil || len(out) == 0 {
+		if err != nil {
+			log.Printf("criar projeto cliente=%s: %v", p.ClientID, err)
+		}
+		a.managerProjectNewForm(w, r, p, "Não foi possível criar o projeto. Tente novamente; se persistir, o erro ficou registrado no servidor.")
 		return
+	}
+
+	// Campos avançados são complementares e não podem impedir a criação.
+	if p.Responsible != "" {
+		_ = a.sb.Update(r.Context(), "projects", eq("id", out[0].ID), map[string]any{"responsible": p.Responsible}, nil)
+		out[0].Responsible = p.Responsible
 	}
 	_ = a.ensureProjectDefaults360(r, out[0])
 	_ = a.addHistory360(r, out[0].ID, "Projeto", "Projeto criado", "Projeto criado pelo painel de acompanhamento")
