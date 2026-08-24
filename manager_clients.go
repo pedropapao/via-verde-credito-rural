@@ -50,7 +50,7 @@ func (a *App) managerClientsList(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.SliceStable(rows, func(i, j int) bool { return strings.ToLower(rows[i].Name) < strings.ToLower(rows[j].Name) })
 
-	a.render(w, r, "client_manager", ViewData{
+	a.render(w, r, "documents", ViewData{
 		Title: "Clientes",
 		Data: ManagerClientsView{Clients: rows, Query: r.URL.Query().Get("q"), Total: len(clients)},
 	})
