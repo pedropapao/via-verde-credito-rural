@@ -10,9 +10,9 @@ import (
 
 func TestTelaClientesExecutaEPermiteNovoCadastro(t *testing.T) {
 	a := NewApp(Config{}, nil)
-	tpl := a.templates["documents"]
+	tpl := a.templates["client_manager"]
 	if tpl == nil {
-		t.Fatal("template usado pela tela de clientes não foi carregado")
+		t.Fatal("template da tela de clientes não foi carregado")
 	}
 	view := ManagerClientsView{Clients: []ManagerClientRow{{Client: Client{Name: "Cliente Teste", Document: "000.000.000-00"}, ProjectCount: 2, ActiveCount: 1}}, Total: 1}
 	var b bytes.Buffer
