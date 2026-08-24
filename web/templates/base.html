@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="/static/kanban_fix.css">
   <link rel="stylesheet" href="/static/report_v2.css">
   <link rel="stylesheet" href="/static/car.css">
+  <link rel="stylesheet" href="/static/clients.css">
   <script defer src="/static/app.js"></script>
 </head>
 <body>
@@ -29,6 +30,7 @@
       <span class="nav-group">Acompanhar</span>
       <a class="{{if eq .CurrentPath "/"}}active{{end}}" href="/"><span>▦</span>Visão geral</a>
       <a class="{{if hasPrefix .CurrentPath "/projects"}}active{{end}}" href="/projects"><span>▣</span>Projetos</a>
+      <a class="{{if hasPrefix .CurrentPath "/clients"}}active{{end}}" href="/clients"><span>◫</span>Clientes</a>
       <a class="{{if hasPrefix .CurrentPath "/kanban"}}active{{end}}" href="/kanban"><span>▥</span>Pipeline</a>
       <a class="{{if hasPrefix .CurrentPath "/attention"}}active{{end}}" href="/attention"><span>!</span>Atenção</a>
       {{if eq .User.Role "owner"}}
