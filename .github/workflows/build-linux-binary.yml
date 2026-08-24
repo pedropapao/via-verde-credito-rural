@@ -1,0 +1,44 @@
+name: Build Linux binary
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'bin/via-verde-*'
+      - 'build-status.log'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+      - name: Build binaries
+        shell: bash
+        run: |
+          set +e
+          mkdir -p bin
+          : > build-status.log
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/via-verde-amd64 . >> build-status.log 2>&1
+          code_amd64=$?
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/via-verde-arm64 . >> build-status.log 2>&1
+          code_arm64=$?
+          if [ "$code_amd64" -eq 0 ] && [ "$code_arm64" -eq 0 ]; then
+            printf 'BUILD_OK\ncommit=%s\n' "$GITHUB_SHA" > build-status.log
+          else
+            printf '\nBUILD_FAILED amd64=%s arm64=%s\ncommit=%s\n' "$code_amd64" "$code_arm64" "$GITHUB_SHA" >> build-status.log
+          fi
+          chmod +x bin/via-verde-amd64 bin/via-verde-arm64 2>/dev/null || true
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f build-status.log
+          [ -f bin/via-verde-amd64 ] && git add -f bin/via-verde-amd64
+          [ -f bin/via-verde-arm64 ] && git add -f bin/via-verde-arm64
+          git commit -m 'chore: atualiza binário Linux [skip ci]' || true
+          git push
+          if [ "$code_amd64" -ne 0 ] || [ "$code_arm64" -ne 0 ]; then exit 1; fi
