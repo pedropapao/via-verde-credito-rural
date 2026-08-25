@@ -5,51 +5,58 @@ import (
 	"testing"
 )
 
-func TestNormalizePropertyUF(t *testing.T) {
-	cases := map[string]string{
-		"mg":  "MG",
-		" GO ": "GO",
-		"M":   "",
-		"123": "",
-	}
-	for in, want := range cases {
-		if got := normalizePropertyUF(in); got != want {
-			t.Fatalf("normalizePropertyUF(%q) = %q; esperado %q", in, got, want)
-		}
-	}
-}
-
-func TestClientDetailTemCentralDocumental(t *testing.T) {
-	body, err := webFS.ReadFile("web/templates/client_detail.html")
+func TestConsultaRuralEhIndependenteDosClientes(t *testing.T) {
+	body, err := webFS.ReadFile("web/templates/documents.html")
 	if err != nil {
-		t.Fatalf("não foi possível ler client_detail.html: %v", err)
+		t.Fatalf("não foi possível ler documents.html: %v", err)
 	}
 	text := string(body)
 	for _, want := range []string{
-		"CENTRAL DOCUMENTAL",
+		"CONSULTA RURAL",
+		"action=\"/documents\"",
 		"Pesquisa Nacional de Bens",
-		"https://www.ridigital.org.br/PO/DefaultPO.aspx?from=menu",
-		"https://sncr.serpro.gov.br/ccir/emissao",
-		"Certidão ITR",
-		"/car?number=",
-		"/clients/{{$.Data.Client.ID}}/properties/{{.ID}}",
-		"não armazena senha GOV.BR",
+		"SNCR / CCIR",
+		"CIB / NIRF",
+		"Consulta CAR Via Verde",
 	} {
 		if !strings.Contains(text, want) {
-			t.Fatalf("central documental não contém %q", want)
+			t.Fatalf("consulta rural não contém %q", want)
+		}
+	}
+
+	clientBody, err := webFS.ReadFile("web/templates/client_detail.html")
+	if err != nil {
+		t.Fatalf("não foi possível ler client_detail.html: %v", err)
+	}
+	clientText := string(clientBody)
+	for _, forbidden := range []string{"CENTRAL DOCUMENTAL", "documentos-imovel", "/properties/"} {
+		if strings.Contains(clientText, forbidden) {
+			t.Fatalf("ficha de cliente não deve conter a consulta rural: %q", forbidden)
 		}
 	}
 }
 
-func TestCentralDocumentalNaoSugereBypass(t *testing.T) {
-	body, err := webFS.ReadFile("web/templates/client_detail.html")
+func TestConsultaRuralNaoSalvaNemPrometeAcessoProtegido(t *testing.T) {
+	body, err := webFS.ReadFile("web/templates/documents.html")
 	if err != nil {
 		t.Fatal(err)
 	}
 	text := strings.ToLower(string(body))
-	for _, forbidden := range []string{"capturar token", "burlar captcha", "roubar sessão", "capturar cookie"} {
+	if !strings.Contains(text, "não salva os dados") {
+		t.Fatal("consulta rural deve informar que não salva os dados")
+	}
+	for _, forbidden := range []string{"senha gov.br", "capturar token", "burlar captcha"} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("texto não deve sugerir coleta ou bypass de autenticação: %q", forbidden)
 		}
+	}
+}
+
+func TestTrimRuralLookup(t *testing.T) {
+	if got := trimRuralLookup("  123  ", 10); got != "123" {
+		t.Fatalf("trim inesperado: %q", got)
+	}
+	if got := trimRuralLookup("123456", 4); got != "1234" {
+		t.Fatalf("limite inesperado: %q", got)
 	}
 }
