@@ -56,7 +56,6 @@
           <span><b>{{.ProjectCount}}</b> projeto(s) no histórico</span>
           <div>
             <a class="client-action-link" href="/clients/{{.ID}}">Abrir ficha</a>
-            <a class="client-action-link" href="/clients/{{.ID}}#documentos-imovel">Documentos</a>
             {{if and (eq $.User.Role "owner") (not .Archived)}}<a class="client-action-link strong" href="/projects/new?client_id={{.ID}}">Novo projeto</a>{{end}}
           </div>
         </div>
