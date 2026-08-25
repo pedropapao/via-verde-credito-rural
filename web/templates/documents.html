@@ -1,63 +1,103 @@
 {{define "content"}}
 {{with .Data}}
-<div class="clients-page">
-  <div class="page-actions clients-toolbar">
+<div class="car-shell rural-lookup-shell">
+  <section class="card car-intro">
     <div>
-      <span class="eyebrow">CARTEIRA DE PRODUTORES</span>
-      <h3>{{.Total}} cliente(s) cadastrado(s)</h3>
-      <p class="page-note">Cadastre o produtor uma vez e use o mesmo cliente nos projetos atuais e futuros.</p>
+      <span class="eyebrow light">CONSULTA RURAL</span>
+      <h2>Consultas do imóvel rural</h2>
+      <p>Ferramenta independente de clientes e projetos. Informe os identificadores que você tiver e abra rapidamente os canais de matrícula, CCIR, ITR e CAR.</p>
     </div>
-    <form method="get" action="/clients" class="clients-search">
-      <input name="q" value="{{.Query}}" placeholder="Buscar nome, CPF/CNPJ, telefone ou e-mail...">
-      <button class="btn secondary" type="submit">Buscar</button>
-      {{if .Query}}<a class="btn ghost" href="/clients">Limpar</a>{{end}}
-    </form>
-  </div>
-
-  {{if eq $.User.Role "owner"}}
-  <section class="card client-new-card">
-    <div class="section-head">
-      <div><span class="eyebrow">NOVO CLIENTE</span><h3>Adicionar produtor</h3><p>Somente o nome é obrigatório. Os demais dados podem ser completados depois.</p></div>
-    </div>
-    <form method="post" action="/clients" class="client-new-form">
-      <input type="hidden" name="csrf" value="{{$.CSRF}}">
-      <label class="client-name">Nome do produtor / cliente<input name="name" required maxlength="160" placeholder="Ex.: Antônio Alves Cordeiro"></label>
-      <label>CPF / CNPJ<input name="document" maxlength="32" placeholder="Opcional"></label>
-      <label>Telefone / WhatsApp<input name="phone" maxlength="40" placeholder="(00) 00000-0000"></label>
-      <label>E-mail<input type="email" name="email" maxlength="160" placeholder="Opcional"></label>
-      <label class="client-notes">Observação<textarea name="notes" rows="2" maxlength="1200" placeholder="Informação curta para identificar o cliente, se necessário."></textarea></label>
-      <div class="client-submit"><button class="btn primary" type="submit">Adicionar cliente</button></div>
-    </form>
+    <span class="car-privacy">Não salva os dados</span>
   </section>
-  {{end}}
 
-  <section class="card clients-list-card">
-    <div class="section-head">
-      <div><span class="eyebrow">CLIENTES</span><h3>{{len .Clients}} resultado(s)</h3><p>Os projetos vinculados ao produtor são contados automaticamente.</p></div>
-    </div>
-    <div class="clients-grid">
-      {{range .Clients}}
-      <article class="client-card">
-        <div class="client-card-top">
-          <span class="client-avatar">{{slice .Name 0 1}}</span>
-          <div class="client-main"><strong>{{.Name}}</strong><small>{{if .Document}}{{.Document}}{{else}}CPF/CNPJ não informado{{end}}</small></div>
-          {{if gt .ActiveCount 0}}<span class="badge warn">{{.ActiveCount}} ativo(s)</span>{{else}}<span class="badge neutral">Sem projeto ativo</span>{{end}}
-        </div>
-        <div class="client-contact">
-          <div><span>Telefone</span><strong>{{if .Phone}}{{.Phone}}{{else}}Não informado{{end}}</strong></div>
-          <div><span>E-mail</span><strong>{{if .Email}}{{.Email}}{{else}}Não informado{{end}}</strong></div>
-        </div>
-        {{if .Notes}}<p class="client-note">{{.Notes}}</p>{{end}}
-        <div class="client-card-foot">
-          <span><b>{{.ProjectCount}}</b> projeto(s) no histórico</span>
-          <a href="/projects">Ver projetos →</a>
-        </div>
-      </article>
+  <section class="card car-search-card rural-lookup-search">
+    <form method="get" action="/documents" class="rural-lookup-form">
+      <label class="span-2">CPF / CNPJ do titular
+        <input name="document" value="{{.Document}}" maxlength="40" placeholder="CPF ou CNPJ">
+      </label>
+      <label>Matrícula do imóvel
+        <input name="registry" value="{{.Registry}}" maxlength="120" placeholder="Ex.: 971">
+      </label>
+      <label>Código SNCR / CCIR
+        <input name="sncr" value="{{.SNCR}}" maxlength="80" placeholder="Código do imóvel no Incra">
+      </label>
+      <label>CIB / NIRF
+        <input name="cib" value="{{.CIB}}" maxlength="80" placeholder="Identificador do imóvel na Receita">
+      </label>
+      <label class="span-2">Número do CAR
+        <input name="car" value="{{.CAR}}" maxlength="90" placeholder="UF-0000000-XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX">
+      </label>
+      <div class="span-2 rural-lookup-form-actions">
+        <button class="btn primary" type="submit">Preparar consultas</button>
+        {{if .HasAny}}<a class="btn ghost" href="/documents">Limpar</a>{{end}}
+      </div>
+    </form>
+    <small>Você pode preencher só o dado que possui. Nada desta tela fica vinculado a cliente ou projeto.</small>
+  </section>
+
+  <section class="rural-lookup-grid">
+    <article class="card rural-lookup-card">
+      <span class="rural-lookup-icon">1</span>
+      <div><span class="eyebrow">MATRÍCULA</span><h3>Pesquisa Nacional de Bens</h3><p>Use o CPF/CNPJ para pesquisar matrículas no RI Digital. O serviço pode exigir autenticação e cobrança de emolumentos.</p></div>
+      {{if .Document}}
+      <button type="button" class="btn secondary" data-copy-open data-copy-text="{{.Document}}" data-copy-done="CPF/CNPJ copiado ✓" data-open-url="https://www.ridigital.org.br/PO/DefaultPO.aspx?from=menu">Pesquisar matrícula</button>
       {{else}}
-      <div class="clients-empty"><strong>Nenhum cliente encontrado.</strong><span>{{if .Query}}Tente outro termo de busca.{{else}}Use o formulário acima para cadastrar o primeiro cliente.{{end}}</span></div>
+      <a class="btn ghost" target="_blank" rel="noopener" href="https://www.ridigital.org.br/PO/DefaultPO.aspx?from=menu">Abrir RI Digital</a>
       {{end}}
-    </div>
+    </article>
+
+    <article class="card rural-lookup-card">
+      <span class="rural-lookup-icon">2</span>
+      <div><span class="eyebrow">CERTIDÃO</span><h3>Certidão da matrícula</h3><p>Se a matrícula já for conhecida, copie o número e abra a área de Certidão Digital do RI Digital.</p></div>
+      {{if .Registry}}
+      <button type="button" class="btn secondary" data-copy-open data-copy-text="{{.Registry}}" data-copy-done="Matrícula copiada ✓" data-open-url="https://www.ridigital.org.br/CertidaoDigital/lstPedidos.aspx">Abrir certidão digital</button>
+      {{else}}
+      <a class="btn ghost" target="_blank" rel="noopener" href="https://www.ridigital.org.br/CertidaoDigital/lstPedidos.aspx">Abrir certidão digital</a>
+      {{end}}
+    </article>
+
+    <article class="card rural-lookup-card">
+      <span class="rural-lookup-icon">3</span>
+      <div><span class="eyebrow">CCIR</span><h3>SNCR / CCIR</h3><p>Com o código SNCR, abra a emissão do CCIR. Se ainda não tiver o código, use a consulta oficial do imóvel rural.</p></div>
+      {{if .SNCR}}
+      <button type="button" class="btn secondary" data-copy-open data-copy-text="{{.SNCR}}" data-copy-done="Código SNCR copiado ✓" data-open-url="https://sncr.serpro.gov.br/ccir/emissao">Emitir CCIR</button>
+      {{else}}
+      <a class="btn ghost" target="_blank" rel="noopener" href="https://www.gov.br/pt-br/servicos/consultar-o-codigo-do-imovel-rural">Localizar código SNCR</a>
+      {{end}}
+    </article>
+
+    <article class="card rural-lookup-card">
+      <span class="rural-lookup-icon">4</span>
+      <div><span class="eyebrow">ITR</span><h3>CIB / NIRF e certidão</h3><p>Use o CIB/NIRF para agilizar a consulta fiscal do imóvel. O CNIR/CAFIR pode exigir autenticação do titular ou representante.</p></div>
+      {{if .CIB}}
+      <button type="button" class="btn secondary" data-copy-open data-copy-text="{{.CIB}}" data-copy-done="CIB/NIRF copiado ✓" data-open-url="https://www.gov.br/receitafederal/pt-br/servicos/certidoes/emitir-certidao/emitir-certidao/">Abrir certidão ITR</button>
+      {{else}}
+      <a class="btn ghost" target="_blank" rel="noopener" href="https://www.gov.br/pt-br/servicos/consultar-cadastro-nacional-de-imovel-rural">Abrir CNIR / CAFIR</a>
+      {{end}}
+    </article>
+
+    <article class="card rural-lookup-card rural-lookup-car-card">
+      <span class="rural-lookup-icon">5</span>
+      <div><span class="eyebrow">CAR</span><h3>Consulta CAR Via Verde</h3><p>Se tiver o número do CAR, abra diretamente a consulta automática já existente no Via Verde, com dados públicos, mapa e KML.</p></div>
+      {{if .CAR}}
+      <a class="btn primary" href="/car?number={{.CAR}}">Consultar este CAR</a>
+      {{else}}
+      <a class="btn secondary" href="/car">Abrir Consulta CAR</a>
+      {{end}}
+    </article>
+
+    <article class="card rural-lookup-card">
+      <span class="rural-lookup-icon">6</span>
+      <div><span class="eyebrow">CNIR</span><h3>Cadastro integrado do imóvel</h3><p>Atalho para o serviço oficial que reúne informações do cadastro rural e pode ajudar a localizar dados de SNCR e CIB.</p></div>
+      {{if .Document}}
+      <button type="button" class="btn secondary" data-copy-open data-copy-text="{{.Document}}" data-copy-done="CPF/CNPJ copiado ✓" data-open-url="https://www.gov.br/pt-br/servicos/consultar-cadastro-nacional-de-imovel-rural">Abrir CNIR / CAFIR</button>
+      {{else}}
+      <a class="btn ghost" target="_blank" rel="noopener" href="https://www.gov.br/pt-br/servicos/consultar-cadastro-nacional-de-imovel-rural">Abrir CNIR / CAFIR</a>
+      {{end}}
+    </article>
   </section>
+
+  <div class="car-security-note rural-lookup-note"><strong>Como funciona:</strong> o Via Verde apenas organiza os identificadores nesta tela, copia o dado necessário e abre o serviço correspondente. Quando o órgão exige login, autorização ou pagamento, a conclusão ocorre no próprio sistema oficial.</div>
 </div>
 {{end}}
 {{end}}
