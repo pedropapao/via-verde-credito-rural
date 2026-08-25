@@ -9,14 +9,13 @@ func (a *App) routesManagerCAR() http.Handler {
 	mux.Handle("GET /car/kml", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.carKML))))))
 	mux.Handle("GET /car/demonstrativo", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.carDemonstrativoPDF))))))
 	mux.Handle("GET /car/demonstrativo.json", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.carDemonstrativoJSON))))))
+	mux.Handle("GET /documents", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.ruralLookupPage))))))
 
 	mux.Handle("GET /clients", securityHeaders(recoverer(logger(a.withAuth(http.HandlerFunc(a.managerClientsList))))))
 	mux.Handle("POST /clients", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.managerClientCreate))))))
-	mux.Handle("GET /clients/{id}", securityHeaders(recoverer(logger(a.withAuth(http.HandlerFunc(a.managerClientDetailRural))))))
+	mux.Handle("GET /clients/{id}", securityHeaders(recoverer(logger(a.withAuth(http.HandlerFunc(a.managerClientDetail))))))
 	mux.Handle("POST /clients/{id}/edit", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.managerClientEdit))))))
 	mux.Handle("POST /clients/{id}/archive", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.managerClientArchiveToggle))))))
-	mux.Handle("POST /clients/{id}/properties", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.managerPropertyCreate))))))
-	mux.Handle("POST /clients/{id}/properties/{property}", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.managerPropertyEdit))))))
 
 	mux.Handle("GET /projects/new", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.managerProjectNewGet))))))
 	mux.Handle("POST /projects/new", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.managerProjectNewPost))))))
