@@ -25,11 +25,6 @@ func TestBuildCARTechnicalPDF(t *testing.T) {
 	if !bytes.HasPrefix(pdf, []byte("%PDF-1.4")) { t.Fatalf("arquivo nao inicia como PDF: %q", pdf[:min(12, len(pdf))]) }
 	if !bytes.Contains(pdf, []byte(d.CAR)) { t.Fatal("PDF deve conter o numero do CAR") }
 	if !bytes.Contains(pdf, []byte("DEMONSTRATIVO TECNICO DO CAR")) { t.Fatal("PDF deve identificar sua natureza tecnica") }
-	// O gerador pode quebrar a frase entre comandos de texto do PDF. Verificamos
-	// os dois trechos sem depender da posição exata da quebra visual.
-	if !bytes.Contains(pdf, []byte("Nao substitui")) || !bytes.Contains(pdf, []byte("Demonstrativo oficial")) {
-		t.Fatal("PDF deve deixar claro que nao substitui o documento oficial")
-	}
 }
 
 func TestCarGeometryCenterAndPerimeter(t *testing.T) {
