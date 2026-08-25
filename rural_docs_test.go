@@ -33,6 +33,7 @@ func TestClientDetailTemCentralDocumental(t *testing.T) {
 		"Certidão ITR",
 		"/car?number=",
 		"/clients/{{$.Data.Client.ID}}/properties/{{.ID}}",
+		"não armazena senha GOV.BR",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("central documental não contém %q", want)
@@ -40,13 +41,13 @@ func TestClientDetailTemCentralDocumental(t *testing.T) {
 	}
 }
 
-func TestCentralDocumentalNaoPrometeAcessoAutenticado(t *testing.T) {
+func TestCentralDocumentalNaoSugereBypass(t *testing.T) {
 	body, err := webFS.ReadFile("web/templates/client_detail.html")
 	if err != nil {
 		t.Fatal(err)
 	}
 	text := strings.ToLower(string(body))
-	for _, forbidden := range []string{"senha gov.br", "capturar token", "burlar captcha"} {
+	for _, forbidden := range []string{"capturar token", "burlar captcha", "roubar sessão", "capturar cookie"} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("texto não deve sugerir coleta ou bypass de autenticação: %q", forbidden)
 		}
