@@ -32,7 +32,7 @@
       const original = copyButton.textContent;
       try {
         await copyText(text);
-        copyButton.textContent = 'Copiado ✓';
+        copyButton.textContent = copyButton.dataset.copyDone || 'Copiado ✓';
       } catch (_) {
         copyButton.textContent = 'Não foi possível copiar';
       }
@@ -47,7 +47,7 @@
       const original = openButton.textContent;
       if (text) {
         copyText(text).then(() => {
-          openButton.textContent = 'CAR copiado ✓';
+          openButton.textContent = openButton.dataset.copyDone || 'Copiado ✓';
           window.setTimeout(() => { openButton.textContent = original; }, 1800);
         }).catch(() => {});
       }
@@ -66,7 +66,6 @@
         saveButton.disabled = true;
         saveButton.textContent = 'Salvando...';
       }
-      // Não desabilitar o select: campos disabled não são enviados no POST.
       form.requestSubmit();
     });
   });

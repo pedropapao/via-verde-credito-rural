@@ -5,10 +5,11 @@
     <div>
       <span class="eyebrow">FICHA DO CLIENTE</span>
       <h3>{{.Client.Name}}</h3>
-      <p class="page-note">{{.ProjectCount}} projeto(s) no histórico · {{.ActiveCount}} ativo(s){{if .Archived}} · cliente arquivado{{end}}</p>
+      <p class="page-note">{{.ProjectCount}} projeto(s) no histórico · {{.ActiveCount}} ativo(s) · {{.PropertyCount}} imóvel(is) cadastrado(s){{if .Archived}} · cliente arquivado{{end}}</p>
     </div>
     <div class="client-detail-actions">
       <a class="btn ghost" href="/clients{{if .Archived}}?archived=1{{end}}">← Voltar</a>
+      <a class="btn secondary" href="#documentos-imovel">Documentos do imóvel</a>
       {{if and (eq $.User.Role "owner") (not .Archived)}}<a class="btn primary" href="/projects/new?client_id={{.Client.ID}}">+ Novo projeto</a>{{end}}
     </div>
   </div>
@@ -50,6 +51,131 @@
     </section>
     {{end}}
   </div>
+
+  <section class="card rural-docs-card" id="documentos-imovel">
+    <div class="section-head rural-docs-head">
+      <div>
+        <span class="eyebrow">CENTRAL DOCUMENTAL</span>
+        <h3>Documentos do imóvel rural</h3>
+        <p>Use o CPF/CNPJ do cliente para localizar matrículas e registre aqui os identificadores necessários para CCIR, ITR e CAR.</p>
+      </div>
+      {{if .Client.Document}}<span class="rural-doc-client-id">CPF/CNPJ: <strong>{{.Client.Document}}</strong></span>{{else}}<span class="rural-doc-client-id missing">Cadastre o CPF/CNPJ para agilizar as consultas.</span>{{end}}
+    </div>
+
+    <div class="rural-doc-quick-grid">
+      <article class="rural-doc-quick">
+        <span class="rural-doc-step">1</span>
+        <div><strong>Localizar matrícula pelo CPF/CNPJ</strong><p>A Pesquisa Nacional de Bens do RI Digital informa matrículas associadas ao documento pesquisado. O serviço pode cobrar emolumentos.</p></div>
+        {{if .Client.Document}}
+        <button type="button" class="btn secondary" data-copy-open data-copy-text="{{.Client.Document}}" data-copy-done="CPF/CNPJ copiado ✓" data-open-url="https://www.ridigital.org.br/PO/DefaultPO.aspx?from=menu">Pesquisar no RI Digital</button>
+        {{else}}<a class="btn ghost" href="#cadastro-cliente">Informar CPF/CNPJ</a>{{end}}
+      </article>
+      <article class="rural-doc-quick">
+        <span class="rural-doc-step">2</span>
+        <div><strong>Descobrir SNCR e CIB</strong><p>O CNIR integra o cadastro do Incra com o CAFIR da Receita. O acesso aos imóveis do titular exige autenticação ou representação autorizada.</p></div>
+        <div class="rural-doc-quick-actions">
+          <a class="btn secondary" target="_blank" rel="noopener" href="https://www.gov.br/pt-br/servicos/consultar-cadastro-nacional-de-imovel-rural">Abrir CNIR / CAFIR</a>
+          <a class="btn ghost" target="_blank" rel="noopener" href="https://www.gov.br/pt-br/servicos/consultar-o-codigo-do-imovel-rural">Código SNCR</a>
+        </div>
+      </article>
+      <article class="rural-doc-quick">
+        <span class="rural-doc-step">3</span>
+        <div><strong>Emitir documentos oficiais</strong><p>Depois de registrar matrícula, código SNCR, CIB/NIRF e CAR no imóvel, os botões abaixo levam diretamente aos canais oficiais.</p></div>
+        <span class="rural-doc-ready">{{.PropertyCount}} imóvel(is) preparado(s)</span>
+      </article>
+    </div>
+
+    {{if and (eq $.User.Role "owner") (not .Archived)}}
+    <details class="rural-property-new" {{if eq .PropertyCount 0}}open{{end}}>
+      <summary>+ Cadastrar imóvel rural</summary>
+      <form method="post" action="/clients/{{.Client.ID}}/properties" class="rural-property-form">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <label class="span-2">Nome do imóvel<input name="name" required maxlength="180" placeholder="Ex.: Fazenda Barra Mansa"></label>
+        <label>Município<input name="city" maxlength="120" placeholder="Município"></label>
+        <label>UF<input name="state" maxlength="2" placeholder="MG"></label>
+        <label>Área total (ha)<input name="area_ha" inputmode="decimal" placeholder="0,00"></label>
+        <label>Matrícula no CRI<input name="registry" maxlength="120" placeholder="Ex.: 971"></label>
+        <label>Código SNCR / CCIR<input name="ccir" maxlength="80" placeholder="Preferencialmente o código de 13 dígitos"></label>
+        <label>CIB / NIRF (ITR)<input name="itr" maxlength="80" placeholder="Código do imóvel na Receita"></label>
+        <label class="span-2">Número do CAR<input name="car" maxlength="90" placeholder="UF-0000000-XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX"></label>
+        <label>Regime de exploração<input name="tenure" maxlength="120" placeholder="Próprio, arrendado, posse..."></label>
+        <label>Observação<input name="notes" maxlength="500" placeholder="Cartório, comarca ou informação útil"></label>
+        <div class="span-2 rural-property-form-actions"><button class="btn primary" type="submit">Salvar imóvel</button></div>
+      </form>
+    </details>
+    {{end}}
+
+    <div class="rural-property-list">
+      {{range .Properties}}
+      <article class="rural-property-card">
+        <div class="rural-property-title">
+          <div><span class="eyebrow">IMÓVEL</span><h4>{{.Name}}</h4><p>{{if .City}}{{.City}}{{else}}Município não informado{{end}}{{if .State}} / {{.State}}{{end}} · {{printf "%.2f" .AreaHa}} ha</p></div>
+          <div class="rural-property-statuses">
+            <span class="rural-status {{if .Registry}}ok{{end}}">Matrícula {{if .Registry}}✓{{else}}—{{end}}</span>
+            <span class="rural-status {{if .CCIR}}ok{{end}}">SNCR {{if .CCIR}}✓{{else}}—{{end}}</span>
+            <span class="rural-status {{if .ITR}}ok{{end}}">ITR {{if .ITR}}✓{{else}}—{{end}}</span>
+            <span class="rural-status {{if .CAR}}ok{{end}}">CAR {{if .CAR}}✓{{else}}—{{end}}</span>
+          </div>
+        </div>
+
+        <div class="rural-property-data">
+          <div><span>Matrícula</span><strong>{{if .Registry}}{{.Registry}}{{else}}Pendente{{end}}</strong></div>
+          <div><span>Código SNCR / CCIR</span><strong>{{if .CCIR}}{{.CCIR}}{{else}}Pendente{{end}}</strong></div>
+          <div><span>CIB / NIRF</span><strong>{{if .ITR}}{{.ITR}}{{else}}Pendente{{end}}</strong></div>
+          <div><span>CAR</span><strong>{{if .CAR}}{{.CAR}}{{else}}Pendente{{end}}</strong></div>
+          <div><span>Regime</span><strong>{{if .Tenure}}{{.Tenure}}{{else}}Não informado{{end}}</strong></div>
+          <div><span>Observação</span><strong>{{if .Notes}}{{.Notes}}{{else}}—{{end}}</strong></div>
+        </div>
+
+        <div class="rural-property-actions">
+          {{if .Registry}}
+          <button type="button" class="btn secondary" data-copy-open data-copy-text="{{.Registry}}" data-copy-done="Matrícula copiada ✓" data-open-url="https://www.ridigital.org.br/CertidaoDigital/lstPedidos.aspx">Certidão da matrícula</button>
+          {{else if $.Data.Client.Document}}
+          <button type="button" class="btn secondary" data-copy-open data-copy-text="{{$.Data.Client.Document}}" data-copy-done="CPF/CNPJ copiado ✓" data-open-url="https://www.ridigital.org.br/PO/DefaultPO.aspx?from=menu">Localizar matrícula</button>
+          {{else}}<a class="btn ghost" target="_blank" rel="noopener" href="https://www.ridigital.org.br/PO/DefaultPO.aspx?from=menu">RI Digital</a>{{end}}
+
+          {{if .CCIR}}
+          <button type="button" class="btn secondary" data-copy-open data-copy-text="{{.CCIR}}" data-copy-done="Código SNCR copiado ✓" data-open-url="https://sncr.serpro.gov.br/ccir/emissao">Emitir CCIR</button>
+          {{else}}<a class="btn ghost" target="_blank" rel="noopener" href="https://www.gov.br/pt-br/servicos/consultar-o-codigo-do-imovel-rural">Localizar código SNCR</a>{{end}}
+
+          {{if .ITR}}
+          <button type="button" class="btn secondary" data-copy-open data-copy-text="{{.ITR}}" data-copy-done="CIB/NIRF copiado ✓" data-open-url="https://www.gov.br/receitafederal/pt-br/servicos/certidoes/emitir-certidao/emitir-certidao/">Certidão ITR</button>
+          {{else}}<a class="btn ghost" target="_blank" rel="noopener" href="https://www.gov.br/pt-br/servicos/consultar-cadastro-nacional-de-imovel-rural">Localizar CIB</a>{{end}}
+
+          {{if .CAR}}<a class="btn secondary" href="/car?number={{.CAR}}">Consultar CAR</a>{{else}}<a class="btn ghost" href="/car">Consulta CAR</a>{{end}}
+        </div>
+
+        <div class="rural-property-hint">
+          {{if $.Data.Client.Document}}Para emitir o CCIR, o Incra também solicitará CPF/CNPJ do titular ({{$.Data.Client.Document}}), UF e município do imóvel.{{else}}Cadastre o CPF/CNPJ do cliente para deixar a emissão do CCIR mais rápida.{{end}}
+        </div>
+
+        {{if eq $.User.Role "owner"}}
+        <details class="rural-property-edit">
+          <summary>Editar identificadores e dados do imóvel</summary>
+          <form method="post" action="/clients/{{$.Data.Client.ID}}/properties/{{.ID}}" class="rural-property-form">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <label class="span-2">Nome do imóvel<input name="name" required maxlength="180" value="{{.Name}}"></label>
+            <label>Município<input name="city" maxlength="120" value="{{.City}}"></label>
+            <label>UF<input name="state" maxlength="2" value="{{.State}}"></label>
+            <label>Área total (ha)<input name="area_ha" inputmode="decimal" value="{{printf "%.4f" .AreaHa}}"></label>
+            <label>Matrícula no CRI<input name="registry" maxlength="120" value="{{.Registry}}"></label>
+            <label>Código SNCR / CCIR<input name="ccir" maxlength="80" value="{{.CCIR}}"></label>
+            <label>CIB / NIRF (ITR)<input name="itr" maxlength="80" value="{{.ITR}}"></label>
+            <label class="span-2">Número do CAR<input name="car" maxlength="90" value="{{.CAR}}"></label>
+            <label>Regime de exploração<input name="tenure" maxlength="120" value="{{.Tenure}}"></label>
+            <label>Observação<input name="notes" maxlength="500" value="{{.Notes}}"></label>
+            <div class="span-2 rural-property-form-actions"><button class="btn primary" type="submit">Salvar alterações do imóvel</button></div>
+          </form>
+        </details>
+        {{end}}
+      </article>
+      {{else}}
+      <div class="clients-empty"><strong>Nenhum imóvel cadastrado.</strong><span>Cadastre o primeiro imóvel para organizar matrícula, CCIR, ITR e CAR do cliente.</span></div>
+      {{end}}
+    </div>
+
+    <div class="rural-doc-security"><strong>Como funciona:</strong> o Via Verde organiza os identificadores e abre os canais oficiais. Ele não armazena senha GOV.BR, token, sessão de cartório ou dados de pagamento. Serviços do RI Digital podem ter emolumentos e consultas autenticadas continuam sendo feitas pelo titular ou representante autorizado.</div>
+  </section>
 
   <section class="card client-projects-card">
     <div class="section-head client-projects-head">
