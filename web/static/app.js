@@ -24,6 +24,15 @@
     });
   }
 
+  const carNav = document.querySelector('.nav a[href="/car"]');
+  if (carNav && !document.querySelector('.nav a[href="/documents"]')) {
+    const ruralNav = document.createElement('a');
+    ruralNav.href = '/documents';
+    ruralNav.innerHTML = '<span>⌕</span>Consulta Rural';
+    if (window.location.pathname.startsWith('/documents')) ruralNav.classList.add('active');
+    carNav.insertAdjacentElement('afterend', ruralNav);
+  }
+
   document.querySelectorAll('[data-copy-target]').forEach((copyButton) => {
     copyButton.addEventListener('click', async () => {
       const target = document.querySelector(copyButton.dataset.copyTarget);
