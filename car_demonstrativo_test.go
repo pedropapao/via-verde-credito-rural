@@ -37,15 +37,16 @@ func TestCarGeometryCenterAndPerimeter(t *testing.T) {
 	if p := carGeometryPerimeterM(g); p <= 0 { t.Fatalf("perimetro deveria ser positivo: %.2f", p) }
 }
 
-func TestCentralCARExibeDemonstrativoTecnico(t *testing.T) {
+func TestCentralCARPriorizaDemonstrativoOficial(t *testing.T) {
 	body, err := webFS.ReadFile("web/templates/car.html")
 	if err != nil { t.Fatalf("nao foi possivel ler template: %v", err) }
 	page := string(body)
 	for _, want := range []string{
+		"Baixar demonstrativo oficial do SICAR",
+		"data-open-url=\"https://www.car.gov.br/#/consultar\"",
+		"Relatório técnico Via Verde",
 		"/car/demonstrativo?number={{.CAR}}",
-		"Baixar demonstrativo técnico PDF",
-		"Abrir demonstrativo oficial do SICAR",
-		"não substitui o Demonstrativo oficial",
+		"não é o Demonstrativo oficial do SICAR",
 	} {
 		if !strings.Contains(page, want) { t.Fatalf("template CAR nao contem %q", want) }
 	}
