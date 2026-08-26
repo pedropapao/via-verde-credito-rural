@@ -13,8 +13,8 @@ func TestCentralCARFicaSimplesSemAssistenteDeRecibo(t *testing.T) {
 	page := string(body)
 	for _, want := range []string{
 		"Gerar e baixar KML",
-		"Baixar demonstrativo técnico PDF",
-		"Abrir demonstrativo oficial do SICAR",
+		"Baixar demonstrativo oficial do SICAR",
+		"Relatório técnico Via Verde",
 		"Abrir Consulta Pública do CAR",
 	} {
 		if !strings.Contains(page, want) {
