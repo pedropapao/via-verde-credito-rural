@@ -4,7 +4,7 @@
   <div class="car-intro card">
     <div>
       <span class="eyebrow">CENTRAL CAR</span>
-      <h2>Consulte o CAR, gere o KML e o demonstrativo</h2>
+      <h2>Consulte o CAR, baixe o KML e acesse o demonstrativo oficial</h2>
       <p>Digite o número completo do Cadastro Ambiental Rural. O Via Verde consulta a camada pública do SICAR e não salva o número nem os arquivos.</p>
     </div>
     <span class="car-privacy">Nada fica armazenado</span>
@@ -51,15 +51,19 @@
       {{end}}
 
       <div class="car-actions">
+        <button class="btn primary car-pdf-btn" type="button" data-copy-open data-copy-text="{{.CAR}}" data-copy-done="CAR copiado ✓" data-open-url="https://www.car.gov.br/#/consultar">Baixar demonstrativo oficial do SICAR</button>
         {{if .HasGeometry}}<a class="btn primary" href="{{.KMLURL}}">Gerar e baixar KML</a>{{end}}
-        {{if .Found}}<a class="btn primary car-pdf-btn" href="/car/demonstrativo?number={{.CAR}}">Baixar demonstrativo técnico PDF</a>{{end}}
-        <button class="btn ghost" type="button" data-copy-open data-copy-text="{{.CAR}}" data-open-url="https://www.car.gov.br/#/consultar">Abrir demonstrativo oficial do SICAR</button>
+        {{if .Found}}<a class="btn ghost" href="/car/demonstrativo?number={{.CAR}}">Relatório técnico Via Verde</a>{{end}}
         <a class="btn ghost" href="https://consultapublica.car.gov.br/publico/imoveis/index" target="_blank" rel="noopener">Abrir Consulta Pública do CAR</a>
+      </div>
+
+      <div class="car-pdf-note">
+        <strong>Demonstrativo oficial:</strong> o botão acima copia o número do CAR e abre a consulta oficial do SICAR. No portal, cole o número, conclua o CAPTCHA quando solicitado e use a opção de salvar/baixar o Demonstrativo do CAR. O PDF obtido ali é o arquivo oficial do SICAR.
       </div>
 
       {{if .Found}}
       <div class="car-pdf-note">
-        <strong>PDF gratuito do Via Verde:</strong> reúne os dados públicos encontrados no SICAR e desenha o perímetro do imóvel. É um demonstrativo técnico para conferência e trabalho interno e não substitui o Demonstrativo oficial emitido pelo SICAR.
+        <strong>Relatório técnico Via Verde:</strong> é apenas um relatório auxiliar gerado com os dados públicos encontrados. Ele não é o Demonstrativo oficial do SICAR e ficou separado para não haver confusão.
       </div>
       {{end}}
     </section>
@@ -69,20 +73,20 @@
   <section class="car-help-grid">
     <article class="card car-help-card">
       <span class="car-step">1</span>
-      <div><strong>KML</strong><p>Quando a geometria pública estiver disponível, o Via Verde gera o KML na hora para download. O arquivo não é guardado no sistema.</p></div>
+      <div><strong>Demonstrativo oficial</strong><p>O Via Verde copia o CAR e abre o SICAR. A validação CAPTCHA e o download do PDF oficial são concluídos no portal público.</p></div>
     </article>
     <article class="card car-help-card">
       <span class="car-step">2</span>
-      <div><strong>Demonstrativo técnico PDF</strong><p>Gerado gratuitamente pelo Via Verde com situação, condição, área, módulos fiscais, datas disponíveis, perímetro e representação do imóvel.</p></div>
+      <div><strong>KML</strong><p>Quando a geometria pública estiver disponível, o Via Verde gera o KML na hora para download. O arquivo não é guardado no sistema.</p></div>
     </article>
     <article class="card car-help-card">
       <span class="car-step">3</span>
-      <div><strong>Documento oficial</strong><p>O botão oficial copia o CAR e abre a consulta do SICAR. Quando o portal exigir CAPTCHA, a validação precisa ser feita diretamente no serviço público.</p></div>
+      <div><strong>Relatório Via Verde</strong><p>Relatório auxiliar para conferência interna, com situação, condição, área, módulos fiscais e representação do perímetro. Não substitui o documento do SICAR.</p></div>
     </article>
   </section>
 
   <div class="car-security-note">
-    <strong>Segurança:</strong> o Via Verde não armazena o número consultado, KML, PDF gerado ou dados de autenticação.
+    <strong>Segurança:</strong> o Via Verde não armazena o número consultado, KML, relatório gerado ou dados de autenticação.
   </div>
 </section>
 {{end}}
