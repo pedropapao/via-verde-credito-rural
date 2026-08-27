@@ -130,6 +130,7 @@ func (a *App) viewerDashboard(w http.ResponseWriter, r *http.Request) {
 		p := row.Project
 		s := strings.ToLower(strings.TrimSpace(p.Status))
 		phase := strings.ToLower(strings.TrimSpace(p.Phase))
+		closed := viewerProjectClosed(p.Status)
 		switch {
 		case strings.Contains(s, "reprov") || strings.Contains(s, "negad"):
 			d.Rejected++
@@ -146,13 +147,13 @@ func (a *App) viewerDashboard(w http.ResponseWriter, r *http.Request) {
 		default:
 			d.Draft++
 		}
-		if row.PendingDocs > 0 || strings.Contains(phase, "document") || strings.Contains(phase, "pend") {
+		if !closed && (row.PendingDocs > 0 || strings.Contains(phase, "document") || strings.Contains(phase, "pend")) {
 			d.AttentionWaitingDocs++
 		}
-		if row.StaleDays >= 5 && !viewerProjectClosed(p.Status) {
+		if row.StaleDays >= 5 && !closed {
 			d.AttentionStale++
 		}
-		if row.OverdueTasks > 0 {
+		if !closed && row.OverdueTasks > 0 {
 			d.AttentionOverdueProjects++
 		}
 	}
@@ -162,6 +163,7 @@ func (a *App) viewerDashboard(w http.ResponseWriter, r *http.Request) {
 	today := nowViewer().Format("2006-01-02")
 	for _, t := range tasks {
 		if t.DueAt == "" { continue }
+		if p, ok := projectMap[t.ProjectID]; ok && viewerProjectClosed(p.Status) && !viewerTaskDone(t.Status) { continue }
 		row := makeViewerTask(t, projectMap)
 		if t.DueAt < today && !viewerTaskDone(t.Status) {
 			d.Overdue++
@@ -263,6 +265,7 @@ func (a *App) viewerProjectDetail(w http.ResponseWriter, r *http.Request) {
 		if viewerChecklistDone(c.Status) { v.CompletedDocs++ } else { v.PendingDocs++ }
 	}
 	if v.RequiredDocs > 0 { v.DocCompletion = v.CompletedDocs * 100 / v.RequiredDocs }
+	if viewerProjectClosed(p.Status) { v.PendingDocs = 0 }
 	row := buildViewerProjectRows([]Project{p}, v.Checklist, tasks, v.History)
 	if len(row) > 0 {
 		v.Signal = row[0].Signal
@@ -311,6 +314,7 @@ func (a *App) viewerDailyChecklist(w http.ResponseWriter, r *http.Request) {
 	_ = a.sb.Select(r.Context(), "project_tasks", "select=*&"+order("due_at", false), &tasks)
 	v := DailyChecklistView{Date: date, Projects: projects}
 	for _, t := range tasks {
+		if p, ok := pm[t.ProjectID]; ok && viewerProjectClosed(p.Status) && !viewerTaskDone(t.Status) { continue }
 		show := t.DueAt == date
 		if date == nowViewer().Format("2006-01-02") && t.DueAt != "" && t.DueAt < date && !viewerTaskDone(t.Status) { show = true }
 		if !show { continue }
@@ -409,8 +413,14 @@ func buildViewerProjectRows(projects []Project, checklist []ChecklistItem, tasks
 		if last == "" { last = p.UpdatedAt }
 		if last == "" { last = p.CreatedAt }
 		days := viewerDaysSince(last)
-		signal, label := viewerProjectSignal(p, pendingDocs[p.ID], overdue[p.ID], days)
-		rows = append(rows, ViewerProjectRow{Project: p, Signal: signal, SignalLabel: label, StaleDays: days, LastActivity: last, PendingDocs: pendingDocs[p.ID], OverdueTasks: overdue[p.ID]})
+		pd := pendingDocs[p.ID]
+		od := overdue[p.ID]
+		if viewerProjectClosed(p.Status) {
+			pd = 0
+			od = 0
+		}
+		signal, label := viewerProjectSignal(p, pd, od, days)
+		rows = append(rows, ViewerProjectRow{Project: p, Signal: signal, SignalLabel: label, StaleDays: days, LastActivity: last, PendingDocs: pd, OverdueTasks: od})
 	}
 	return rows
 }
@@ -425,7 +435,7 @@ func viewerProjectSignal(p Project, pendingDocs, overdueTasks, staleDays int) (s
 
 func viewerProjectClosed(status string) bool {
 	x := strings.ToLower(strings.TrimSpace(status))
-	return strings.Contains(x, "contrat") || strings.Contains(x, "conclu") || strings.Contains(x, "reprov") || strings.Contains(x, "negad")
+	return strings.Contains(x, "aprov") || strings.Contains(x, "contrat") || strings.Contains(x, "conclu") || strings.Contains(x, "reprov") || strings.Contains(x, "negad")
 }
 
 func viewerTimeAfter(a, b string) bool {
@@ -470,6 +480,10 @@ func viewerCompletedHistory(h ProjectHistory) bool {
 func viewerProjectSummary(v ViewerProject, producer string) string {
 	property := v.Property.Name
 	if property == "" { property = v.Project.PropertyName }
+	docLine := fmt.Sprintf("Documentação: %d%% concluída (%d pendente(s))", v.DocCompletion, v.PendingDocs)
+	if viewerProjectClosed(v.Project.Status) {
+		docLine = fmt.Sprintf("Documentação registrada: %d%% conferida · projeto encerrado", v.DocCompletion)
+	}
 	parts := []string{
 		fmt.Sprintf("%s — %s", producer, v.Project.Title),
 		fmt.Sprintf("Banco: %s", defaultString(v.Project.Bank, "a confirmar")),
@@ -478,9 +492,9 @@ func viewerProjectSummary(v ViewerProject, producer string) string {
 		fmt.Sprintf("Fase atual: %s", defaultString(v.Project.Phase, "a definir")),
 		fmt.Sprintf("Propriedade: %s", defaultString(property, "a confirmar")),
 		fmt.Sprintf("Valor financiado: %s", formatMoney(v.Project.FinancedValue)),
-		fmt.Sprintf("Documentação: %d%% concluída (%d pendente(s))", v.DocCompletion, v.PendingDocs),
+		docLine,
 	}
-	if v.OverdueTasks > 0 { parts = append(parts, fmt.Sprintf("Pendências vencidas: %d", v.OverdueTasks)) }
+	if !viewerProjectClosed(v.Project.Status) && v.OverdueTasks > 0 { parts = append(parts, fmt.Sprintf("Pendências vencidas: %d", v.OverdueTasks)) }
 	if v.StaleDays > 0 { parts = append(parts, fmt.Sprintf("Última movimentação: há %d dia(s)", v.StaleDays)) } else { parts = append(parts, "Última movimentação: hoje") }
 	if strings.TrimSpace(v.Project.Alerts) != "" { parts = append(parts, "Observação: "+strings.TrimSpace(v.Project.Alerts)) }
 	return strings.Join(parts, "\n")
