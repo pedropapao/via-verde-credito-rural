@@ -60,16 +60,34 @@ func (s *Supabase) do(ctx context.Context, method, endpoint string, body io.Read
 	return b, resp.StatusCode, nil
 }
 
+func shouldRetrySupabaseRead(status int) bool {
+	return status == 0 || status == http.StatusTooManyRequests || status >= 500
+}
+
 func (s *Supabase) Select(ctx context.Context, table, query string, out any) error {
 	endpoint := "/rest/v1/" + url.PathEscape(table)
 	if query != "" {
 		endpoint += "?" + query
 	}
-	b, _, err := s.do(ctx, http.MethodGet, endpoint, nil, "", nil)
-	if err != nil {
-		return err
+
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		b, status, err := s.do(ctx, http.MethodGet, endpoint, nil, "", nil)
+		if err == nil {
+			return json.Unmarshal(b, out)
+		}
+		lastErr = err
+		if !shouldRetrySupabaseRead(status) || attempt == 2 {
+			return err
+		}
+		wait := time.Duration(attempt+1) * 250 * time.Millisecond
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(wait):
+		}
 	}
-	return json.Unmarshal(b, out)
+	return lastErr
 }
 
 func (s *Supabase) Insert(ctx context.Context, table string, value any, out any) error {
