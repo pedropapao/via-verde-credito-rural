@@ -15,6 +15,19 @@ func TestPasswordHashAndVerify(t *testing.T) {
 	}
 }
 
+func TestConfiguredAdminMatches(t *testing.T) {
+	cfg := Config{AdminUsername: "pedro.massoli", AdminPassword: "SegredoSeguro@2026"}
+	if !configuredAdminMatches(cfg, " Pedro.Massoli ", "SegredoSeguro@2026") {
+		t.Fatal("credencial administrativa configurada deveria ser aceita para recuperação")
+	}
+	if configuredAdminMatches(cfg, "outro.usuario", "SegredoSeguro@2026") {
+		t.Fatal("recuperação não pode aceitar outro usuário")
+	}
+	if configuredAdminMatches(cfg, "pedro.massoli", "senha-errada") {
+		t.Fatal("recuperação não pode aceitar senha diferente do segredo configurado")
+	}
+}
+
 func TestMoneyBR(t *testing.T) {
 	got := formatMoney(1210500.75)
 	if got != "R$ 1.210.500,75" {
