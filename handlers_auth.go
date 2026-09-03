@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/subtle"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -14,10 +16,22 @@ func (a *App) loginGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := ViewData{Title: "Entrar", Data: map[string]any{"Username": a.cfg.AdminUsername, "Next": r.URL.Query().Get("next")}}
-	if a.startupErr != nil {
-		data.Error = a.startupErr.Error()
+	a.mu.RLock()
+	startupErr := a.startupErr
+	a.mu.RUnlock()
+	if startupErr != nil {
+		data.Error = startupErr.Error()
 	}
 	a.render(w, r, "login", data)
+}
+
+func configuredAdminMatches(cfg Config, username, password string) bool {
+	username = strings.ToLower(strings.TrimSpace(username))
+	admin := strings.ToLower(strings.TrimSpace(cfg.AdminUsername))
+	if username == "" || admin == "" || username != admin || cfg.AdminPassword == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(password), []byte(cfg.AdminPassword)) == 1
 }
 
 func (a *App) loginPost(w http.ResponseWriter, r *http.Request) {
@@ -28,17 +42,78 @@ func (a *App) loginPost(w http.ResponseWriter, r *http.Request) {
 	username := strings.ToLower(strings.TrimSpace(r.FormValue("username")))
 	password := r.FormValue("password")
 	var users []User
-	if err := a.sb.Select(r.Context(), "users", eq("username", username)+"&limit=1", &users); err != nil || len(users) == 0 || !users[0].Active || !VerifyPassword(password, users[0].PasswordHash) {
+	if err := a.sb.Select(r.Context(), "users", eq("username", username)+"&limit=1", &users); err != nil {
+		log.Printf("login: falha ao consultar usuario %q: %v", username, err)
+		a.render(w, r, "login", ViewData{Title: "Entrar", Error: "Não foi possível acessar o banco de dados agora. Tente novamente em instantes.", Data: map[string]any{"Username": username}})
+		return
+	}
+
+	// Uma consulta bem-sucedida confirma que eventual erro de bootstrap foi transitório.
+	a.mu.Lock()
+	a.startupErr = nil
+	a.mu.Unlock()
+
+	adminRecovery := configuredAdminMatches(a.cfg, username, password)
+	if len(users) == 0 {
+		if !adminRecovery {
+			a.render(w, r, "login", ViewData{Title: "Entrar", Error: "Usuário ou senha inválidos.", Data: map[string]any{"Username": username}})
+			return
+		}
+		hash, err := HashPassword(password)
+		if err != nil {
+			a.render(w, r, "login", ViewData{Title: "Entrar", Error: "Não foi possível recuperar o acesso do proprietário."})
+			return
+		}
+		var created []User
+		row := User{Name: a.cfg.AdminName, Username: username, PasswordHash: hash, Role: "owner", Active: true}
+		if err := a.sb.Insert(r.Context(), "users", row, &created); err != nil || len(created) == 0 {
+			log.Printf("login: falha ao recriar proprietario %q: %v", username, err)
+			a.render(w, r, "login", ViewData{Title: "Entrar", Error: "Não foi possível recuperar o acesso do proprietário agora."})
+			return
+		}
+		users = created
+		log.Printf("login: acesso do proprietario recriado pelo segredo de ambiente")
+	}
+
+	user := users[0]
+	passwordOK := user.Active && VerifyPassword(password, user.PasswordHash)
+	if !passwordOK && adminRecovery {
+		hash, err := HashPassword(password)
+		if err != nil {
+			a.render(w, r, "login", ViewData{Title: "Entrar", Error: "Não foi possível recuperar o acesso do proprietário."})
+			return
+		}
+		var repaired []User
+		vals := map[string]any{"password_hash": hash, "active": true, "role": "owner"}
+		if strings.TrimSpace(user.Name) == "" && strings.TrimSpace(a.cfg.AdminName) != "" {
+			vals["name"] = a.cfg.AdminName
+		}
+		if err := a.sb.Update(r.Context(), "users", eq("id", user.ID), vals, &repaired); err != nil || len(repaired) == 0 {
+			log.Printf("login: falha ao reparar proprietario %q: %v", username, err)
+			a.render(w, r, "login", ViewData{Title: "Entrar", Error: "Não foi possível recuperar o acesso do proprietário agora."})
+			return
+		}
+		user = repaired[0]
+		passwordOK = true
+		log.Printf("login: credencial do proprietario sincronizada com o segredo de ambiente")
+	}
+	if !passwordOK {
 		a.render(w, r, "login", ViewData{Title: "Entrar", Error: "Usuário ou senha inválidos.", Data: map[string]any{"Username": username}})
 		return
 	}
-	raw, _, err := a.createSession(r.Context(), users[0].ID)
+
+	// Mantém a tabela de sessões limpa sem afetar sessões ainda válidas.
+	expired := eq("user_id", user.ID) + "&expires_at=lt." + url.QueryEscape(time.Now().UTC().Format(time.RFC3339))
+	_ = a.sb.Delete(r.Context(), "sessions", expired)
+
+	raw, _, err := a.createSession(r.Context(), user.ID)
 	if err != nil {
-		a.render(w, r, "login", ViewData{Title: "Entrar", Error: "Não foi possível iniciar a sessão."})
+		log.Printf("login: falha ao criar sessao para %q: %v", username, err)
+		a.render(w, r, "login", ViewData{Title: "Entrar", Error: "A senha foi conferida, mas não foi possível iniciar a sessão. Tente novamente em instantes.", Data: map[string]any{"Username": username}})
 		return
 	}
 	a.setSessionCookie(w, r, raw)
-	_ = a.sb.Update(r.Context(), "users", eq("id", users[0].ID), map[string]any{"last_login_at": time.Now().UTC().Format(time.RFC3339)}, nil)
+	_ = a.sb.Update(r.Context(), "users", eq("id", user.ID), map[string]any{"last_login_at": time.Now().UTC().Format(time.RFC3339)}, nil)
 	next := r.URL.Query().Get("next")
 	if next == "" || !strings.HasPrefix(next, "/") {
 		next = "/"
