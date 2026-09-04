@@ -1,0 +1,125 @@
+{{define "content"}}
+{{with .Data}}
+<section class="autoproject-shell">
+  <div class="autoproject-hero">
+    <div>
+      <span class="eyebrow light">AUTOPROJETO · ANÁLISE AUTOMÁTICA</span>
+      <h2>Envie os arquivos. O sistema lê, cruza e aponta o que não fecha.</h2>
+      <p>DOCX, XLSX, XLSM, KML, CSV e TXT são lidos nesta primeira versão. PDFs entram no lote, mas a leitura profunda será adicionada na próxima etapa.</p>
+    </div>
+    <div class="autoproject-hero-badge">
+      <strong>{{if .Analyzed}}{{.Score}}%{{else}}1ª versão{{end}}</strong>
+      <span>{{if .Analyzed}}prontidão calculada{{else}}motor inteligente{{end}}</span>
+    </div>
+  </div>
+
+  <section class="card autoproject-upload-card">
+    <div class="section-head">
+      <div><span class="eyebrow">NOVO PROJETO INTELIGENTE</span><h3>Jogue tudo o que você tiver do cliente</h3></div>
+    </div>
+    <form method="post" action="/autoproject/analyze" enctype="multipart/form-data" class="autoproject-form">
+      <input type="hidden" name="csrf" value="{{$.CSRF}}">
+      <div class="autoproject-hints">
+        <label>Banco, se já souber
+          <select name="bank_hint">
+            <option value="">Detectar automaticamente</option>
+            <option {{if eq .BankHint "Banco do Brasil"}}selected{{end}}>Banco do Brasil</option>
+            <option {{if eq .BankHint "Sicoob"}}selected{{end}}>Sicoob</option>
+            <option {{if eq .BankHint "Cresol"}}selected{{end}}>Cresol</option>
+            <option {{if eq .BankHint "Sicredi"}}selected{{end}}>Sicredi</option>
+            <option {{if eq .BankHint "Credicom"}}selected{{end}}>Credicom</option>
+          </select>
+        </label>
+        <label>Linha, se já souber
+          <select name="line_hint">
+            <option value="">Detectar automaticamente</option>
+            <option {{if eq .LineHint "PRONAF"}}selected{{end}}>PRONAF</option>
+            <option {{if eq .LineHint "PRONAMP"}}selected{{end}}>PRONAMP</option>
+            <option {{if eq .LineHint "RenovAgro"}}selected{{end}}>RenovAgro</option>
+            <option {{if eq .LineHint "Moderfrota"}}selected{{end}}>Moderfrota</option>
+          </select>
+        </label>
+      </div>
+      <label class="autoproject-dropzone">
+        <input type="file" name="files" multiple required accept=".docx,.xlsx,.xlsm,.pdf,.kml,.csv,.txt">
+        <span class="drop-icon">⇧</span>
+        <strong>Selecionar documentos e planilhas</strong>
+        <small>Até 20 arquivos por análise. Nada deste envio é salvo pelo AutoProjeto nesta versão.</small>
+      </label>
+      <div class="autoproject-submit-row">
+        <div><strong>O sistema vai conferir:</strong><span>produtor · CPF · imóvel · matrícula · banco · linha · cultura · área · valor · técnico · orçamento</span></div>
+        <button class="btn primary autoproject-analyze-btn" type="submit">Analisar projeto</button>
+      </div>
+    </form>
+  </section>
+
+  {{if .Analyzed}}
+  <section class="autoproject-score-grid">
+    <article class="card score-card main"><span>Prontidão</span><strong>{{.Score}}%</strong><small>com base no que foi encontrado</small></article>
+    <article class="card score-card"><span>Arquivos</span><strong>{{.FileCount}}</strong><small>{{.ReadCount}} lidos automaticamente</small></article>
+    <article class="card score-card good"><span>Campos confirmados</span><strong>{{.Confirmed}}</strong><small>iguais ou compatíveis</small></article>
+    <article class="card score-card bad"><span>Divergências</span><strong>{{.Errors}}</strong><small>precisam de decisão</small></article>
+    <article class="card score-card warn"><span>Atenções</span><strong>{{.Warnings}}</strong><small>merecem conferência</small></article>
+  </section>
+
+  <div class="autoproject-two-col">
+    <section class="card">
+      <div class="section-head"><div><span class="eyebrow">FICHA MESTRE</span><h3>Dados que o sistema conseguiu montar</h3></div></div>
+      <div class="master-list">
+        {{range .Master}}
+        <div class="master-row {{.Status}}">
+          <div><span>{{.Label}}</span><strong>{{if .Value}}{{.Value}}{{else}}Não encontrado{{end}}</strong></div>
+          <div class="master-meta">
+            {{if eq .Status "error"}}<span class="auto-chip error">Divergente</span>{{else if eq .Status "compatible"}}<span class="auto-chip info">Compatível</span>{{else if eq .Status "missing"}}<span class="auto-chip missing">Faltando</span>{{else}}<span class="auto-chip ok">Confirmado</span>{{end}}
+            {{if .Sources}}<small>{{range $i, $s := .Sources}}{{if $i}} · {{end}}{{$s}}{{end}}</small>{{end}}
+          </div>
+        </div>
+        {{end}}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head"><div><span class="eyebrow">REVISÃO INTELIGENTE</span><h3>O que o AutoProjeto encontrou</h3></div></div>
+      <div class="finding-list">
+        {{range .Findings}}
+        <article class="finding {{.Level}}">
+          <span class="finding-icon">{{if eq .Level "error"}}!{{else if eq .Level "warning"}}⚠{{else}}✓{{end}}</span>
+          <div><strong>{{.Title}}</strong><p>{{.Detail}}</p></div>
+        </article>
+        {{else}}
+        <article class="finding info"><span class="finding-icon">✓</span><div><strong>Nenhuma divergência detectada</strong><p>Os campos encontrados não apresentaram conflito entre os arquivos lidos.</p></div></article>
+        {{end}}
+      </div>
+
+      {{if .Missing}}
+      <div class="autoproject-missing">
+        <strong>O que ainda preciso que você informe</strong>
+        <p>O sistema não encontrou estes dados com segurança:</p>
+        <div>{{range .Missing}}<span>{{.}}</span>{{end}}</div>
+      </div>
+      {{else}}
+      <div class="autoproject-ready"><strong>Ficha básica completa.</strong><span>Agora o próximo motor pode usar estes dados para preencher os modelos da linha escolhida.</span></div>
+      {{end}}
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="section-head"><div><span class="eyebrow">ARQUIVOS ANALISADOS</span><h3>O que foi lido neste envio</h3></div></div>
+    <div class="auto-files-grid">
+      {{range .Files}}
+      <article class="auto-file {{if .Extracted}}read{{else}}pending{{end}}">
+        <span class="auto-file-ext">{{.Kind}}</span>
+        <div><strong>{{.Name}}</strong><small>{{.SizeLabel}} · {{.Note}}</small></div>
+      </article>
+      {{end}}
+    </div>
+  </section>
+
+  <div class="autoproject-next">
+    <strong>Próxima etapa do desenvolvimento</strong>
+    <p>Usar esta ficha mestre para preencher automaticamente os modelos reais do Banco do Brasil, começando por custeio agrícola, sem redigitar os mesmos dados.</p>
+  </div>
+  {{end}}
+</section>
+{{end}}
+{{end}}
