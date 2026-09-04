@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="/static/car.css">
   <link rel="stylesheet" href="/static/clients.css">
   <link rel="stylesheet" href="/static/rural_docs.css">
+  <link rel="stylesheet" href="/static/autoproject.css">
   <script defer src="/static/app.js"></script>
 </head>
 <body>
@@ -36,6 +37,7 @@
       <a class="{{if hasPrefix .CurrentPath "/attention"}}active{{end}}" href="/attention"><span>!</span>Atenção</a>
       {{if eq .User.Role "owner"}}
       <span class="nav-group">Ferramentas</span>
+      <a class="{{if hasPrefix .CurrentPath "/autoproject"}}active{{end}}" href="/autoproject"><span>✦</span>AutoProjeto</a>
       <a class="{{if hasPrefix .CurrentPath "/car"}}active{{end}}" href="/car"><span>⌖</span>Consulta CAR</a>
       {{end}}
       <span class="nav-group">Rotina</span>
