@@ -11,5 +11,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.x'
+      - name: Diagnóstico temporário de módulos
+        run: |
+          go mod tidy
+          echo '--- GO.MOD TIDY ---'
+          cat go.mod
+          echo '--- GO.SUM TIDY ---'
+          cat go.sum
       - run: go test ./...
       - run: go build ./...
