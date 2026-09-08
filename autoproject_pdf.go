@@ -16,8 +16,8 @@ import (
 const autoPDFMaxBytes int64 = 40 << 20
 
 // autoPDFText extrai a camada textual de PDFs digitais. PDFs compostos apenas
-// por imagens continuam sendo recebidos, mas são marcados para uma etapa de
-// leitura visual/OCR posterior em vez de gerar dados inventados.
+// por imagens continuam sendo recebidos, mas são marcados para conferência em
+// vez de alimentar a ficha mestre com informação inventada.
 func autoPDFText(data []byte) (text string, err error) {
 	defer func() {
 		if v := recover(); v != nil {
@@ -88,14 +88,18 @@ func analyzeAutoFileV2(fh *multipart.FileHeader) (AutoProjectFile, autoDocument)
 	}
 	text, err := autoPDFText(b)
 	if err != nil || strings.TrimSpace(text) == "" {
-		info.Note = "PDF recebido, mas sem texto pesquisável. Pode ser documento escaneado; não usei OCR nem inventei campos."
+		info.Note = "PDF recebido, mas sem texto pesquisável. Pode ser documento escaneado; os dados dele não foram usados automaticamente."
 		return info, doc
 	}
 
 	info.Extracted = true
-	info.Note = "PDF lido, extraído e comparado."
+	info.Note = "PDF lido, interpretado e comparado."
 	doc.Text = text
 	return info, doc
+}
+
+func (a *App) autoProjectPageV3(w http.ResponseWriter, r *http.Request) {
+	a.render(w, r, "autoproject", ViewData{Title: "AutoProjeto inteligente", Data: AutoProjectCompleteView{}})
 }
 
 func (a *App) autoProjectAnalyzeV2(w http.ResponseWriter, r *http.Request) {
@@ -103,15 +107,15 @@ func (a *App) autoProjectAnalyzeV2(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Sessão inválida. Atualize a página e tente novamente.", http.StatusForbidden)
 		return
 	}
-	if err := r.ParseMultipartForm(64 << 20); err != nil {
-		a.render(w, r, "autoproject", ViewData{Title: "AutoProjeto inteligente", Error: "Não foi possível ler os arquivos enviados."})
+	if err := r.ParseMultipartForm(128 << 20); err != nil {
+		a.render(w, r, "autoproject", ViewData{Title: "AutoProjeto inteligente", Error: "Não foi possível ler os arquivos enviados.", Data: AutoProjectCompleteView{}})
 		return
 	}
 
 	view := AutoProjectView{Analyzed: true, BankHint: strings.TrimSpace(r.FormValue("bank_hint")), LineHint: strings.TrimSpace(r.FormValue("line_hint"))}
 	files := r.MultipartForm.File["files"]
 	if len(files) == 0 {
-		a.render(w, r, "autoproject", ViewData{Title: "AutoProjeto inteligente", Error: "Envie pelo menos um documento ou planilha.", Data: view})
+		a.render(w, r, "autoproject", ViewData{Title: "AutoProjeto inteligente", Error: "Envie pelo menos um documento ou planilha.", Data: AutoProjectCompleteView{AutoProjectView: view}})
 		return
 	}
 	if len(files) > 20 {
@@ -125,7 +129,7 @@ func (a *App) autoProjectAnalyzeV2(w http.ResponseWriter, r *http.Request) {
 		finfo, doc := analyzeAutoFileV2(fh)
 		view.Files = append(view.Files, finfo)
 		if finfo.Kind == "pdf" && !finfo.Extracted {
-			view.Findings = append(view.Findings, AutoFinding{Level: "warning", Title: "PDF sem texto pesquisável", Detail: finfo.Name + ": o arquivo foi recebido, mas parece ser escaneado ou não possui camada textual. Os dados dele não foram usados para preencher a ficha mestre."})
+			view.Findings = append(view.Findings, AutoFinding{Level: "warning", Title: "PDF sem texto pesquisável", Detail: finfo.Name + ": o arquivo parece escaneado ou não possui camada textual. Ele será preservado no pacote, mas não define dados da ficha mestre."})
 		}
 		if doc.Text != "" {
 			view.ReadCount++
@@ -166,5 +170,6 @@ func (a *App) autoProjectAnalyzeV2(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	a.render(w, r, "autoproject", ViewData{Title: "AutoProjeto inteligente", Data: view})
+	complete := enrichAutoProjectView(view, files, docs)
+	a.render(w, r, "autoproject", ViewData{Title: "AutoProjeto inteligente", Data: complete})
 }
