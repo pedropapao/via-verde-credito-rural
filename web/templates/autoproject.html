@@ -5,10 +5,10 @@
     <div>
       <span class="eyebrow light">AUTOPROJETO · ANÁLISE AUTOMÁTICA</span>
       <h2>Envie os arquivos. O sistema lê, cruza e aponta o que não fecha.</h2>
-      <p>DOCX, XLSX, XLSM, KML, CSV e TXT são lidos nesta primeira versão. PDFs entram no lote, mas a leitura profunda será adicionada na próxima etapa.</p>
+      <p>DOCX, XLSX, XLSM, KML, CSV, TXT e PDFs digitais são lidos automaticamente. PDFs escaneados sem camada de texto são identificados e marcados para conferência, sem inventar informações.</p>
     </div>
     <div class="autoproject-hero-badge">
-      <strong>{{if .Analyzed}}{{.Score}}%{{else}}1ª versão{{end}}</strong>
+      <strong>{{if .Analyzed}}{{.Score}}%{{else}}2ª versão{{end}}</strong>
       <span>{{if .Analyzed}}prontidão calculada{{else}}motor inteligente{{end}}</span>
     </div>
   </div>
@@ -98,7 +98,7 @@
         <div>{{range .Missing}}<span>{{.}}</span>{{end}}</div>
       </div>
       {{else}}
-      <div class="autoproject-ready"><strong>Ficha básica completa.</strong><span>Agora o próximo motor pode usar estes dados para preencher os modelos da linha escolhida.</span></div>
+      <div class="autoproject-ready"><strong>Ficha básica completa.</strong><span>Os dados já podem alimentar automaticamente o modelo da linha escolhida.</span></div>
       {{end}}
     </section>
   </div>
@@ -116,8 +116,8 @@
   </section>
 
   <div class="autoproject-next">
-    <strong>Próxima etapa do desenvolvimento</strong>
-    <p>Usar esta ficha mestre para preencher automaticamente os modelos reais do Banco do Brasil, começando por custeio agrícola, sem redigitar os mesmos dados.</p>
+    <strong>Próximo motor</strong>
+    <p>Usar a ficha mestre validada para preencher automaticamente os modelos reais do Banco do Brasil e gerar o pacote final sem redigitar os mesmos dados.</p>
   </div>
   {{end}}
 </section>
