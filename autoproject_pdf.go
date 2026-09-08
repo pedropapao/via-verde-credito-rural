@@ -129,8 +129,11 @@ func (a *App) autoProjectAnalyzeV2(w http.ResponseWriter, r *http.Request) {
 		}
 		if doc.Text != "" {
 			view.ReadCount++
-			doc.Fields = extractAutoFields(doc.Text, doc.Name)
+			doc.Fields = extractAutoFieldsSmart(doc.Text, doc.Name)
 			doc.BudgetSum, doc.BudgetOK, doc.BudgetNote = detectAutoBudget(doc.Text)
+			if f := autoSupportDocumentFinding(doc.Name, doc.Text); f != nil {
+				view.Findings = append(view.Findings, *f)
+			}
 			docs = append(docs, doc)
 		}
 	}
