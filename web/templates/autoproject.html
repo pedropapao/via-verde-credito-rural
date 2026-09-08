@@ -3,12 +3,12 @@
 <section class="autoproject-shell">
   <div class="autoproject-hero">
     <div>
-      <span class="eyebrow light">AUTOPROJETO V4 · LEITURA + CONFERÊNCIA + BIBLIOTECA + MONTAGEM</span>
+      <span class="eyebrow light">AUTOPROJETO V5 · LEITURA + OCR + CONFERÊNCIA + BIBLIOTECA + MONTAGEM</span>
       <h2>Envie a documentação do cliente. O sistema lê, cruza, identifica o projeto e monta o pacote usando seus modelos salvos.</h2>
-      <p>DOCX, XLSX, XLSM, KML, CSV, TXT e PDFs digitais alimentam a ficha mestre. Os modelos do banco ficam guardados na Biblioteca e são reutilizados automaticamente por banco, linha e atividade.</p>
+      <p>DOCX, XLSX, XLSM, KML, CSV, TXT e PDFs alimentam a ficha mestre. PDFs escaneados passam por OCR local no navegador; os modelos do banco ficam guardados na Biblioteca e são reutilizados automaticamente por banco, linha e atividade.</p>
     </div>
     <div class="autoproject-hero-badge">
-      <strong>{{if .Analyzed}}{{.Score}}%{{else}}V4{{end}}</strong>
+      <strong>{{if .Analyzed}}{{.Score}}%{{else}}V5{{end}}</strong>
       <span>{{if .Analyzed}}prontidão calculada{{else}}motor de produção{{end}}</span>
     </div>
   </div>
@@ -19,6 +19,7 @@
     </div>
     <form method="post" action="/autoproject/analyze" enctype="multipart/form-data" class="autoproject-form">
       <input type="hidden" name="csrf" value="{{$.CSRF}}">
+      <input type="hidden" name="ocr_payload" value="">
       <div class="autoproject-hints">
         <label>Banco, se já souber
           <select name="bank_hint">
@@ -49,8 +50,9 @@
         <input type="file" name="files" multiple required accept=".docx,.xlsx,.xlsm,.pdf,.kml,.csv,.txt">
         <span class="drop-icon">⇧</span>
         <strong>Selecionar documentos do cliente</strong>
-        <small>Até 20 arquivos. O lote fica em memória por cerca de 45 minutos para você revisar e gerar o pacote.</small>
+        <small>Até 20 arquivos. PDFs sem texto pesquisável são identificados e lidos por OCR local antes da análise. O lote fica em memória por cerca de 45 minutos para revisão e montagem.</small>
       </label>
+      <div data-ocr-status hidden style="margin-top:12px;padding:12px 14px;border-radius:10px;background:rgba(20,89,62,.08);font-weight:600"></div>
       <div class="autoproject-submit-row">
         <div><strong>O sistema confere:</strong><span>produtor · CPF/CNPJ · imóvel · matrícula · banco · linha · cultura · área · valor · técnico · orçamento · KML</span></div>
         <button class="btn primary autoproject-analyze-btn" type="submit">Ler e interpretar</button>
@@ -116,7 +118,7 @@
     <article class="card score-card"><span>Arquivos</span><strong>{{.FileCount}}</strong><small>{{.ReadCount}} lidos automaticamente</small></article>
     <article class="card score-card good"><span>Campos confirmados</span><strong>{{.Confirmed}}</strong><small>iguais ou compatíveis</small></article>
     <article class="card score-card bad"><span>Divergências</span><strong>{{.Errors}}</strong><small>precisam de decisão</small></article>
-    <article class="card score-card warn"><span>Atenções</span><strong>{{.Warnings}}</strong><small>{{.ScannedPDFs}} PDF(s) sem texto · {{.SpreadsheetModels}} planilha(s)</small></article>
+    <article class="card score-card warn"><span>Atenções</span><strong>{{.Warnings}}</strong><small>{{.ScannedPDFs}} PDF(s) ainda sem texto · {{.SpreadsheetModels}} planilha(s)</small></article>
   </section>
 
   <div class="autoproject-two-col">
@@ -176,7 +178,7 @@
     <div class="section-head">
       <div><span class="eyebrow">MONTAGEM AUTOMÁTICA</span><h3>Confirme a ficha e gere o pacote completo</h3></div>
     </div>
-    <p class="autoproject-build-intro">Os valores abaixo vieram dos documentos. Corrija apenas o que estiver divergente ou complete o que faltar. Depois disso, a ficha confirmada alimenta os documentos gerados, as planilhas do lote e os modelos compatíveis da Biblioteca.</p>
+    <p class="autoproject-build-intro">Os valores abaixo vieram dos documentos, inclusive do OCR quando necessário. Corrija apenas o que estiver divergente ou complete o que faltar. Depois disso, a ficha confirmada alimenta os documentos gerados, as planilhas do lote e os modelos compatíveis da Biblioteca.</p>
     <form method="post" action="/autoproject/build" class="autoproject-build-form">
       <input type="hidden" name="csrf" value="{{$.CSRF}}">
       <input type="hidden" name="token" value="{{.Token}}">
@@ -194,7 +196,7 @@
         <span>Ficha Mestre CSV</span><span>Projeto Técnico DOCX</span><span>Proposta DOCX</span><span>Laudo DOCX</span><span>Relatório de Divergências DOCX</span><span>Checklist</span><span>Resumo de Cálculos</span><span>Modelos XLSX/XLSM/DOCX preenchidos</span><span>Todos os documentos originais</span>
       </div>
       {{if gt .ScannedPDFs 0}}
-      <div class="autoproject-scan-warning"><strong>{{.ScannedPDFs}} PDF(s) parecem escaneados.</strong><span>Eles serão preservados e sinalizados para conferência. O AutoProjeto não inventa informação que não conseguiu ler.</span></div>
+      <div class="autoproject-scan-warning"><strong>{{.ScannedPDFs}} PDF(s) ainda não puderam ser lidos.</strong><span>O OCR foi tentado antes da análise. Esses originais foram preservados e continuam sinalizados para conferência; o AutoProjeto não inventa informação.</span></div>
       {{end}}
       <div class="autoproject-build-actions">
         <button class="btn primary" type="submit">Gerar pacote completo (.zip)</button>
@@ -205,5 +207,6 @@
   {{end}}
   {{end}}
 </section>
+<script src="/static/autoproject_ocr.js" defer></script>
 {{end}}
 {{end}}
