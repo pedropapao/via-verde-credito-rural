@@ -13,6 +13,8 @@ import (
 	pdfreader "github.com/ledongthuc/pdf"
 )
 
+const autoPDFMaxBytes int64 = 40 << 20
+
 // autoPDFText extrai a camada textual de PDFs digitais. PDFs compostos apenas
 // por imagens continuam sendo recebidos, mas são marcados para uma etapa de
 // leitura visual/OCR posterior em vez de gerar dados inventados.
@@ -68,8 +70,8 @@ func analyzeAutoFileV2(fh *multipart.FileHeader) (AutoProjectFile, autoDocument)
 
 	info := AutoProjectFile{Name: filepath.Base(fh.Filename), Kind: kind, SizeLabel: autoSize(fh.Size)}
 	doc := autoDocument{Name: info.Name, Kind: kind}
-	if fh.Size > 18<<20 {
-		info.Note = "PDF maior que 18 MB; não foi processado nesta análise."
+	if fh.Size > autoPDFMaxBytes {
+		info.Note = "PDF maior que 40 MB; não foi processado nesta análise."
 		return info, doc
 	}
 	f, err := fh.Open()
@@ -79,7 +81,7 @@ func analyzeAutoFileV2(fh *multipart.FileHeader) (AutoProjectFile, autoDocument)
 	}
 	defer f.Close()
 
-	b, err := io.ReadAll(io.LimitReader(f, 18<<20))
+	b, err := io.ReadAll(io.LimitReader(f, autoPDFMaxBytes))
 	if err != nil {
 		info.Note = "Falha durante a leitura do PDF."
 		return info, doc
