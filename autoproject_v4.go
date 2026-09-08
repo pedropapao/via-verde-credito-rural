@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strconv"
@@ -12,9 +13,44 @@ import (
 
 type AutoProjectV4View struct {
 	AutoProjectCompleteView
-	Templates     []AutoProjectTemplate
-	LibraryError  string
-	ActivityHint  string
+	Templates    []AutoProjectTemplate
+	LibraryError string
+	ActivityHint string
+}
+
+type autoOCRItem struct {
+	Name  string `json:"name"`
+	Text  string `json:"text"`
+	Pages int    `json:"pages,omitempty"`
+}
+
+func parseAutoOCRPayload(raw string) []autoOCRItem {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || len(raw) > 6<<20 {
+		return nil
+	}
+	var in []autoOCRItem
+	if err := json.Unmarshal([]byte(raw), &in); err != nil {
+		return nil
+	}
+	out := make([]autoOCRItem, 0, len(in))
+	total := 0
+	for _, item := range in {
+		item.Name = strings.TrimSpace(item.Name)
+		item.Text = strings.TrimSpace(item.Text)
+		if item.Name == "" || item.Text == "" {
+			continue
+		}
+		if len(item.Text) > 2<<20 {
+			item.Text = item.Text[:2<<20]
+		}
+		total += len(item.Text)
+		if total > 5<<20 {
+			break
+		}
+		out = append(out, item)
+	}
+	return out
 }
 
 func (a *App) autoProjectPageV4(w http.ResponseWriter, r *http.Request) {
@@ -57,9 +93,6 @@ func (a *App) autoProjectAnalyzeV4(w http.ResponseWriter, r *http.Request) {
 		view.FileCount++
 		finfo, doc := analyzeAutoFileV2(fh)
 		view.Files = append(view.Files, finfo)
-		if finfo.Kind == "pdf" && !finfo.Extracted {
-			view.Findings = append(view.Findings, AutoFinding{Level: "warning", Title: "PDF sem texto pesquisável", Detail: finfo.Name + ": o arquivo parece escaneado ou não possui camada textual. Ele será preservado no pacote e ficará marcado para conferência manual."})
-		}
 		if doc.Text != "" {
 			view.ReadCount++
 			doc.Fields = extractAutoFieldsSmart(doc.Text, doc.Name)
@@ -68,6 +101,43 @@ func (a *App) autoProjectAnalyzeV4(w http.ResponseWriter, r *http.Request) {
 				view.Findings = append(view.Findings, *f)
 			}
 			docs = append(docs, doc)
+		}
+	}
+
+	// PDFs escaneados podem chegar com texto recuperado pelo OCR que roda localmente
+	// no navegador. O arquivo em si continua sendo enviado normalmente e guardado no pacote.
+	for _, item := range parseAutoOCRPayload(r.FormValue("ocr_payload")) {
+		source := item.Name + " (OCR)"
+		doc := autoDocument{Name: source, Kind: "pdf_ocr", Text: item.Text}
+		doc.Fields = extractAutoFieldsSmart(doc.Text, doc.Name)
+		doc.BudgetSum, doc.BudgetOK, doc.BudgetNote = detectAutoBudget(doc.Text)
+		docs = append(docs, doc)
+
+		matched := false
+		for i := range view.Files {
+			if strings.EqualFold(strings.TrimSpace(view.Files[i].Name), item.Name) {
+				matched = true
+				if !view.Files[i].Extracted {
+					view.ReadCount++
+				}
+				view.Files[i].Extracted = true
+				if item.Pages > 0 {
+					view.Files[i].Note = "Texto recuperado por OCR local em " + strconv.Itoa(item.Pages) + " página(s)"
+				} else {
+					view.Files[i].Note = "Texto recuperado por OCR local"
+				}
+				break
+			}
+		}
+		if matched {
+			detail := item.Name + ": o texto do documento escaneado foi recuperado no próprio navegador e incluído na conferência."
+			view.Findings = append(view.Findings, AutoFinding{Level: "info", Title: "OCR concluído", Detail: detail})
+		}
+	}
+
+	for _, finfo := range view.Files {
+		if finfo.Kind == "pdf" && !finfo.Extracted {
+			view.Findings = append(view.Findings, AutoFinding{Level: "warning", Title: "PDF ainda sem texto", Detail: finfo.Name + ": não foi possível obter texto pesquisável nem concluir OCR. O original será preservado e este arquivo deverá ser conferido manualmente."})
 		}
 	}
 
@@ -262,12 +332,14 @@ func autoPackageReadmeV4(v map[string]string, d *autoDraft, fillReport []string,
 	b.WriteString("Valor: " + valueOrPending(v["amount"]) + "\n")
 	b.WriteString("Modelos compatíveis carregados da Biblioteca: " + fmtInt(libraryCount) + "\n\n")
 	b.WriteString("O pacote contém ficha mestre, projeto técnico, proposta, laudo, relatório de divergências, checklist, cálculos, modelos preenchidos e cópias dos documentos originais.\n\n")
+	b.WriteString("LEITURA DE PDF ESCANEADO\n")
+	b.WriteString("Quando o PDF não possui texto pesquisável, o AutoProjeto tenta OCR local no navegador antes do envio final da análise. O texto recuperado participa dos mesmos cruzamentos e da ficha mestre. Se o OCR não puder ser concluído, o sistema mantém o original e sinaliza a conferência manual.\n\n")
 	b.WriteString("PREENCHIMENTO DE MODELOS\n")
 	for _, s := range fillReport {
 		b.WriteString("- " + s + "\n")
 	}
 	b.WriteString("\nIMPORTANTE\n")
-	b.WriteString("O AutoProjeto só usa dados encontrados ou confirmados. Campos sem fonte confiável ficam como A CONFIRMAR. PDFs escaneados sem camada textual são preservados e sinalizados para conferência, sem inventar dados.\n")
+	b.WriteString("O AutoProjeto só usa dados encontrados ou confirmados. Campos sem fonte confiável ficam como A CONFIRMAR; dados duvidosos não são inventados.\n")
 	return b.String()
 }
 
