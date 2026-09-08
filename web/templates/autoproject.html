@@ -3,19 +3,19 @@
 <section class="autoproject-shell">
   <div class="autoproject-hero">
     <div>
-      <span class="eyebrow light">AUTOPROJETO · ANÁLISE AUTOMÁTICA</span>
-      <h2>Envie os arquivos. O sistema lê, cruza e aponta o que não fecha.</h2>
-      <p>DOCX, XLSX, XLSM, KML, CSV, TXT e PDFs digitais são lidos automaticamente. PDFs escaneados sem camada de texto são identificados e marcados para conferência, sem inventar informações.</p>
+      <span class="eyebrow light">AUTOPROJETO · LEITURA + CONFERÊNCIA + MONTAGEM</span>
+      <h2>Envie os documentos e modelos. O sistema lê, cruza, aponta divergências e monta o pacote do projeto.</h2>
+      <p>DOCX, XLSX, XLSM, KML, CSV, TXT e PDFs digitais entram na ficha mestre. Planilhas enviadas podem ser preenchidas automaticamente quando o AutoProjeto encontra campos seguros.</p>
     </div>
     <div class="autoproject-hero-badge">
-      <strong>{{if .Analyzed}}{{.Score}}%{{else}}2ª versão{{end}}</strong>
-      <span>{{if .Analyzed}}prontidão calculada{{else}}motor inteligente{{end}}</span>
+      <strong>{{if .Analyzed}}{{.Score}}%{{else}}V3{{end}}</strong>
+      <span>{{if .Analyzed}}prontidão calculada{{else}}motor de projeto{{end}}</span>
     </div>
   </div>
 
   <section class="card autoproject-upload-card">
     <div class="section-head">
-      <div><span class="eyebrow">NOVO PROJETO INTELIGENTE</span><h3>Jogue tudo o que você tiver do cliente</h3></div>
+      <div><span class="eyebrow">NOVO PROJETO INTELIGENTE</span><h3>Jogue tudo o que você tiver do cliente e os modelos da linha</h3></div>
     </div>
     <form method="post" action="/autoproject/analyze" enctype="multipart/form-data" class="autoproject-form">
       <input type="hidden" name="csrf" value="{{$.CSRF}}">
@@ -43,12 +43,12 @@
       <label class="autoproject-dropzone">
         <input type="file" name="files" multiple required accept=".docx,.xlsx,.xlsm,.pdf,.kml,.csv,.txt">
         <span class="drop-icon">⇧</span>
-        <strong>Selecionar documentos e planilhas</strong>
-        <small>Até 20 arquivos por análise. Nada deste envio é salvo pelo AutoProjeto nesta versão.</small>
+        <strong>Selecionar documentos, planilhas e modelos</strong>
+        <small>Até 20 arquivos. O lote fica somente em memória por cerca de 45 minutos para permitir a geração do pacote e depois expira.</small>
       </label>
       <div class="autoproject-submit-row">
-        <div><strong>O sistema vai conferir:</strong><span>produtor · CPF · imóvel · matrícula · banco · linha · cultura · área · valor · técnico · orçamento</span></div>
-        <button class="btn primary autoproject-analyze-btn" type="submit">Analisar projeto</button>
+        <div><strong>O sistema confere:</strong><span>produtor · CPF/CNPJ · imóvel · matrícula · banco · linha · cultura · área · valor · técnico · orçamento · KML</span></div>
+        <button class="btn primary autoproject-analyze-btn" type="submit">Ler e interpretar</button>
       </div>
     </form>
   </section>
@@ -59,12 +59,12 @@
     <article class="card score-card"><span>Arquivos</span><strong>{{.FileCount}}</strong><small>{{.ReadCount}} lidos automaticamente</small></article>
     <article class="card score-card good"><span>Campos confirmados</span><strong>{{.Confirmed}}</strong><small>iguais ou compatíveis</small></article>
     <article class="card score-card bad"><span>Divergências</span><strong>{{.Errors}}</strong><small>precisam de decisão</small></article>
-    <article class="card score-card warn"><span>Atenções</span><strong>{{.Warnings}}</strong><small>merecem conferência</small></article>
+    <article class="card score-card warn"><span>Atenções</span><strong>{{.Warnings}}</strong><small>{{.ScannedPDFs}} PDF(s) sem texto · {{.SpreadsheetModels}} planilha(s)</small></article>
   </section>
 
   <div class="autoproject-two-col">
     <section class="card">
-      <div class="section-head"><div><span class="eyebrow">FICHA MESTRE</span><h3>Dados que o sistema conseguiu montar</h3></div></div>
+      <div class="section-head"><div><span class="eyebrow">FICHA MESTRE</span><h3>Dados consolidados pelo sistema</h3></div></div>
       <div class="master-list">
         {{range .Master}}
         <div class="master-row {{.Status}}">
@@ -79,7 +79,7 @@
     </section>
 
     <section class="card">
-      <div class="section-head"><div><span class="eyebrow">REVISÃO INTELIGENTE</span><h3>O que o AutoProjeto encontrou</h3></div></div>
+      <div class="section-head"><div><span class="eyebrow">REVISÃO INTELIGENTE</span><h3>O que precisa de atenção antes de assinar</h3></div></div>
       <div class="finding-list">
         {{range .Findings}}
         <article class="finding {{.Level}}">
@@ -93,12 +93,11 @@
 
       {{if .Missing}}
       <div class="autoproject-missing">
-        <strong>O que ainda preciso que você informe</strong>
-        <p>O sistema não encontrou estes dados com segurança:</p>
+        <strong>Dados que ainda não foram encontrados com segurança</strong>
         <div>{{range .Missing}}<span>{{.}}</span>{{end}}</div>
       </div>
       {{else}}
-      <div class="autoproject-ready"><strong>Ficha básica completa.</strong><span>Os dados já podem alimentar automaticamente o modelo da linha escolhida.</span></div>
+      <div class="autoproject-ready"><strong>Ficha básica completa.</strong><span>Você já pode gerar o pacote e preencher os modelos enviados.</span></div>
       {{end}}
     </section>
   </div>
@@ -115,10 +114,38 @@
     </div>
   </section>
 
-  <div class="autoproject-next">
-    <strong>Próximo motor</strong>
-    <p>Usar a ficha mestre validada para preencher automaticamente os modelos reais do Banco do Brasil e gerar o pacote final sem redigitar os mesmos dados.</p>
-  </div>
+  {{if .BuildReady}}
+  <section class="card autoproject-build-card">
+    <div class="section-head">
+      <div><span class="eyebrow">MONTAGEM AUTOMÁTICA</span><h3>Confirme ou complete a ficha e gere tudo</h3></div>
+    </div>
+    <p class="autoproject-build-intro">Os valores abaixo já vieram dos documentos. Você pode corrigir uma divergência ou preencher um campo faltante antes da montagem. O sistema usa esta versão confirmada para gerar os documentos e preencher as planilhas.</p>
+    <form method="post" action="/autoproject/build" class="autoproject-build-form">
+      <input type="hidden" name="csrf" value="{{$.CSRF}}">
+      <input type="hidden" name="token" value="{{.Token}}">
+      <div class="autoproject-edit-grid">
+        {{range .Master}}
+        <label>
+          <span>{{.Label}}</span>
+          <input type="text" name="field_{{.Key}}" value="{{.Value}}" placeholder="A confirmar">
+          <small>{{if eq .Status "error"}}Há divergência: confirme o valor correto.{{else if eq .Status "missing"}}Não encontrado: preencha se souber.{{else}}Detectado automaticamente.{{end}}</small>
+        </label>
+        {{end}}
+      </div>
+      <div class="autoproject-package-list">
+        <strong>O pacote ZIP vai trazer:</strong>
+        <span>Ficha Mestre CSV</span><span>Projeto Técnico DOCX</span><span>Proposta DOCX</span><span>Laudo DOCX</span><span>Relatório de Divergências DOCX</span><span>Checklist</span><span>Resumo de Cálculos</span><span>Planilhas XLSX/XLSM preenchidas quando houver campos seguros</span><span>PDFs e KML originais</span>
+      </div>
+      {{if gt .ScannedPDFs 0}}
+      <div class="autoproject-scan-warning"><strong>{{.ScannedPDFs}} PDF(s) parecem escaneados.</strong><span>Eles entram no pacote original, mas o sistema não usa dados invisíveis desses scans como se fossem confirmados.</span></div>
+      {{end}}
+      <div class="autoproject-build-actions">
+        <button class="btn primary" type="submit">Gerar pacote completo (.zip)</button>
+        <span>Use o pacote como rascunho técnico e confira os alertas antes de assinatura/protocolo.</span>
+      </div>
+    </form>
+  </section>
+  {{end}}
   {{end}}
 </section>
 {{end}}
