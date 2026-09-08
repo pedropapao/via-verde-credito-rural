@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -291,6 +290,7 @@ func autoFieldKeyFromLabel(label string) string {
 				return p.key
 			}
 		}
+	}
 	return ""
 }
 
@@ -515,7 +515,10 @@ func autoChecklistText(v map[string]string, d *autoDraft) string {
 	}
 	var b strings.Builder
 	b.WriteString("CHECKLIST AUTOMÁTICO — VIA VERDE\n\n")
-	checks := []struct{ label string; ok bool }{
+	checks := []struct {
+		label string
+		ok    bool
+	}{
 		{"Documento principal (projeto/proposta/laudo/cadastro)", roles[autoRolePrimary] > 0},
 		{"Documento fundiário (CCIR/ITR/matrícula/certidão)", roles[autoRoleProperty] > 0},
 		{"Orçamento/cotação", roles[autoRoleQuote] > 0},
@@ -523,10 +526,16 @@ func autoChecklistText(v map[string]string, d *autoDraft) string {
 	}
 	activity := autoFold(v["activity"])
 	if strings.Contains(activity, "pecu") || strings.Contains(activity, "bovin") || strings.Contains(activity, "leite") || strings.Contains(activity, "corte") {
-		checks = append(checks, struct{ label string; ok bool }{"Ficha sanitária/pecuária", roles[autoRoleSanitary] > 0})
+		checks = append(checks, struct {
+			label string
+			ok    bool
+		}{"Ficha sanitária/pecuária", roles[autoRoleSanitary] > 0})
 	}
 	if strings.Contains(activity, "irriga") {
-		checks = append(checks, struct{ label string; ok bool }{"Outorga/autorização hídrica", roles[autoRolePermit] > 0})
+		checks = append(checks, struct {
+			label string
+			ok    bool
+		}{"Outorga/autorização hídrica", roles[autoRolePermit] > 0})
 	}
 	for _, c := range checks {
 		status := "[FALTA]"
@@ -591,12 +600,4 @@ func autoPackageReadme(v map[string]string, d *autoDraft, fillReport []string) s
 	b.WriteString("\nIMPORTANTE\n")
 	b.WriteString("O AutoProjeto não inventa dados ausentes. Campos sem fonte confiável ficam como A CONFIRMAR. PDFs escaneados sem camada de texto são preservados, mas exigem leitura visual/OCR externo antes de seus dados entrarem na ficha mestre.\n")
 	return b.String()
-}
-
-func autoNumericValue(v string) float64 {
-	if strings.Contains(v, "R$") {
-		return parseAutoMoney(v)
-	}
-	n, _ := strconv.ParseFloat(strings.ReplaceAll(strings.TrimSpace(v), ",", "."), 64)
-	return n
 }
