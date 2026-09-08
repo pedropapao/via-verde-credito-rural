@@ -3,19 +3,19 @@
 <section class="autoproject-shell">
   <div class="autoproject-hero">
     <div>
-      <span class="eyebrow light">AUTOPROJETO · LEITURA + CONFERÊNCIA + MONTAGEM</span>
-      <h2>Envie os documentos e modelos. O sistema lê, cruza, aponta divergências e monta o pacote do projeto.</h2>
-      <p>DOCX, XLSX, XLSM, KML, CSV, TXT e PDFs digitais entram na ficha mestre. Planilhas enviadas podem ser preenchidas automaticamente quando o AutoProjeto encontra campos seguros.</p>
+      <span class="eyebrow light">AUTOPROJETO V4 · LEITURA + CONFERÊNCIA + BIBLIOTECA + MONTAGEM</span>
+      <h2>Envie a documentação do cliente. O sistema lê, cruza, identifica o projeto e monta o pacote usando seus modelos salvos.</h2>
+      <p>DOCX, XLSX, XLSM, KML, CSV, TXT e PDFs digitais alimentam a ficha mestre. Os modelos do banco ficam guardados na Biblioteca e são reutilizados automaticamente por banco, linha e atividade.</p>
     </div>
     <div class="autoproject-hero-badge">
-      <strong>{{if .Analyzed}}{{.Score}}%{{else}}V3{{end}}</strong>
-      <span>{{if .Analyzed}}prontidão calculada{{else}}motor de projeto{{end}}</span>
+      <strong>{{if .Analyzed}}{{.Score}}%{{else}}V4{{end}}</strong>
+      <span>{{if .Analyzed}}prontidão calculada{{else}}motor de produção{{end}}</span>
     </div>
   </div>
 
   <section class="card autoproject-upload-card">
     <div class="section-head">
-      <div><span class="eyebrow">NOVO PROJETO INTELIGENTE</span><h3>Jogue tudo o que você tiver do cliente e os modelos da linha</h3></div>
+      <div><span class="eyebrow">NOVO PROJETO INTELIGENTE</span><h3>Jogue a documentação do produtor</h3></div>
     </div>
     <form method="post" action="/autoproject/analyze" enctype="multipart/form-data" class="autoproject-form">
       <input type="hidden" name="csrf" value="{{$.CSRF}}">
@@ -37,20 +37,77 @@
             <option {{if eq .LineHint "PRONAMP"}}selected{{end}}>PRONAMP</option>
             <option {{if eq .LineHint "RenovAgro"}}selected{{end}}>RenovAgro</option>
             <option {{if eq .LineHint "Moderfrota"}}selected{{end}}>Moderfrota</option>
+            <option {{if eq .LineHint "Custeio"}}selected{{end}}>Custeio</option>
+            <option {{if eq .LineHint "Investimento"}}selected{{end}}>Investimento</option>
           </select>
+        </label>
+        <label>Atividade / cultura, se já souber
+          <input type="text" name="activity_hint" value="{{.ActivityHint}}" placeholder="Ex.: Café, soja, pecuária de leite">
         </label>
       </div>
       <label class="autoproject-dropzone">
         <input type="file" name="files" multiple required accept=".docx,.xlsx,.xlsm,.pdf,.kml,.csv,.txt">
         <span class="drop-icon">⇧</span>
-        <strong>Selecionar documentos, planilhas e modelos</strong>
-        <small>Até 20 arquivos. O lote fica somente em memória por cerca de 45 minutos para permitir a geração do pacote e depois expira.</small>
+        <strong>Selecionar documentos do cliente</strong>
+        <small>Até 20 arquivos. O lote fica em memória por cerca de 45 minutos para você revisar e gerar o pacote.</small>
       </label>
       <div class="autoproject-submit-row">
         <div><strong>O sistema confere:</strong><span>produtor · CPF/CNPJ · imóvel · matrícula · banco · linha · cultura · área · valor · técnico · orçamento · KML</span></div>
         <button class="btn primary autoproject-analyze-btn" type="submit">Ler e interpretar</button>
       </div>
     </form>
+  </section>
+
+  <section class="card">
+    <div class="section-head">
+      <div><span class="eyebrow">BIBLIOTECA DE MODELOS</span><h3>Cadastre uma vez e reutilize em todos os próximos projetos</h3></div>
+    </div>
+    <p>Salve aqui planilhas e documentos padrão do banco. Na montagem, o AutoProjeto procura automaticamente os modelos compatíveis com a ficha mestre confirmada.</p>
+    {{if .LibraryError}}<div class="autoproject-scan-warning"><strong>Biblioteca temporariamente indisponível.</strong><span>{{.LibraryError}}</span></div>{{end}}
+    <form method="post" action="/autoproject/templates" enctype="multipart/form-data" class="autoproject-form">
+      <input type="hidden" name="csrf" value="{{$.CSRF}}">
+      <div class="autoproject-hints">
+        <label>Banco
+          <select name="template_bank" required>
+            <option value="">Selecione</option>
+            <option>Banco do Brasil</option><option>Sicoob</option><option>Cresol</option><option>Sicredi</option><option>Credicom</option>
+          </select>
+        </label>
+        <label>Linha / programa
+          <input type="text" name="template_line" required placeholder="Ex.: PRONAF, PRONAMP, RenovAgro">
+        </label>
+        <label>Atividade / cultura
+          <input type="text" name="template_activity" placeholder="Ex.: Café. Deixe vazio se o modelo servir para qualquer atividade.">
+        </label>
+      </div>
+      <label class="autoproject-dropzone">
+        <input type="file" name="template" required accept=".xlsx,.xlsm,.docx">
+        <span class="drop-icon">＋</span>
+        <strong>Adicionar modelo XLSX, XLSM ou DOCX</strong>
+        <small>Até 30 MB. O arquivo fica guardado no armazenamento privado do sistema.</small>
+      </label>
+      <div class="autoproject-build-actions"><button class="btn primary" type="submit">Salvar modelo na Biblioteca</button></div>
+    </form>
+
+    {{if .Templates}}
+    <div class="auto-files-grid">
+      {{range .Templates}}
+      <article class="auto-file read">
+        <span class="auto-file-ext">{{if .Activity}}{{.Activity}}{{else}}GERAL{{end}}</span>
+        <div>
+          <strong>{{.Name}}</strong>
+          <small>{{.Bank}} · {{.Line}}{{if .Activity}} · {{.Activity}}{{end}}</small>
+          <form method="post" action="/autoproject/templates/{{.ID}}/delete" style="margin-top:8px">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <button class="btn" type="submit">Remover modelo</button>
+          </form>
+        </div>
+      </article>
+      {{end}}
+    </div>
+    {{else}}
+    <div class="autoproject-missing"><strong>Nenhum modelo salvo ainda.</strong><div><span>Cadastre os modelos que você já usa no BB, Sicoob, Cresol, Sicredi e Credicom.</span></div></div>
+    {{end}}
   </section>
 
   {{if .Analyzed}}
@@ -97,7 +154,7 @@
         <div>{{range .Missing}}<span>{{.}}</span>{{end}}</div>
       </div>
       {{else}}
-      <div class="autoproject-ready"><strong>Ficha básica completa.</strong><span>Você já pode gerar o pacote e preencher os modelos enviados.</span></div>
+      <div class="autoproject-ready"><strong>Ficha básica completa.</strong><span>Você já pode gerar o pacote e o sistema buscará os modelos da Biblioteca.</span></div>
       {{end}}
     </section>
   </div>
@@ -117,9 +174,9 @@
   {{if .BuildReady}}
   <section class="card autoproject-build-card">
     <div class="section-head">
-      <div><span class="eyebrow">MONTAGEM AUTOMÁTICA</span><h3>Confirme ou complete a ficha e gere tudo</h3></div>
+      <div><span class="eyebrow">MONTAGEM AUTOMÁTICA</span><h3>Confirme a ficha e gere o pacote completo</h3></div>
     </div>
-    <p class="autoproject-build-intro">Os valores abaixo já vieram dos documentos. Você pode corrigir uma divergência ou preencher um campo faltante antes da montagem. O sistema usa esta versão confirmada para gerar os documentos e preencher as planilhas.</p>
+    <p class="autoproject-build-intro">Os valores abaixo vieram dos documentos. Corrija apenas o que estiver divergente ou complete o que faltar. Depois disso, a ficha confirmada alimenta os documentos gerados, as planilhas do lote e os modelos compatíveis da Biblioteca.</p>
     <form method="post" action="/autoproject/build" class="autoproject-build-form">
       <input type="hidden" name="csrf" value="{{$.CSRF}}">
       <input type="hidden" name="token" value="{{.Token}}">
@@ -134,14 +191,14 @@
       </div>
       <div class="autoproject-package-list">
         <strong>O pacote ZIP vai trazer:</strong>
-        <span>Ficha Mestre CSV</span><span>Projeto Técnico DOCX</span><span>Proposta DOCX</span><span>Laudo DOCX</span><span>Relatório de Divergências DOCX</span><span>Checklist</span><span>Resumo de Cálculos</span><span>Planilhas XLSX/XLSM preenchidas quando houver campos seguros</span><span>PDFs e KML originais</span>
+        <span>Ficha Mestre CSV</span><span>Projeto Técnico DOCX</span><span>Proposta DOCX</span><span>Laudo DOCX</span><span>Relatório de Divergências DOCX</span><span>Checklist</span><span>Resumo de Cálculos</span><span>Modelos XLSX/XLSM/DOCX preenchidos</span><span>Todos os documentos originais</span>
       </div>
       {{if gt .ScannedPDFs 0}}
-      <div class="autoproject-scan-warning"><strong>{{.ScannedPDFs}} PDF(s) parecem escaneados.</strong><span>Eles entram no pacote original, mas o sistema não usa dados invisíveis desses scans como se fossem confirmados.</span></div>
+      <div class="autoproject-scan-warning"><strong>{{.ScannedPDFs}} PDF(s) parecem escaneados.</strong><span>Eles serão preservados e sinalizados para conferência. O AutoProjeto não inventa informação que não conseguiu ler.</span></div>
       {{end}}
       <div class="autoproject-build-actions">
         <button class="btn primary" type="submit">Gerar pacote completo (.zip)</button>
-        <span>Use o pacote como rascunho técnico e confira os alertas antes de assinatura/protocolo.</span>
+        <span>Confira os alertas técnicos antes de assinatura ou protocolo no banco.</span>
       </div>
     </form>
   </section>
