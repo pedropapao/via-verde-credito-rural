@@ -12,8 +12,9 @@ func (a *App) routesManagerCAR() http.Handler {
 	mux.Handle("GET /car/demonstrativo", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.carDemonstrativoPDF))))))
 	mux.Handle("GET /car/demonstrativo.json", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.carDemonstrativoJSON))))))
 
-	mux.Handle("GET /autoproject", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.autoProjectPage))))))
+	mux.Handle("GET /autoproject", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.autoProjectPageV3))))))
 	mux.Handle("POST /autoproject/analyze", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.autoProjectAnalyzeV2))))))
+	mux.Handle("POST /autoproject/build", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.autoProjectBuild))))))
 
 	mux.Handle("GET /clients", securityHeaders(recoverer(logger(a.withAuth(http.HandlerFunc(a.managerClientsList))))))
 	mux.Handle("POST /clients", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.managerClientCreate))))))
