@@ -5,15 +5,16 @@ import (
 	"bytes"
 	"io"
 	"net/http"
-	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
 
 type AutoProjectV4View struct {
 	AutoProjectCompleteView
-	Templates    []AutoProjectTemplate
-	LibraryError string
+	Templates     []AutoProjectTemplate
+	LibraryError  string
+	ActivityHint  string
 }
 
 func (a *App) autoProjectPageV4(w http.ResponseWriter, r *http.Request) {
@@ -39,10 +40,11 @@ func (a *App) autoProjectAnalyzeV4(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	activityHint := strings.TrimSpace(r.FormValue("activity_hint"))
 	view := AutoProjectView{Analyzed: true, BankHint: strings.TrimSpace(r.FormValue("bank_hint")), LineHint: strings.TrimSpace(r.FormValue("line_hint"))}
 	files := r.MultipartForm.File["files"]
 	if len(files) == 0 {
-		a.render(w, r, "autoproject", ViewData{Title: "AutoProjeto inteligente", Error: "Envie pelo menos um documento ou planilha.", Data: AutoProjectV4View{AutoProjectCompleteView: AutoProjectCompleteView{AutoProjectView: view}}})
+		a.render(w, r, "autoproject", ViewData{Title: "AutoProjeto inteligente", Error: "Envie pelo menos um documento ou planilha.", Data: AutoProjectV4View{AutoProjectCompleteView: AutoProjectCompleteView{AutoProjectView: view}, ActivityHint: activityHint}})
 		return
 	}
 	if len(files) > 20 {
@@ -56,7 +58,7 @@ func (a *App) autoProjectAnalyzeV4(w http.ResponseWriter, r *http.Request) {
 		finfo, doc := analyzeAutoFileV2(fh)
 		view.Files = append(view.Files, finfo)
 		if finfo.Kind == "pdf" && !finfo.Extracted {
-			view.Findings = append(view.Findings, AutoFinding{Level: "warning", Title: "PDF sem texto pesquisável", Detail: finfo.Name + ": o arquivo parece escaneado ou não possui camada textual. Ele será preservado no pacote, mas não define dados da ficha mestre."})
+			view.Findings = append(view.Findings, AutoFinding{Level: "warning", Title: "PDF sem texto pesquisável", Detail: finfo.Name + ": o arquivo parece escaneado ou não possui camada textual. Ele será preservado no pacote e ficará marcado para conferência manual."})
 		}
 		if doc.Text != "" {
 			view.ReadCount++
@@ -74,6 +76,9 @@ func (a *App) autoProjectAnalyzeV4(w http.ResponseWriter, r *http.Request) {
 	}
 	if view.LineHint != "" {
 		docs = append(docs, autoDocument{Name: "Informado no formulário", Fields: []autoCandidate{{Key: "line", Label: "Linha / enquadramento", Value: view.LineHint, Source: "Informado no formulário"}}})
+	}
+	if activityHint != "" {
+		docs = append(docs, autoDocument{Name: "Informado no formulário", Fields: []autoCandidate{{Key: "activity", Label: "Atividade / cultura", Value: activityHint, Source: "Informado no formulário"}}})
 	}
 
 	view.Master, view.Findings = buildAutoMaster(docs, view.Findings)
@@ -98,7 +103,7 @@ func (a *App) autoProjectAnalyzeV4(w http.ResponseWriter, r *http.Request) {
 	}
 
 	complete := enrichAutoProjectView(view, files, docs)
-	out := AutoProjectV4View{AutoProjectCompleteView: complete}
+	out := AutoProjectV4View{AutoProjectCompleteView: complete, ActivityHint: activityHint}
 	ctx, cancel := contextWithTimeout(15 * time.Second)
 	defer cancel()
 	if templates, err := a.autoListProjectTemplates(ctx); err == nil {
@@ -163,20 +168,35 @@ func (a *App) autoProjectBuildV4(w http.ResponseWriter, r *http.Request) {
 
 	var fillReport []string
 	for _, sf := range draft.Files {
-		if sf.Kind != "xlsx" && sf.Kind != "xlsm" {
+		if sf.Kind != "xlsx" && sf.Kind != "xlsm" && sf.Kind != "docx" {
 			continue
 		}
-		filled, mappings, err := autoFillWorkbook(sf.Data, values)
-		if err != nil {
-			fillReport = append(fillReport, "Lote atual — "+sf.Name+": falha ao preencher ("+err.Error()+")")
-			continue
+		switch sf.Kind {
+		case "xlsx", "xlsm":
+			filled, mappings, err := autoFillWorkbook(sf.Data, values)
+			if err != nil {
+				fillReport = append(fillReport, "Lote atual — "+sf.Name+": falha ao preencher ("+err.Error()+")")
+				continue
+			}
+			if len(mappings) == 0 {
+				fillReport = append(fillReport, "Lote atual — "+sf.Name+": nenhuma célula segura foi localizada.")
+				continue
+			}
+			addZipBytes("Modelos_Preenchidos/Lote_Atual/"+safeZipName(sf.Name), filled)
+			fillReport = append(fillReport, "Lote atual — "+sf.Name+": "+strings.Join(mappings, "; "))
+		case "docx":
+			filled, mappings, err := autoFillDOCX(sf.Data, values)
+			if err != nil {
+				fillReport = append(fillReport, "Lote atual — "+sf.Name+": falha ao preencher DOCX ("+err.Error()+")")
+				continue
+			}
+			if len(mappings) == 0 {
+				fillReport = append(fillReport, "Lote atual — "+sf.Name+": nenhum campo seguro foi localizado.")
+				continue
+			}
+			addZipBytes("Modelos_Preenchidos/Lote_Atual/"+safeZipName(sf.Name), filled)
+			fillReport = append(fillReport, "Lote atual — "+sf.Name+": "+strings.Join(mappings, "; "))
 		}
-		if len(mappings) == 0 {
-			fillReport = append(fillReport, "Lote atual — "+sf.Name+": nenhuma célula segura foi localizada.")
-			continue
-		}
-		addZipBytes("Modelos_Preenchidos/Lote_Atual/"+safeZipName(sf.Name), filled)
-		fillReport = append(fillReport, "Lote atual — "+sf.Name+": "+strings.Join(mappings, "; "))
 	}
 
 	ctx, cancel := contextWithTimeout(60 * time.Second)
@@ -204,7 +224,7 @@ func (a *App) autoProjectBuildV4(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			if len(mappings) == 0 {
-				fillReport = append(fillReport, "Biblioteca — "+sf.Name+": nenhum campo de tabela seguro foi localizado; o original não foi alterado.")
+				fillReport = append(fillReport, "Biblioteca — "+sf.Name+": nenhum campo seguro foi localizado; o original não foi alterado.")
 				continue
 			}
 			addZipBytes("Modelos_Preenchidos/Biblioteca/"+safeZipName(sf.Name), filled)
@@ -217,9 +237,7 @@ func (a *App) autoProjectBuildV4(w http.ResponseWriter, r *http.Request) {
 	addZipText("08_Relatorio_Preenchimento_Modelos.txt", strings.Join(fillReport, "\n"))
 
 	for _, sf := range draft.Files {
-		if sf.Kind == "pdf" || sf.Kind == "kml" {
-			addZipBytes("Documentos_Originais/"+safeZipName(sf.Name), sf.Data)
-		}
+		addZipBytes("Documentos_Originais/"+safeZipName(sf.Name), sf.Data)
 	}
 	addZipText("LEIA-ME.txt", autoPackageReadmeV4(values, draft, fillReport, len(libraryFiles)))
 	if err := zw.Close(); err != nil {
@@ -243,18 +261,16 @@ func autoPackageReadmeV4(v map[string]string, d *autoDraft, fillReport []string,
 	b.WriteString("Área: " + valueOrPending(v["area"]) + "\n")
 	b.WriteString("Valor: " + valueOrPending(v["amount"]) + "\n")
 	b.WriteString("Modelos compatíveis carregados da Biblioteca: " + fmtInt(libraryCount) + "\n\n")
-	b.WriteString("O pacote contém ficha mestre, projeto técnico, proposta, laudo, relatório de divergências, checklist, cálculos, modelos preenchidos e cópias dos PDFs/KML originais.\n\n")
+	b.WriteString("O pacote contém ficha mestre, projeto técnico, proposta, laudo, relatório de divergências, checklist, cálculos, modelos preenchidos e cópias dos documentos originais.\n\n")
 	b.WriteString("PREENCHIMENTO DE MODELOS\n")
 	for _, s := range fillReport {
 		b.WriteString("- " + s + "\n")
 	}
 	b.WriteString("\nIMPORTANTE\n")
-	b.WriteString("O AutoProjeto só usa dados encontrados ou confirmados. Campos sem fonte confiável ficam como A CONFIRMAR. PDFs escaneados sem camada textual são preservados e sinalizados, mas não alimentam a ficha mestre automaticamente.\n")
+	b.WriteString("O AutoProjeto só usa dados encontrados ou confirmados. Campos sem fonte confiável ficam como A CONFIRMAR. PDFs escaneados sem camada textual são preservados e sinalizados para conferência, sem inventar dados.\n")
 	return b.String()
 }
 
 func fmtInt(v int) string {
 	return strconv.Itoa(v)
 }
-
-var _ = filepath.Base
