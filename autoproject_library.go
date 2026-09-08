@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -230,7 +229,10 @@ func autoFillDOCX(data []byte, values map[string]string) ([]byte, []string, erro
 	if !ok {
 		return nil, nil, fmt.Errorf("document.xml ausente")
 	}
-	updated, mappings := autoFillDOCXXML(string(xmlData), values)
+
+	updated, mappings := autoFillDOCXPlaceholders(string(xmlData), values)
+	updated, tableMappings := autoFillDOCXXML(updated, values)
+	mappings = append(mappings, tableMappings...)
 	if len(mappings) == 0 {
 		return data, nil, nil
 	}
@@ -254,6 +256,30 @@ func autoFillDOCX(data []byte, values map[string]string) ([]byte, []string, erro
 		return nil, nil, err
 	}
 	return out.Bytes(), mappings, nil
+}
+
+func autoFillDOCXPlaceholders(xmlText string, values map[string]string) (string, []string) {
+	var mappings []string
+	seen := map[string]bool{}
+	for key, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		tokens := []string{"{{" + key + "}}", "[[" + key + "]]", "<<" + key + ">>"}
+		for _, token := range tokens {
+			if !strings.Contains(xmlText, token) {
+				continue
+			}
+			xmlText = strings.ReplaceAll(xmlText, token, xmlAutoEscape(value))
+			m := "DOCX:placeholder=" + key
+			if !seen[m] {
+				seen[m] = true
+				mappings = append(mappings, m)
+			}
+		}
+	}
+	return xmlText, mappings
 }
 
 func autoFillDOCXXML(xmlText string, values map[string]string) (string, []string) {
