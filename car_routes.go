@@ -12,9 +12,10 @@ func (a *App) routesManagerCAR() http.Handler {
 	mux.Handle("GET /car/demonstrativo", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.carDemonstrativoPDF))))))
 	mux.Handle("GET /car/demonstrativo.json", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.carDemonstrativoJSON))))))
 
-	// AutoProjeto V4: análise, ficha mestre, biblioteca persistente de modelos e montagem automática.
-	mux.Handle("GET /autoproject", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.autoProjectPageV4))))))
-	mux.Handle("POST /autoproject/analyze", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.autoProjectAnalyzeV4))))))
+	// AutoProjeto V6: análise documental + Ficha Mestre + Ficha Técnica auditável.
+	// A montagem ZIP V4 permanece isolada até o Excel nativo passar pelo próximo gate de validação.
+	mux.Handle("GET /autoproject", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.autoProjectPageV6))))))
+	mux.Handle("POST /autoproject/analyze", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.autoProjectAnalyzeV6))))))
 	mux.Handle("POST /autoproject/build", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.autoProjectBuildV4))))))
 	mux.Handle("POST /autoproject/templates", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.autoProjectTemplateUpload))))))
 	mux.Handle("POST /autoproject/templates/{id}/delete", securityHeaders(recoverer(logger(a.ownerOnly(http.HandlerFunc(a.autoProjectTemplateDelete))))))
