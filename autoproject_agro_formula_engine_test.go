@@ -54,3 +54,49 @@ func TestAgroFormulaModelWritesOnlyExplicitTechnicalInputs(t *testing.T) {
 	if got, _ := f.GetCellValue("06-Evol.Reb", "D31"); got != "80" { t.Fatalf("natalidade ano 1: %q", got) }
 	if got, _ := f.GetCellValue("06-Evol.Reb", "H17"); got != "200" { t.Fatalf("suporte ano 2: %q", got) }
 }
+
+func TestAgroFormulaModelUsesRealFabioCostRows(t *testing.T) {
+	f := newFabioEngineTestWorkbook(t)
+	defer f.Close()
+	in := AutoAgroIrrigationInputs{
+		CostUnit: map[string]float64{
+			"vermifugo": 3,
+			"mao_obra": 2000,
+			"energia": 1617.25,
+			"combustivel": 3000,
+			"curral": 2000,
+			"irrigacao": 5010,
+			"seguridade_social": 400,
+		},
+		CostQty: map[string][9]float64{
+			"mao_obra": {12,12,12,12,12,12,12,12,12},
+			"energia": {12,12,12,12,12,12,12,12,12},
+			"combustivel": {1,1,1,1,1,1,1,1,1},
+			"curral": {1,1,1,1,1,1,1,1,1},
+			"irrigacao": {0,1,1,1,1,1,1,1,1},
+			"seguridade_social": {12,12,12,12,12,12,12,12,12},
+		},
+	}
+	if _, err := autoApplyAgroIrrigationInputs(f, in); err != nil { t.Fatal(err) }
+
+	unitChecks := map[string]string{
+		"C21":"3", "C26":"2000", "C28":"1617.25", "C29":"3000",
+		"C43":"2000", "C44":"5010", "C47":"400",
+	}
+	for cell, want := range unitChecks {
+		got, err := f.GetCellValue("07-Custeio Pec", cell)
+		if err != nil { t.Fatal(err) }
+		if got != want { t.Fatalf("custo %s=%q, esperava %q", cell, got, want) }
+	}
+	qtyChecks := map[string]string{
+		"D26":"12", "D28":"12", "D29":"1", "D43":"1", "F44":"1", "D47":"12",
+	}
+	for cell, want := range qtyChecks {
+		got, err := f.GetCellValue("07-Custeio Pec", cell)
+		if err != nil { t.Fatal(err) }
+		if got != want { t.Fatalf("quantidade %s=%q, esperava %q", cell, got, want) }
+	}
+	if got, _ := f.GetCellValue("07-Custeio Pec", "D44"); got != "" {
+		t.Fatalf("manutenção de irrigação no 1º ano não deve ser inventada: %q", got)
+	}
+}
