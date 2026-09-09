@@ -49,6 +49,7 @@ func autoRepairAgroIrrigationFormulaModel(f *excelize.File) error {
 			if err := f.SetCellFormula("06-Evol.Reb", fmt.Sprintf("%s%d", startCol, row), fmt.Sprintf("=%s%d", prev, row)); err != nil {
 				return err
 			}
+		}
 	}
 
 	// Totais do movimento anual. Alguns arquivos históricos tinham valores digitados.
@@ -71,6 +72,7 @@ func autoRepairAgroIrrigationFormulaModel(f *excelize.File) error {
 			if err := f.SetCellFormula("03 e 04-Reembolso", fmt.Sprintf("%s%d", col, row), fmt.Sprintf("=%s$7", col)); err != nil {
 				return err
 			}
+		}
 	}
 
 	// Descrições/unidades/preços de venda se repetem nos três blocos de produção.
