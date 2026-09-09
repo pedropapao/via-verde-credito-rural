@@ -3,24 +3,31 @@
 <section class="autoproject-shell">
   <div class="autoproject-hero">
     <div>
-      <span class="eyebrow light">AUTOPROJETO V5 · LEITURA + OCR + CONFERÊNCIA + BIBLIOTECA + MONTAGEM</span>
-      <h2>Envie a documentação do cliente. O sistema lê, cruza, identifica o projeto e monta o pacote usando seus modelos salvos.</h2>
-      <p>DOCX, XLSX, XLSM, KML, CSV, TXT e PDFs alimentam a ficha mestre. PDFs escaneados passam por OCR local no navegador; os modelos do banco ficam guardados na Biblioteca e são reutilizados automaticamente por banco, linha e atividade.</p>
+      <span class="eyebrow light">AUTOPROJETO V6 · DOCUMENTOS → FICHA MESTRE → FICHA TÉCNICA → MODELO NATIVO</span>
+      <h2>Envie a documentação. O sistema separa dados cadastrais de decisões técnicas e mostra exatamente o que encontrou, o que precisa confirmar e o que ainda falta.</h2>
+      <p>O novo fluxo não transforma hipótese em fato. Dados objetivos alimentam a Ficha Mestre; rebanho, coeficientes, custos, prazo, carência e demais entradas alimentam a Ficha Técnica. Resultados como evolução, receitas, custos consolidados e fluxo continuam sendo calculados pelo Excel validado.</p>
     </div>
     <div class="autoproject-hero-badge">
-      <strong>{{if .Analyzed}}{{.Score}}%{{else}}V5{{end}}</strong>
-      <span>{{if .Analyzed}}prontidão calculada{{else}}motor de produção{{end}}</span>
+      <strong>{{if .Analyzed}}{{.Score}}%{{else}}V6{{end}}</strong>
+      <span>{{if .Analyzed}}prontidão documental{{else}}motor auditável{{end}}</span>
     </div>
   </div>
 
   <section class="card autoproject-upload-card">
     <div class="section-head">
-      <div><span class="eyebrow">NOVO PROJETO INTELIGENTE</span><h3>Jogue a documentação do produtor</h3></div>
+      <div><span class="eyebrow">NOVO PROJETO INTELIGENTE</span><h3>Envie a documentação do produtor</h3></div>
     </div>
     <form method="post" action="/autoproject/analyze" enctype="multipart/form-data" class="autoproject-form">
       <input type="hidden" name="csrf" value="{{$.CSRF}}">
       <input type="hidden" name="ocr_payload" value="">
       <div class="autoproject-hints">
+        <label>Modelo técnico
+          <select name="native_model">
+            <option value="auto" {{if or (eq .NativeSelected "") (eq .NativeSelected "auto")}}selected{{end}}>Detectar automaticamente</option>
+            <option value="agro_irrigacao" {{if eq .NativeSelected "agro_irrigacao"}}selected{{end}}>Investimento Agropecuário / Irrigação</option>
+            <option value="pecuario_completo" {{if eq .NativeSelected "pecuario_completo"}}selected{{end}}>Investimento Pecuário</option>
+          </select>
+        </label>
         <label>Banco, se já souber
           <select name="bank_hint">
             <option value="">Detectar automaticamente</option>
@@ -43,28 +50,43 @@
           </select>
         </label>
         <label>Atividade / cultura, se já souber
-          <input type="text" name="activity_hint" value="{{.ActivityHint}}" placeholder="Ex.: Café, soja, pecuária de leite">
+          <input type="text" name="activity_hint" value="{{.ActivityHint}}" placeholder="Ex.: irrigação em pastagem, café, pecuária de corte">
         </label>
       </div>
       <label class="autoproject-dropzone">
         <input type="file" name="files" multiple required accept=".docx,.xlsx,.xlsm,.pdf,.kml,.csv,.txt">
         <span class="drop-icon">⇧</span>
         <strong>Selecionar documentos do cliente</strong>
-        <small>Até 20 arquivos. PDFs sem texto pesquisável são identificados e lidos por OCR local antes da análise. O lote fica em memória por cerca de 45 minutos para revisão e montagem.</small>
+        <small>Até 20 arquivos. PDFs sem texto pesquisável passam por OCR local antes da análise. O lote fica temporariamente em memória para revisão e montagem.</small>
       </label>
       <div data-ocr-status hidden style="margin-top:12px;padding:12px 14px;border-radius:10px;background:rgba(20,89,62,.08);font-weight:600"></div>
       <div class="autoproject-submit-row">
-        <div><strong>O sistema confere:</strong><span>produtor · CPF/CNPJ · imóvel · matrícula · banco · linha · cultura · área · valor · técnico · orçamento · KML</span></div>
-        <button class="btn primary autoproject-analyze-btn" type="submit">Ler e interpretar</button>
+        <div><strong>O sistema passa a separar:</strong><span>dados cadastrais · operação de crédito · orçamento · rebanho · coeficientes · movimentos · receitas · custos · resultados calculados</span></div>
+        <button class="btn primary autoproject-analyze-btn" type="submit">Ler e montar fichas</button>
       </div>
     </form>
   </section>
 
   <section class="card">
     <div class="section-head">
-      <div><span class="eyebrow">BIBLIOTECA DE MODELOS</span><h3>Cadastre uma vez e reutilize em todos os próximos projetos</h3></div>
+      <div><span class="eyebrow">MODELOS NATIVOS</span><h3>Os dois modelos principais ficam incorporados ao motor</h3></div>
     </div>
-    <p>Salve aqui planilhas e documentos padrão do banco. Na montagem, o AutoProjeto procura automaticamente os modelos compatíveis com a ficha mestre confirmada.</p>
+    <div class="auto-files-grid">
+      {{range .NativeModels}}
+      <article class="auto-file read">
+        <span class="auto-file-ext">NATIVO</span>
+        <div><strong>{{.Name}}</strong><small>{{.Description}} · {{.Focus}}</small></div>
+      </article>
+      {{end}}
+    </div>
+    <p class="autoproject-native-note">O modelo nativo não precisa ser reenviado a cada cliente. A Biblioteca abaixo continua disponível para outros modelos de banco e documentos auxiliares.</p>
+  </section>
+
+  <section class="card">
+    <div class="section-head">
+      <div><span class="eyebrow">BIBLIOTECA DE MODELOS</span><h3>Modelos adicionais de bancos e documentos</h3></div>
+    </div>
+    <p>Salve aqui planilhas e documentos padrão adicionais. Eles continuam disponíveis para reaproveitamento por banco, linha e atividade.</p>
     {{if .LibraryError}}<div class="autoproject-scan-warning"><strong>Biblioteca temporariamente indisponível.</strong><span>{{.LibraryError}}</span></div>{{end}}
     <form method="post" action="/autoproject/templates" enctype="multipart/form-data" class="autoproject-form">
       <input type="hidden" name="csrf" value="{{$.CSRF}}">
@@ -108,22 +130,22 @@
       {{end}}
     </div>
     {{else}}
-    <div class="autoproject-missing"><strong>Nenhum modelo salvo ainda.</strong><div><span>Cadastre os modelos que você já usa no BB, Sicoob, Cresol, Sicredi e Credicom.</span></div></div>
+    <div class="autoproject-missing"><strong>Nenhum modelo adicional salvo.</strong><div><span>Os modelos nativos principais continuam disponíveis mesmo sem arquivos nesta Biblioteca.</span></div></div>
     {{end}}
   </section>
 
   {{if .Analyzed}}
   <section class="autoproject-score-grid">
-    <article class="card score-card main"><span>Prontidão</span><strong>{{.Score}}%</strong><small>com base no que foi encontrado</small></article>
+    <article class="card score-card main"><span>Prontidão documental</span><strong>{{.Score}}%</strong><small>com base no que foi encontrado</small></article>
     <article class="card score-card"><span>Arquivos</span><strong>{{.FileCount}}</strong><small>{{.ReadCount}} lidos automaticamente</small></article>
-    <article class="card score-card good"><span>Campos confirmados</span><strong>{{.Confirmed}}</strong><small>iguais ou compatíveis</small></article>
+    <article class="card score-card good"><span>Campos mestre</span><strong>{{.Confirmed}}</strong><small>iguais ou compatíveis</small></article>
     <article class="card score-card bad"><span>Divergências</span><strong>{{.Errors}}</strong><small>precisam de decisão</small></article>
     <article class="card score-card warn"><span>Atenções</span><strong>{{.Warnings}}</strong><small>{{.ScannedPDFs}} PDF(s) ainda sem texto · {{.SpreadsheetModels}} planilha(s)</small></article>
   </section>
 
   <div class="autoproject-two-col">
     <section class="card">
-      <div class="section-head"><div><span class="eyebrow">FICHA MESTRE</span><h3>Dados consolidados pelo sistema</h3></div></div>
+      <div class="section-head"><div><span class="eyebrow">FICHA MESTRE</span><h3>Dados cadastrais e da operação</h3></div></div>
       <div class="master-list">
         {{range .Master}}
         <div class="master-row {{.Status}}">
@@ -152,14 +174,62 @@
 
       {{if .Missing}}
       <div class="autoproject-missing">
-        <strong>Dados que ainda não foram encontrados com segurança</strong>
+        <strong>Dados cadastrais que ainda não foram encontrados com segurança</strong>
         <div>{{range .Missing}}<span>{{.}}</span>{{end}}</div>
       </div>
       {{else}}
-      <div class="autoproject-ready"><strong>Ficha básica completa.</strong><span>Você já pode gerar o pacote e o sistema buscará os modelos da Biblioteca.</span></div>
+      <div class="autoproject-ready"><strong>Ficha Mestre básica completa.</strong><span>Agora a decisão de geração depende também da Ficha Técnica.</span></div>
       {{end}}
     </section>
   </div>
+
+  {{if .Technical.Groups}}
+  <section class="card autoproject-tech-card">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">FICHA TÉCNICA AGRO / IRRIGAÇÃO</span>
+        <h3>Entradas que realmente comandam o Excel</h3>
+      </div>
+      <div class="autoproject-model-pill">Modelo sugerido: {{if eq .NativeSuggested "agro_irrigacao"}}Agropecuário / Irrigação{{else if eq .NativeSuggested "pecuario_completo"}}Investimento Pecuário{{else}}{{.NativeSuggested}}{{end}}</div>
+    </div>
+    <p class="autoproject-build-intro">Verde = dado objetivo encontrado. Amarelo = o sistema encontrou, mas a decisão técnica precisa ser conferida. Vermelho = não encontrado e deverá ser informado. Azul = resultado calculado pelo próprio Excel e nunca deve ser digitado.</p>
+
+    <div class="autoproject-tech-summary">
+      <article class="tech-summary found"><span>Encontrados</span><strong>{{.Technical.Found}}</strong></article>
+      <article class="tech-summary review"><span>Confirmar</span><strong>{{.Technical.Review}}</strong></article>
+      <article class="tech-summary missing"><span>Faltando</span><strong>{{.Technical.Missing}}</strong></article>
+      <article class="tech-summary critical"><span>Críticos faltando</span><strong>{{.Technical.CriticalMissing}}</strong></article>
+    </div>
+
+    {{range .Technical.Groups}}
+    <div class="tech-group">
+      <h4>{{.Name}}</h4>
+      <div class="tech-grid">
+        {{range .Fields}}
+        <article class="tech-field {{.Status}}">
+          <div class="tech-field-head">
+            <span>{{.Label}}</span>
+            {{if eq .Status "ok"}}<span class="auto-chip ok">{{.Badge}}</span>{{else if eq .Status "compatible"}}<span class="auto-chip tech-review">{{.Badge}}</span>{{else if eq .Status "missing"}}<span class="auto-chip error">{{.Badge}}</span>{{else}}<span class="auto-chip tech-derived">{{.Badge}}</span>{{end}}
+          </div>
+          <strong>{{if .Value}}{{.Value}}{{if .Unit}} {{.Unit}}{{end}}{{else}}Não encontrado{{end}}</strong>
+          {{if .Source}}<small>Fonte: {{.Source}}</small>{{else if .Editable}}<small>Sem fonte documental segura.</small>{{end}}
+          {{if .Note}}<p>{{.Note}}</p>{{end}}
+          {{if .Critical}}<span class="tech-critical-mark">Campo crítico</span>{{end}}
+        </article>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+
+    {{if gt .Technical.CriticalMissing 0}}
+    <div class="autoproject-scan-warning"><strong>Ainda não liberar o Excel nativo.</strong><span>Existem {{.Technical.CriticalMissing}} entrada(s) crítica(s) sem fonte segura. O sistema deverá perguntar apenas esses pontos ou obter os documentos correspondentes.</span></div>
+    {{else}}
+    <div class="autoproject-ready"><strong>Entradas críticas localizadas.</strong><span>O próximo gate é gravar as confirmações no motor nativo e gerar o Excel sem alterar as fórmulas validadas.</span></div>
+    {{end}}
+  </section>
+  {{else if eq .NativeSuggested "pecuario_completo"}}
+  <section class="card autoproject-next"><strong>Modelo pecuário identificado.</strong><p>A Ficha Técnica detalhada desta etapa foi validada primeiro para Agro/Irrigação. O motor pecuário será submetido ao mesmo mapa de fontes antes de ser liberado.</p></section>
+  {{end}}
 
   <section class="card">
     <div class="section-head"><div><span class="eyebrow">ARQUIVOS ANALISADOS</span><h3>O que foi lido neste envio</h3></div></div>
@@ -176,9 +246,9 @@
   {{if .BuildReady}}
   <section class="card autoproject-build-card">
     <div class="section-head">
-      <div><span class="eyebrow">MONTAGEM AUTOMÁTICA</span><h3>Confirme a ficha e gere o pacote completo</h3></div>
+      <div><span class="eyebrow">PACOTE ATUAL</span><h3>Confirme a Ficha Mestre e gere o pacote de conferência</h3></div>
     </div>
-    <p class="autoproject-build-intro">Os valores abaixo vieram dos documentos, inclusive do OCR quando necessário. Corrija apenas o que estiver divergente ou complete o que faltar. Depois disso, a ficha confirmada alimenta os documentos gerados, as planilhas do lote e os modelos compatíveis da Biblioteca.</p>
+    <p class="autoproject-build-intro">Enquanto o Excel nativo V6 não passa pelo gate final, este botão mantém a montagem V4 isolada. Isso evita misturar uma Ficha Técnica nova com um arquivo bancário ainda não liberado para produção.</p>
     <form method="post" action="/autoproject/build" class="autoproject-build-form">
       <input type="hidden" name="csrf" value="{{$.CSRF}}">
       <input type="hidden" name="token" value="{{.Token}}">
@@ -192,15 +262,15 @@
         {{end}}
       </div>
       <div class="autoproject-package-list">
-        <strong>O pacote ZIP vai trazer:</strong>
-        <span>Ficha Mestre CSV</span><span>Projeto Técnico DOCX</span><span>Proposta DOCX</span><span>Laudo DOCX</span><span>Relatório de Divergências DOCX</span><span>Checklist</span><span>Resumo de Cálculos</span><span>Modelos XLSX/XLSM/DOCX preenchidos</span><span>Todos os documentos originais</span>
+        <strong>Pacote de conferência atual:</strong>
+        <span>Ficha Mestre CSV</span><span>Projeto Técnico DOCX</span><span>Proposta DOCX</span><span>Laudo DOCX</span><span>Relatório de Divergências DOCX</span><span>Checklist</span><span>Resumo de Cálculos</span><span>Modelos adicionais preenchidos</span><span>Documentos originais</span>
       </div>
       {{if gt .ScannedPDFs 0}}
-      <div class="autoproject-scan-warning"><strong>{{.ScannedPDFs}} PDF(s) ainda não puderam ser lidos.</strong><span>O OCR foi tentado antes da análise. Esses originais foram preservados e continuam sinalizados para conferência; o AutoProjeto não inventa informação.</span></div>
+      <div class="autoproject-scan-warning"><strong>{{.ScannedPDFs}} PDF(s) ainda não puderam ser lidos.</strong><span>Os originais continuam sinalizados para conferência; o AutoProjeto não inventa informação.</span></div>
       {{end}}
       <div class="autoproject-build-actions">
-        <button class="btn primary" type="submit">Gerar pacote completo (.zip)</button>
-        <span>Confira os alertas técnicos antes de assinatura ou protocolo no banco.</span>
+        <button class="btn primary" type="submit">Gerar pacote de conferência (.zip)</button>
+        <span>O botão do Excel nativo será liberado somente quando as entradas técnicas críticas estiverem integradas e testadas.</span>
       </div>
     </form>
   </section>
