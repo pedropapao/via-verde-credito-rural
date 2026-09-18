@@ -1,7 +1,7 @@
 const state = {
   clients: [], properties: [], selectedClient: null, selectedProperty: null,
   car: null, kml: null, comparison: null, history: [], map: null, carLayer: null, kmlLayer: null,
-  update: null,
+  layerControl: null, themeLayers: {}, environmentLayers: {}, update: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -118,10 +118,45 @@ function initMap(){
   // e mantemos a atribuição exibida no mapa.
   const street=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri'});
   const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri'}).addTo(state.map);
-  L.control.layers({'Satélite':sat,'Mapa':street},{}).addTo(state.map);
+  state.layerControl=L.control.layers({'Satélite':sat,'Mapa':street},{}).addTo(state.map);
 }
 function drawGeoJSON(which,geojson){if(!state.map||!geojson)return;try{const obj=typeof geojson==='string'?JSON.parse(geojson):geojson;if(which==='car'&&state.carLayer)state.map.removeLayer(state.carLayer);if(which==='kml'&&state.kmlLayer)state.map.removeLayer(state.kmlLayer);const style=which==='car'?{color:'#2c7a49',weight:3,fillColor:'#4ca36b',fillOpacity:.16}:{color:'#d77922',weight:3,dashArray:'8 5',fillColor:'#e89a44',fillOpacity:.08};const layer=L.geoJSON(obj,{style}).addTo(state.map);if(which==='car')state.carLayer=layer;else state.kmlLayer=layer;fitMap()}catch(e){toast('Não foi possível desenhar a geometria.',true)}}
-function fitMap(){if(!state.map)return;const layers=[state.carLayer,state.kmlLayer].filter(Boolean);if(!layers.length)return;const group=L.featureGroup(layers);const b=group.getBounds();if(b.isValid())state.map.fitBounds(b.pad(.08),{maxZoom:17})}
+function fitMap(){if(!state.map)return;const layers=[state.carLayer,state.kmlLayer,...Object.values(state.themeLayers||{}),...Object.values(state.environmentLayers||{})].filter(Boolean);if(!layers.length)return;const group=L.featureGroup(layers);const b=group.getBounds();if(b.isValid())state.map.fitBounds(b.pad(.08),{maxZoom:17})}
+function clearOverlayGroup(groupName){
+  const group=state[groupName]||{};
+  Object.values(group).forEach(layer=>{try{if(state.map?.hasLayer(layer))state.map.removeLayer(layer);state.layerControl?.removeLayer(layer)}catch(e){}});
+  state[groupName]={};
+}
+function addOverlay(groupName,key,label,geojson,style,show=true){
+  if(!state.map||!geojson||!window.L)return;
+  try{
+    const obj=typeof geojson==='string'?JSON.parse(geojson):geojson;
+    const layer=L.geoJSON(obj,{style});
+    if(show)layer.addTo(state.map);
+    state[groupName][key]=layer;
+    state.layerControl?.addOverlay(layer,label);
+  }catch(e){}
+}
+function drawThemeLayers(themes){
+  clearOverlayGroup('themeLayers');
+  const m=themes?.themes||{};
+  const defs=[
+    ['APP','APP',{color:'#3b82f6',weight:2,fillColor:'#60a5fa',fillOpacity:.18}],
+    ['RESERVA_LEGAL','Reserva Legal',{color:'#166534',weight:2,fillColor:'#22c55e',fillOpacity:.16}],
+    ['VEGETACAO_NATIVA','Vegetação Nativa',{color:'#14532d',weight:2,fillColor:'#15803d',fillOpacity:.13}],
+    ['AREA_CONSOLIDADA','Área Consolidada',{color:'#c2410c',weight:2,fillColor:'#fb923c',fillOpacity:.12}],
+    ['USO_RESTRITO','Uso Restrito',{color:'#7c3aed',weight:2,fillColor:'#a78bfa',fillOpacity:.10}],
+    ['SERVIDAO_ADMINISTRATIVA','Servidão',{color:'#52525b',weight:2,dashArray:'5 4',fillColor:'#a1a1aa',fillOpacity:.08}],
+  ];
+  defs.forEach(([code,label,style],i)=>{const x=m[code];if(x?.geojson)addOverlay('themeLayers',code,label,x.geojson,style,i<4)});
+}
+function drawEnvironmentalLayers(env){
+  clearOverlayGroup('environmentLayers');
+  const addMany=(items,prefix,label,style)=>{(items||[]).forEach((x,i)=>{if(x.geojson)addOverlay('environmentLayers',prefix+i,label+(items.length>1?' '+(i+1):''),x.geojson,style,true)})};
+  addMany(env?.ibama_embargos,'ibama','Embargo IBAMA',{color:'#b91c1c',weight:3,fillColor:'#ef4444',fillOpacity:.24});
+  addMany(env?.indigenous_findings,'funai','Terra Indígena',{color:'#7e22ce',weight:3,fillColor:'#a855f7',fillOpacity:.16});
+  addMany(env?.federal_uc_findings,'uc','UC Federal',{color:'#0369a1',weight:3,fillColor:'#38bdf8',fillOpacity:.14});
+}
 
 async function lookupCAR(){
   const number=$('carInput').value.trim();if(!number){toast('Informe o número completo do CAR.',true);return}
@@ -163,6 +198,7 @@ function resetCARWorkspace(){
   state.car=null;state.kml=null;state.comparison=null;state.history=[];
   if(state.carLayer&&state.map){state.map.removeLayer(state.carLayer);state.carLayer=null}
   if(state.kmlLayer&&state.map){state.map.removeLayer(state.kmlLayer);state.kmlLayer=null}
+  clearOverlayGroup('themeLayers');clearOverlayGroup('environmentLayers');
   ['rCar','rMunicipality','rPropertyName','rArea','rGeoArea','rPerimeter','rCenter','rPropertyType','rModules','rCondition','rCreatedDate','rUpdatedDate','rAutoKML','kArea','kPerimeter','kPoints','kCenter'].forEach(id=>{if($(id))$(id).textContent='—'});
   $('carStatusBadge').textContent='Aguardando';$('carStatusBadge').className='status-badge neutral';$('kmlBadge').textContent='Não carregado';$('kmlBadge').className='status-badge neutral';
   $('comparisonBox').className='comparison-box neutral';$('comparisonBox').innerHTML='<strong>Comparação KML × CAR</strong><span>Carregue as duas geometrias.</span>';$('comparisonMetrics').classList.add('hidden');
@@ -194,13 +230,14 @@ function renderThemes(themes){
   const setMetric=(id,code)=>{const m=map[code];$(id).textContent=m?.available?fmt(m.area_ha,4)+' ha':'—'};
   setMetric('themeAPP','APP');setMetric('themeRL','RESERVA_LEGAL');setMetric('themeVN','VEGETACAO_NATIVA');setMetric('themeAC','AREA_CONSOLIDADA');setMetric('themeUR','USO_RESTRITO');setMetric('themeSA','SERVIDAO_ADMINISTRATIVA');
   if(!themes.checked_at){
-    badge.textContent='Aguardando';badge.className='status-badge neutral';warnings.classList.add('hidden');warnings.innerHTML='';return
+    clearOverlayGroup('themeLayers');badge.textContent='Aguardando';badge.className='status-badge neutral';warnings.classList.add('hidden');warnings.innerHTML='';return
   }
   const available=Object.values(map).filter(x=>x?.available).length;
   badge.textContent=available?available+' tema(s) carregado(s)':'Indisponível';
   badge.className='status-badge '+(available>=4?'ok':available?'warning':'error');
   const items=(themes.warnings||[]).map(x=>'<span>• '+esc(x)+'</span>');
   if(items.length){warnings.innerHTML=items.join('');warnings.classList.remove('hidden')}else{warnings.classList.add('hidden');warnings.innerHTML=''}
+  drawThemeLayers(themes);
 }
 
 function renderEnvironment(env){
@@ -213,7 +250,7 @@ function renderEnvironment(env){
     $('envICMBio').textContent='—';$('envICMBioDetail').textContent='Não consultado';
     $('envMCR').textContent='—';$('envMCRDetail').textContent='Não consultado';
     $('envOwner').textContent='Dados protegidos';$('envOwnerDetail').textContent='A camada pública do SICAR não fornece nome/CPF do titular.';
-    findings.classList.add('hidden');findings.innerHTML='';return
+    clearOverlayGroup('environmentLayers');findings.classList.add('hidden');findings.innerHTML='';return
   }
   const alerts=(env.ibama_embargo_count||0)+(env.indigenous_count||0)+(env.federal_uc_count||0)+(env.mcr_listed?1:0);
   badge.textContent=alerts?'Atenção':'Triagem concluída';badge.className='status-badge '+(alerts?'warning':'ok');
@@ -237,6 +274,7 @@ function renderEnvironment(env){
   }
   (env.warnings||[]).forEach(x=>parts.push(`<div class="environment-finding info"><strong>Fonte temporariamente indisponível</strong><span>${esc(x)}</span></div>`));
   findings.innerHTML=parts.join('');findings.classList.toggle('hidden',!parts.length);
+  drawEnvironmentalLayers(env);
 }
 function formatSourceDate(v){if(!v)return'—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleDateString('pt-BR')}
 function formatDateTime(v){if(!v)return'—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}
