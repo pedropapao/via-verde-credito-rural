@@ -54,15 +54,17 @@ type EnvironmentalSummary struct {
 }
 
 type EmbargoFinding struct {
-	Number       string `json:"number"`
-	Date         string `json:"date"`
-	Status       string `json:"status"`
-	Situation    string `json:"situation"`
-	Area         string `json:"area"`
-	Municipality string `json:"municipality"`
-	Agency       string `json:"agency"`
-	Infraction   string `json:"infraction"`
-	GeoJSON      string `json:"geojson"`
+	Number        string  `json:"number"`
+	Date          string  `json:"date"`
+	Status        string  `json:"status"`
+	Situation     string  `json:"situation"`
+	Area          string  `json:"area"`
+	Municipality  string  `json:"municipality"`
+	Agency        string  `json:"agency"`
+	Infraction    string  `json:"infraction"`
+	OverlapAreaHa float64 `json:"overlap_area_ha"`
+	OverlapCARPct float64 `json:"overlap_car_pct"`
+	GeoJSON       string  `json:"geojson"`
 }
 
 type TerritoryFinding struct {
@@ -176,7 +178,7 @@ func queryIBAMAEmbargos(ctx context.Context, carRaw string) ([]EmbargoFinding, e
 	out := make([]EmbargoFinding, 0, len(fc.Features))
 	for _, feature := range fc.Features {
 		raw, _ := json.Marshal(carGeoFeature{Type: "Feature", Properties: feature.Properties, Geometry: feature.Geometry})
-		intersection, _, _, err := estimateGeometryOverlap(carRaw, string(raw))
+		intersection, carPct, _, err := estimateGeometryOverlap(carRaw, string(raw))
 		if err != nil || intersection <= 0.0001 {
 			continue
 		}
@@ -188,9 +190,11 @@ func queryIBAMAEmbargos(ctx context.Context, carRaw string) ([]EmbargoFinding, e
 			Situation:    anyString(a, "sit_embarg"),
 			Area:         anyString(a, "qtd_area_d"),
 			Municipality: anyString(a, "nom_munici"),
-			Agency:       anyString(a, "orgao"),
-			Infraction:   anyString(a, "des_infrac"),
-			GeoJSON:      string(raw),
+			Agency:        anyString(a, "orgao"),
+			Infraction:    anyString(a, "des_infrac"),
+			OverlapAreaHa: intersection,
+			OverlapCARPct: carPct,
+			GeoJSON:       string(raw),
 		})
 	}
 	return out, nil
@@ -221,7 +225,7 @@ func queryFUNAITerritories(ctx context.Context, carRaw string) ([]TerritoryFindi
 	out := []TerritoryFinding{}
 	for _, feature := range fc.Features {
 		raw, _ := json.Marshal(carGeoFeature{Type: "Feature", Properties: feature.Properties, Geometry: feature.Geometry})
-		intersection, _, carPct, err := estimateGeometryOverlap(carRaw, string(raw))
+		intersection, carPct, _, err := estimateGeometryOverlap(carRaw, string(raw))
 		if err != nil || intersection <= 0.0001 {
 			continue
 		}
@@ -265,7 +269,7 @@ func queryICMBioFederalUCs(ctx context.Context, carRaw string) ([]UCFindings, er
 	out := []UCFindings{}
 	for _, feature := range fc.Features {
 		raw, _ := json.Marshal(carGeoFeature{Type: "Feature", Properties: feature.Properties, Geometry: feature.Geometry})
-		intersection, _, carPct, err := estimateGeometryOverlap(carRaw, string(raw))
+		intersection, carPct, _, err := estimateGeometryOverlap(carRaw, string(raw))
 		if err != nil || intersection <= 0.0001 {
 			continue
 		}

@@ -254,8 +254,9 @@ function renderEnvironment(env){
   }
   const alerts=(env.ibama_embargo_count||0)+(env.indigenous_count||0)+(env.federal_uc_count||0)+(env.mcr_listed?1:0);
   badge.textContent=alerts?'Atenção':'Triagem concluída';badge.className='status-badge '+(alerts?'warning':'ok');
+  const ibamaArea=(env.ibama_embargos||[]).reduce((s,x)=>s+(Number(x.overlap_area_ha)||0),0);
   $('envIbama').textContent=env.ibama_checked?String(env.ibama_embargo_count||0):'Indisponível';
-  $('envIbamaDetail').textContent=env.ibama_checked?(env.ibama_embargo_count?'interseção(ões) espacial(is) encontrada(s)':'nenhuma interseção encontrada'):'fonte não respondeu';
+  $('envIbamaDetail').textContent=env.ibama_checked?(env.ibama_embargo_count?('interseção(ões) • '+fmt(ibamaArea,4)+' ha estimados'):'nenhuma interseção encontrada'):'fonte não respondeu';
   $('envFunai').textContent=env.funai_checked?String(env.indigenous_count||0):'Indisponível';
   $('envFunaiDetail').textContent=env.funai_checked?(env.indigenous_count?'interseção(ões) com Terra Indígena':'nenhuma interseção encontrada'):'fonte não respondeu';
   $('envICMBio').textContent=env.icmbio_checked?String(env.federal_uc_count||0):'Indisponível';
@@ -265,7 +266,7 @@ function renderEnvironment(env){
   $('envOwner').textContent=state.selectedClient?.name||'Dados protegidos';
   $('envOwnerDetail').textContent=state.selectedClient?.cpf_cnpj?('CPF/CNPJ do cadastro local: '+state.selectedClient.cpf_cnpj):'Nome/CPF do titular não são inferidos pela consulta pública do CAR.';
   const parts=[];
-  (env.ibama_embargos||[]).forEach(x=>parts.push(`<div class="environment-finding warning"><strong>Embargo IBAMA • ${esc(x.number||'sem número')}</strong><span>${esc([x.situation,x.status,x.municipality].filter(Boolean).join(' • '))}</span><small>${esc(x.infraction||'Confira o registro oficial.')}</small></div>`));
+  (env.ibama_embargos||[]).forEach(x=>parts.push(`<div class="environment-finding warning"><strong>Embargo IBAMA • ${esc(x.number||'sem número')}</strong><span>Interseção estimada: ${fmt(x.overlap_area_ha,4)} ha (${fmt(x.overlap_car_pct,2)}% do CAR) • ${esc([x.situation,x.status,x.municipality].filter(Boolean).join(' • '))}</span><small>${esc(x.infraction||'Confira o registro oficial.')}</small></div>`));
   (env.indigenous_findings||[]).forEach(x=>parts.push(`<div class="environment-finding warning"><strong>Terra Indígena • ${esc(x.name||'área identificada')}</strong><span>Interseção estimada: ${fmt(x.overlap_area_ha,4)} ha (${fmt(x.overlap_car_pct,2)}% do CAR)</span><small>${esc(x.phase||'Confira a fase/situação na FUNAI.')}</small></div>`));
   (env.federal_uc_findings||[]).forEach(x=>parts.push(`<div class="environment-finding warning"><strong>UC Federal • ${esc(x.name||'área protegida')}</strong><span>Interseção estimada: ${fmt(x.overlap_area_ha,4)} ha (${fmt(x.overlap_car_pct,2)}% do CAR)</span><small>${esc([x.category,x.group,x.uf].filter(Boolean).join(' • ')||'Confira categoria e plano de manejo na fonte oficial.')}</small></div>`));
   if(env.mcr_checked&&env.mcr_listed){

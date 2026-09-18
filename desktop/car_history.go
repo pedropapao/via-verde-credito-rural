@@ -268,6 +268,16 @@ func (a *App) ExportPropertyPackage(propertyID int64, car CARResult, kml KMLResu
 		return closeWithError(err)
 	}
 
+	environmentKML := buildEnvironmentalKML(car, kml)
+	if len(environmentKML) > 0 {
+		if err := zipWriteBytes(zw, "08_Camadas_Ambientais.kml", environmentKML); err != nil {
+			return closeWithError(err)
+		}
+	}
+	if err := zipWriteBytes(zw, "09_Fontes_e_Avisos.txt", buildDossierSourcesText(car)); err != nil {
+		return closeWithError(err)
+	}
+
 	readme := "VIA VERDE CAR — DOSSIÊ TÉCNICO E SOCIOAMBIENTAL\r\n\r\n" +
 		"Este pacote reúne a conferência do imóvel, geometria pública do SICAR, KML, temas declarados do CAR quando disponíveis, histórico e triagens espaciais em bases públicas oficiais.\r\n\r\n" +
 		"Os temas APP, Reserva Legal, vegetação nativa e demais camadas são estimativas por interseção espacial com pacotes municipais públicos do SICAR. As ocorrências em IBAMA, FUNAI, ICMBio e MMA/MCR exigem confirmação na fonte oficial e análise do contexto jurídico e documental.\r\n\r\n" +
