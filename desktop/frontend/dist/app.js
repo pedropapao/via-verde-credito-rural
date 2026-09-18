@@ -121,7 +121,7 @@ function initMap(){
   state.layerControl=L.control.layers({'Satélite':sat,'Mapa':street},{}).addTo(state.map);
 }
 function drawGeoJSON(which,geojson){if(!state.map||!geojson)return;try{const obj=typeof geojson==='string'?JSON.parse(geojson):geojson;if(which==='car'&&state.carLayer)state.map.removeLayer(state.carLayer);if(which==='kml'&&state.kmlLayer)state.map.removeLayer(state.kmlLayer);const style=which==='car'?{color:'#2c7a49',weight:3,fillColor:'#4ca36b',fillOpacity:.16}:{color:'#d77922',weight:3,dashArray:'8 5',fillColor:'#e89a44',fillOpacity:.08};const layer=L.geoJSON(obj,{style}).addTo(state.map);if(which==='car')state.carLayer=layer;else state.kmlLayer=layer;fitMap()}catch(e){toast('Não foi possível desenhar a geometria.',true)}}
-function fitMap(){if(!state.map)return;const layers=[state.carLayer,state.kmlLayer,...Object.values(state.themeLayers||{}),...Object.values(state.environmentLayers||{})].filter(Boolean);if(!layers.length)return;const group=L.featureGroup(layers);const b=group.getBounds();if(b.isValid())state.map.fitBounds(b.pad(.08),{maxZoom:17})}
+function fitMap(){if(!state.map)return;const layers=[state.carLayer,state.kmlLayer].filter(Boolean);if(!layers.length)return;const group=L.featureGroup(layers);const b=group.getBounds();if(b.isValid())state.map.fitBounds(b.pad(.08),{maxZoom:17})}
 function clearOverlayGroup(groupName){
   const group=state[groupName]||{};
   Object.values(group).forEach(layer=>{try{if(state.map?.hasLayer(layer))state.map.removeLayer(layer);state.layerControl?.removeLayer(layer)}catch(e){}});
