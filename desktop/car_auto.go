@@ -85,6 +85,19 @@ func carResultMateriallyChanged(previousRaw string, current CARResult) bool {
 	if geometryFingerprint(previous.GeoJSON) != geometryFingerprint(current.GeoJSON) {
 		return true
 	}
+	if previous.Environment.IBAMAEmbargoCount != current.Environment.IBAMAEmbargoCount ||
+		previous.Environment.IndigenousCount != current.Environment.IndigenousCount ||
+		previous.Environment.FederalUCCount != current.Environment.FederalUCCount ||
+		previous.Environment.MCRListed != current.Environment.MCRListed {
+		return true
+	}
+	for _, code := range []string{"APP", "RESERVA_LEGAL", "VEGETACAO_NATIVA", "AREA_CONSOLIDADA", "USO_RESTRITO", "SERVIDAO_ADMINISTRATIVA"} {
+		oldM, oldOK := previous.Themes.Themes[code]
+		newM, newOK := current.Themes.Themes[code]
+		if oldOK != newOK || oldM.Available != newM.Available || absFloat(oldM.AreaHa-newM.AreaHa) > 0.01 {
+			return true
+		}
+	}
 	return false
 }
 
