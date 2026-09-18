@@ -95,7 +95,7 @@ func (a *App) openDatabase() error {
 		return err
 	}
 	a.dataDir = filepath.Join(root, "ViaVerdeCAR")
-	for _, dir := range []string{"properties", "backups", "updates"} {
+	for _, dir := range []string{"properties", "backups", "updates", "cache"} {
 		if err := os.MkdirAll(filepath.Join(a.dataDir, dir), 0o755); err != nil {
 			return err
 		}
@@ -381,7 +381,7 @@ func (a *App) writeBackup(target string) error {
 			return relErr
 		}
 		if info.IsDir() {
-			if rel == "backups" || rel == "updates" {
+			if rel == "backups" || rel == "updates" || rel == "cache" {
 				return filepath.SkipDir
 			}
 			return nil
