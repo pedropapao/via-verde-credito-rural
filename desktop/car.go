@@ -61,6 +61,7 @@ type CARResult struct {
 	AutoKMLPath      string         `json:"auto_kml_path"`
 	SnapshotSaved    bool           `json:"snapshot_saved"`
 	OwnerDataAccess  string         `json:"owner_data_access"`
+	Environment      EnvironmentalSummary `json:"environment"`
 	Checks           []QualityCheck `json:"checks"`
 }
 
@@ -164,6 +165,29 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 			level = "warning"
 		}
 		result.Checks = append(result.Checks, QualityCheck{Level: level, Title: "Área declarada × geometria", Detail: fmt.Sprintf("Diferença de %.2f ha (%.2f%%).", diff, pct)})
+	}
+
+	if result.HasGeometry {
+		envCtx, envCancel := context.WithTimeout(context.Background(), 18*time.Second)
+		result.Environment = screenEnvironment(envCtx, result.GeoJSON)
+		envCancel()
+		if result.Environment.IBAMAChecked {
+			if result.Environment.IBAMAEmbargoCount == 0 {
+				result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "Embargos IBAMA", Detail: "Nenhuma área de embargo do SISCOM/IBAMA intersectou a geometria consultada nesta triagem."})
+			} else {
+				result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "Embargos IBAMA", Detail: fmt.Sprintf("%d registro(s) espacial(is) de embargo intersectam a área. Confira os detalhes e a situação oficial.", result.Environment.IBAMAEmbargoCount)})
+			}
+		}
+		if result.Environment.FUNAIChecked {
+			if result.Environment.IndigenousCount == 0 {
+				result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "Terras Indígenas FUNAI", Detail: "Nenhuma interseção espacial foi identificada na camada pública consultada."})
+			} else {
+				result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "Terras Indígenas FUNAI", Detail: fmt.Sprintf("%d interseção(ões) espacial(is) encontrada(s). Verifique a situação e os limites na fonte oficial.", result.Environment.IndigenousCount)})
+			}
+		}
+		for _, warning := range result.Environment.Warnings {
+			result.Checks = append(result.Checks, QualityCheck{Level: "info", Title: "Triagem ambiental", Detail: warning})
+		}
 	}
 
 	if propertyID > 0 && a.db != nil {
