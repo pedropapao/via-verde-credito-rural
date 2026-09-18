@@ -403,13 +403,13 @@ func rowToMap(header, line string) map[string]string {
 	vals := strings.Split(line, delimiter)
 	out := map[string]string{}
 	for i, h := range heads {
-		h = strings.Trim(strings.TrimSpace(h), """)
+		h = strings.Trim(strings.TrimSpace(h), "\"")
 		if h == "" {
 			h = fmt.Sprintf("campo_%d", i+1)
 		}
 		v := ""
 		if i < len(vals) {
-			v = strings.Trim(strings.TrimSpace(vals[i]), """)
+			v = strings.Trim(strings.TrimSpace(vals[i]), "\"")
 		}
 		out[h] = v
 	}
