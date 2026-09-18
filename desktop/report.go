@@ -106,6 +106,16 @@ func buildCARTechnicalPDF(p Property, car CARResult, kml KMLResult, cmp Geometry
 	if car.Environment.FUNAIChecked {
 		row("Triagem FUNAI", fmt.Sprintf("%d intersecao(oes) espacial(is) com Terras Indigenas", car.Environment.IndigenousCount))
 	}
+	if car.Environment.ICMBioChecked {
+		row("Triagem ICMBio", fmt.Sprintf("%d intersecao(oes) espacial(is) com Unidades de Conservacao federais", car.Environment.FederalUCCount))
+	}
+	if car.Environment.MCRChecked {
+		statusMCR := "CAR nao localizado na lista publica MMA/MCR consultada"
+		if car.Environment.MCRListed {
+			statusMCR = "CAR localizado na lista publica MMA/MCR vinculada a verificacoes PRODES"
+		}
+		row("MMA / MCR-PRODES", statusMCR)
+	}
 	if car.CenterLat != 0 || car.CenterLon != 0 {
 		row("Centro aproximado", fmt.Sprintf("%.6f, %.6f", car.CenterLat, car.CenterLon))
 	}
