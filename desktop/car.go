@@ -24,7 +24,7 @@ import (
 const (
 	carWFSURL       = "https://geoserver.car.gov.br/geoserver/sicar/ows"
 	carWFSFallback = "https://geoserver.car.gov.br/geoserver/sicar/wfs"
-	carPublicURL    = "https://www.car.gov.br/#/consultar"
+	carPublicURL    = "https://consulta.car.gov.br/"
 	carMeuImovelURL = "https://meuimovelrural.sistema.gov.br/#/"
 )
 
