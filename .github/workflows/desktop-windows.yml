@@ -35,6 +35,6 @@ jobs:
       - name: Publicar EXE
         uses: actions/upload-artifact@v4
         with:
-          name: ViaVerdeCAR-1.0.0-Windows
+          name: ViaVerdeCAR-1.0.1-Windows
           path: desktop/build/bin/ViaVerdeCAR.exe
           if-no-files-found: error
