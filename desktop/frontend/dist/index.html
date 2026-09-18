@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Via Verde CAR</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+<div id="app" class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">VV</div>
+      <div><strong>Via Verde</strong><span>CAR Desktop</span></div>
+    </div>
+    <nav>
+      <button class="nav-item active" data-view="dashboard"><span>▦</span> Visão geral</button>
+      <button class="nav-item" data-view="clients"><span>👤</span> Clientes e imóveis</button>
+      <button class="nav-item" data-view="car"><span>⌖</span> CAR e mapa</button>
+      <button class="nav-item" data-view="settings"><span>⚙</span> Configurações</button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="online-dot"></div>
+      <div><strong id="connectionLabel">Internet</strong><small id="versionLabel">Via Verde CAR</small></div>
+    </div>
+  </aside>
+
+  <main class="main-area">
+    <header class="topbar">
+      <div>
+        <span class="eyebrow">VIA VERDE • GESTÃO RURAL</span>
+        <h1 id="pageTitle">Visão geral</h1>
+      </div>
+      <div class="top-actions">
+        <button class="btn ghost" id="backupBtn">Criar backup</button>
+        <button class="btn primary" id="goCarBtn">Consultar CAR</button>
+      </div>
+    </header>
+
+    <section class="view active" id="view-dashboard">
+      <div class="hero-card">
+        <div>
+          <span class="eyebrow light">VERSÃO 1.0 • FOCO CAR</span>
+          <h2>Cliente, imóvel, CAR e KML no mesmo lugar.</h2>
+          <p>Consulte a camada pública do SICAR, confira a geometria, compare com o KML do cliente e gere um demonstrativo técnico sem sair do aplicativo.</p>
+        </div>
+        <button class="btn white" id="heroCarBtn">Analisar um imóvel</button>
+      </div>
+      <div class="stats-grid">
+        <article class="stat-card"><span>Clientes</span><strong id="statClients">0</strong><small>cadastrados localmente</small></article>
+        <article class="stat-card"><span>Imóveis</span><strong id="statProperties">0</strong><small>na base local</small></article>
+        <article class="stat-card"><span>Com CAR</span><strong id="statCAR">0</strong><small>códigos vinculados</small></article>
+        <article class="stat-card"><span>Com KML</span><strong id="statKML">0</strong><small>perímetros importados</small></article>
+        <article class="stat-card"><span>Consultas</span><strong id="statChecks">0</strong><small>nos últimos 30 dias</small></article>
+      </div>
+      <div class="dashboard-grid">
+        <article class="panel">
+          <div class="panel-title"><div><span class="eyebrow">FLUXO RECOMENDADO</span><h3>Conferência do imóvel</h3></div></div>
+          <div class="flow-steps">
+            <div><b>1</b><span><strong>Cadastre o cliente</strong><small>Nome, CPF/CNPJ e contato.</small></span></div>
+            <div><b>2</b><span><strong>Cadastre o imóvel</strong><small>Matrícula, município, UF e área conhecida.</small></span></div>
+            <div><b>3</b><span><strong>Consulte o CAR</strong><small>Situação, área, geometria e centro aproximado.</small></span></div>
+            <div><b>4</b><span><strong>Anexe o KML</strong><small>Compare área e centro com a geometria pública.</small></span></div>
+            <div><b>5</b><span><strong>Gere o demonstrativo</strong><small>PDF técnico de conferência para o dossiê.</small></span></div>
+          </div>
+        </article>
+        <article class="panel accent-panel">
+          <span class="eyebrow">INTERNET + DADOS LOCAIS</span>
+          <h3>O que já nasce preparado</h3>
+          <ul class="check-list">
+            <li>Consulta pública SICAR via WFS</li>
+            <li>Mapa de rua e imagem de satélite</li>
+            <li>Importação e cópia local do KML</li>
+            <li>Cálculo de área, perímetro e centróide</li>
+            <li>Comparação KML × CAR</li>
+            <li>Histórico das consultas</li>
+            <li>Banco local SQLite e backup ZIP</li>
+            <li>Estrutura de atualização pela internet</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="view" id="view-clients">
+      <div class="two-column">
+        <article class="panel sticky-panel">
+          <div class="panel-title"><div><span class="eyebrow">CADASTRO</span><h3>Cliente</h3></div><button class="text-btn" id="newClientBtn">Novo</button></div>
+          <form id="clientForm" class="form-grid one">
+            <input type="hidden" id="clientId" />
+            <label>Nome do cliente<input id="clientName" required placeholder="Ex.: Fábio Garcia dos Prazeres" /></label>
+            <label>CPF / CNPJ<input id="clientDoc" placeholder="Somente para organização local" /></label>
+            <label>Telefone<input id="clientPhone" placeholder="(35) 99999-9999" /></label>
+            <label>Observações<textarea id="clientNotes" rows="3" placeholder="Informações úteis do relacionamento"></textarea></label>
+            <button class="btn primary" type="submit">Salvar cliente</button>
+          </form>
+        </article>
+        <article class="panel">
+          <div class="panel-title"><div><span class="eyebrow">BASE LOCAL</span><h3>Clientes cadastrados</h3></div><input class="search" id="clientSearch" placeholder="Buscar..." /></div>
+          <div id="clientList" class="record-list empty-state">Nenhum cliente cadastrado.</div>
+        </article>
+      </div>
+
+      <article class="panel property-panel">
+        <div class="panel-title"><div><span class="eyebrow">IMÓVEIS</span><h3>Imóveis do cliente selecionado</h3><p id="selectedClientLabel">Selecione um cliente acima.</p></div><button class="btn ghost" id="newPropertyBtn" disabled>Novo imóvel</button></div>
+        <div class="property-workspace">
+          <form id="propertyForm" class="form-grid property-form hidden">
+            <input type="hidden" id="propertyId" />
+            <label>Nome do imóvel<input id="propertyName" required placeholder="Ex.: Fazenda Barra Mansa" /></label>
+            <label>Município<input id="propertyMunicipality" placeholder="Ex.: Santa Maria do Suaçuí" /></label>
+            <label>UF<select id="propertyUF"><option value="">Selecione</option></select></label>
+            <label>Matrícula<input id="propertyRegistry" placeholder="Ex.: 6804" /></label>
+            <label>Número do CAR<input id="propertyCAR" placeholder="MG-0000000-...." /></label>
+            <label>Área declarada (ha)<input id="propertyArea" type="number" step="0.0001" min="0" /></label>
+            <div class="form-actions"><button class="btn primary" type="submit">Salvar imóvel</button><button class="btn ghost" type="button" id="cancelPropertyBtn">Cancelar</button></div>
+          </form>
+          <div id="propertyList" class="property-cards empty-state">Cadastre ou selecione um cliente.</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="view" id="view-car">
+      <div class="car-toolbar panel">
+        <div class="property-selector-wrap">
+          <label>Imóvel em análise</label>
+          <select id="carPropertySelect"><option value="">Consulta avulsa</option></select>
+        </div>
+        <div class="car-query-wrap">
+          <label>Número completo do CAR</label>
+          <div class="input-action"><input id="carInput" placeholder="MG-0000000-XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX.XXXX" /><button class="btn primary" id="lookupCarBtn">Consultar SICAR</button></div>
+        </div>
+        <div class="toolbar-actions">
+          <button class="btn ghost" id="attachKmlBtn" disabled>Anexar KML</button>
+          <button class="btn ghost" id="loadKmlBtn" disabled>Carregar KML salvo</button>
+        </div>
+      </div>
+
+      <div class="map-layout">
+        <article class="map-panel panel">
+          <div class="map-head">
+            <div><span class="eyebrow">MAPA</span><h3>Perímetro do imóvel</h3></div>
+            <div class="map-legend"><span><i class="dot car"></i>CAR público</span><span><i class="dot kml"></i>KML local</span></div>
+          </div>
+          <div id="map"><div class="map-placeholder"><strong>Mapa aguardando análise</strong><span>Consulte um CAR ou importe um KML.</span></div></div>
+          <div class="map-footer"><span>Base cartográfica para conferência visual. Não substitui levantamento topográfico ou análise oficial.</span><button class="text-btn" id="fitMapBtn">Enquadrar camadas</button></div>
+        </article>
+
+        <aside class="analysis-column">
+          <article class="panel result-card">
+            <div class="panel-title"><div><span class="eyebrow">CAR</span><h3>Dados consultados</h3></div><span id="carStatusBadge" class="status-badge neutral">Aguardando</span></div>
+            <dl class="data-list">
+              <div><dt>CAR</dt><dd id="rCar">—</dd></div>
+              <div><dt>Município</dt><dd id="rMunicipality">—</dd></div>
+              <div><dt>Área SICAR</dt><dd id="rArea">—</dd></div>
+              <div><dt>Área geométrica</dt><dd id="rGeoArea">—</dd></div>
+              <div><dt>Perímetro</dt><dd id="rPerimeter">—</dd></div>
+              <div><dt>Centro aproximado</dt><dd id="rCenter">—</dd></div>
+              <div><dt>Módulos fiscais</dt><dd id="rModules">—</dd></div>
+              <div><dt>Condição</dt><dd id="rCondition">—</dd></div>
+            </dl>
+            <div class="action-grid">
+              <button class="btn ghost" id="openOfficialBtn" disabled>Consulta oficial</button>
+              <button class="btn ghost" id="openMeuImovelBtn" disabled>Meu Imóvel Rural</button>
+              <button class="btn ghost" id="openMapsBtn" disabled>Abrir coordenada</button>
+              <button class="btn ghost" id="exportKmlBtn" disabled>Exportar KML SICAR</button>
+            </div>
+          </article>
+
+          <article class="panel result-card">
+            <div class="panel-title"><div><span class="eyebrow">KML LOCAL</span><h3>Geometria do cliente</h3></div><span id="kmlBadge" class="status-badge neutral">Não carregado</span></div>
+            <dl class="data-list compact">
+              <div><dt>Área</dt><dd id="kArea">—</dd></div>
+              <div><dt>Perímetro</dt><dd id="kPerimeter">—</dd></div>
+              <div><dt>Vértices</dt><dd id="kPoints">—</dd></div>
+              <div><dt>Centro</dt><dd id="kCenter">—</dd></div>
+            </dl>
+            <div id="comparisonBox" class="comparison-box neutral"><strong>Comparação KML × CAR</strong><span>Carregue as duas geometrias.</span></div>
+          </article>
+        </aside>
+      </div>
+
+      <div class="car-bottom-grid">
+        <article class="panel"><div class="panel-title"><div><span class="eyebrow">CONFERÊNCIAS</span><h3>Alertas e validações</h3></div></div><div id="qualityChecks" class="quality-list"><div class="empty-state">Nenhuma análise realizada.</div></div></article>
+        <article class="panel report-panel"><span class="eyebrow">SAÍDA</span><h3>Demonstrativo técnico</h3><p>Gere um PDF com cadastro, geometria pública, KML e comparação. O documento é identificado como conferência técnica e não substitui o demonstrativo oficial do SICAR.</p><button class="btn primary" id="reportBtn" disabled>Gerar PDF técnico</button></article>
+      </div>
+    </section>
+
+    <section class="view" id="view-settings">
+      <div class="settings-grid">
+        <article class="panel"><span class="eyebrow">DADOS LOCAIS</span><h3>Base do aplicativo</h3><p>Clientes, imóveis, consultas e KMLs ficam no computador. Atualizar o programa não apaga esta pasta.</p><div class="setting-value" id="dataDir">—</div><div class="form-actions"><button class="btn ghost" id="openDataBtn">Abrir pasta</button><button class="btn primary" id="settingsBackupBtn">Criar backup ZIP</button></div></article>
+        <article class="panel"><span class="eyebrow">ATUALIZAÇÕES</span><h3>Canal estável</h3><p id="updateMessage">Estrutura preparada para atualizações pela internet.</p><div class="setting-value">Versão instalada: <strong id="settingsVersion">1.0.0</strong></div><div class="form-actions"><button class="btn ghost" id="checkUpdateBtn">Verificar agora</button><button class="btn primary hidden" id="downloadUpdateBtn">Baixar atualização</button></div></article>
+        <article class="panel"><span class="eyebrow">PORTAIS OFICIAIS</span><h3>Acesso rápido</h3><p>Os portais abrem no navegador padrão e continuam sujeitos ao login e às regras do órgão responsável.</p><div class="stack-actions"><button class="btn ghost external" data-url="https://www.car.gov.br/#/consultar">Consulta Pública CAR</button><button class="btn ghost external" data-url="https://meuimovelrural.sistema.gov.br/#/">Meu Imóvel Rural</button><button class="btn ghost external" data-url="https://www.gov.br/incra/pt-br/assuntos/governanca-fundiaria/cadastro-imovel-rural">INCRA / Cadastro Rural</button></div></article>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="app.js"></script>
+</body>
+</html>
