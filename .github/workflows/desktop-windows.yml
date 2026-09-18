@@ -20,21 +20,63 @@ jobs:
         working-directory: desktop
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25.x'
           cache: false
+
+      - name: Identificar versão
+        shell: pwsh
+        run: |
+          $content = Get-Content app.go -Raw
+          if ($content -notmatch 'const AppVersion = "([^"]+)"') {
+            throw "AppVersion não localizado em app.go"
+          }
+          "APP_VERSION=$($Matches[1])" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Baixar dependências
         run: go mod tidy
+
       - name: Testes
         run: go test ./...
+
       - name: Instalar Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+
       - name: Compilar EXE
         run: wails build -platform windows/amd64 -clean -webview2 download -o ViaVerdeCAR.exe
-      - name: Publicar EXE
+
+      - name: Publicar EXE como artefato
         uses: actions/upload-artifact@v4
         with:
-          name: ViaVerdeCAR-1.0.1-Windows
+          name: ViaVerdeCAR-${{ env.APP_VERSION }}-Windows
           path: desktop/build/bin/ViaVerdeCAR.exe
           if-no-files-found: error
+
+      - name: Publicar canal de atualização automática
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          UPDATE_ENDPOINT: https://igrxqbroklfwujcwbiwh.supabase.co/functions/v1/via-verde-desktop-update
+          UPDATE_PUBLISH_TOKEN: 4iwOcySMYGzeVwy3bdqBRaz7pzrEcqH9obJ_kO3m-XBksZjtXs796cSHZHoNcg5y
+        run: |
+          $exe = "build/bin/ViaVerdeCAR.exe"
+          $sha = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          $notes = (Get-Content "UPDATE_NOTES.txt" -Raw).Trim()
+          $notes64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($notes))
+          $args = @(
+            "--fail-with-body",
+            "--retry", "3",
+            "--retry-delay", "2",
+            "--request", "POST",
+            "$env:UPDATE_ENDPOINT?action=publish",
+            "--header", "x-publish-token: $env:UPDATE_PUBLISH_TOKEN",
+            "--header", "x-version: $env:APP_VERSION",
+            "--header", "x-sha256: $sha",
+            "--header", "x-notes-base64: $notes64",
+            "--header", "content-type: application/octet-stream",
+            "--data-binary", "@$exe"
+          )
+          & curl.exe @args
+          if ($LASTEXITCODE -ne 0) { throw "Falha ao publicar atualização" }
