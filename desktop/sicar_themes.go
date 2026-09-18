@@ -29,6 +29,7 @@ type SICARThemeMetric struct {
 	Available    bool    `json:"available"`
 	SourceFile   string  `json:"source_file"`
 	Method       string  `json:"method"`
+	GeoJSON      string  `json:"geojson"`
 }
 
 type SICARThemesSummary struct {
@@ -105,12 +106,13 @@ func (a *App) analyzeSingleSICARTheme(ctx context.Context, car, uf, municipality
 		return metric, err
 	}
 	metric.SourceFile = zipPath
-	area, count, err := intersectThemeZipWithCAR(zipPath, carGeoJSON, carAreaHa)
+	area, count, geojson, err := intersectThemeZipWithCAR(zipPath, carGeoJSON, carAreaHa)
 	if err != nil {
 		return metric, err
 	}
 	metric.AreaHa = area
 	metric.FeatureCount = count
+	metric.GeoJSON = geojson
 	metric.Available = true
 	return metric, nil
 }
@@ -191,21 +193,22 @@ func (a *App) ensureSICARThemeZip(ctx context.Context, uf, municipalityCode, the
 	return path, nil
 }
 
-func intersectThemeZipWithCAR(zipPath, carGeoJSON string, carAreaHa float64) (float64, int, error) {
+func intersectThemeZipWithCAR(zipPath, carGeoJSON string, carAreaHa float64) (float64, int, string, error) {
 	zr, err := zip.OpenReader(zipPath)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, "", err
 	}
 	defer zr.Close()
 
 	minLon, minLat, maxLon, maxLat, ok := geoJSONBounds(carGeoJSON)
 	if !ok {
-		return 0, 0, errors.New("limites do CAR inválidos")
+		return 0, 0, "", errors.New("limites do CAR inválidos")
 	}
 
 	total := 0.0
 	count := 0
 	foundShape := false
+	combined := make([][][][]float64, 0)
 	for _, zf := range zr.File {
 		if !strings.HasSuffix(strings.ToLower(zf.Name), ".shp") {
 			continue
@@ -224,23 +227,40 @@ func intersectThemeZipWithCAR(zipPath, carGeoJSON string, carAreaHa float64) (fl
 			if err == nil && intersection > 0.0001 {
 				total += intersection
 				count++
+				if len(combined) < 300 {
+					var mp [][][][]float64
+					if json.Unmarshal(geom.Coordinates, &mp) == nil {
+						combined = append(combined, mp...)
+					}
+				}
 			}
 			return true
 		})
 		_ = r.Close()
 		if err != nil {
-			return 0, count, err
+			return 0, count, "", err
 		}
 	}
 	if !foundShape {
-		return 0, 0, errors.New("nenhum .shp encontrado")
+		return 0, 0, "", errors.New("nenhum .shp encontrado")
 	}
 	if carAreaHa > 0 && total > carAreaHa {
 		// Evita apresentar mais de 100% do imóvel em casos de feições municipais
 		// sobrepostas. O relatório mantém o método como estimativa espacial.
 		total = carAreaHa
 	}
-	return total, count, nil
+	geojson := ""
+	if len(combined) > 0 {
+		coords, _ := json.Marshal(combined)
+		feature := carGeoFeature{
+			Type:       "Feature",
+			Properties: map[string]any{"source": "SICAR GeoServices"},
+			Geometry:   carGeoJSONGeometry{Type: "MultiPolygon", Coordinates: coords},
+		}
+		b, _ := json.Marshal(feature)
+		geojson = string(b)
+	}
+	return total, count, geojson, nil
 }
 
 func scanShapefilePolygons(r io.Reader, visit func(bbox [4]float64, geom carGeoJSONGeometry) bool) error {
