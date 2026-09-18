@@ -348,6 +348,11 @@ func estimateGeometryOverlap(kmlGeoJSON, carGeoJSON string) (intersectionHa, kml
 	if err != nil {
 		return 0, 0, 0, err
 	}
+	// A comparação é deliberadamente aproximada. Para polígonos com milhares
+	// de vértices usamos uma amostragem uniforme, evitando travar a interface
+	// sem alterar o KML original nem a geometria exibida no mapa.
+	kmlPolys = simplifyPlanarMulti(kmlPolys, 450)
+	carPolys = simplifyPlanarMulti(carPolys, 450)
 
 	kx0, ky0, kx1, ky1, okK := planarBounds(kmlPolys)
 	cx0, cy0, cx1, cy1, okC := planarBounds(carPolys)
@@ -360,7 +365,7 @@ func estimateGeometryOverlap(kmlGeoJSON, carGeoJSON string) (intersectionHa, kml
 		return 0, 0, 0, nil
 	}
 
-	const grid = 320
+	const grid = 220
 	dx, dy := (x1-x0)/grid, (y1-y0)/grid
 	insideBoth := 0
 	for iy := 0; iy < grid; iy++ {
@@ -451,6 +456,34 @@ func geoJSONToPlanar(raw string, lat0 float64) (planarMultiPolygon, error) {
 		}
 	}
 	return out, nil
+}
+
+func simplifyPlanarMulti(mp planarMultiPolygon, maxPointsPerRing int) planarMultiPolygon {
+	if maxPointsPerRing < 16 {
+		return mp
+	}
+	out := make(planarMultiPolygon, 0, len(mp))
+	for _, poly := range mp {
+		pp := make(planarPolygon, 0, len(poly))
+		for _, ring := range poly {
+			if len(ring) <= maxPointsPerRing {
+				pp = append(pp, ring)
+				continue
+			}
+			step := int(math.Ceil(float64(len(ring)) / float64(maxPointsPerRing)))
+			reduced := make(planarRing, 0, maxPointsPerRing+1)
+			for i := 0; i < len(ring); i += step {
+				reduced = append(reduced, ring[i])
+			}
+			if len(reduced) >= 3 {
+				pp = append(pp, reduced)
+			}
+		}
+		if len(pp) > 0 {
+			out = append(out, pp)
+		}
+	}
+	return out
 }
 
 func planarBounds(mp planarMultiPolygon) (minX, minY, maxX, maxY float64, ok bool) {
