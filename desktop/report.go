@@ -101,13 +101,13 @@ func buildCARTechnicalPDF(p Property, car CARResult, kml KMLResult, cmp Geometry
 		row("KML SICAR", "Gerado e salvo automaticamente pelo aplicativo")
 	}
 	if car.Environment.IBAMAChecked {
-		row("Triagem IBAMA", fmt.Sprintf("%d intersecao(oes) espacial(is) com areas de embargo SISCOM/IBAMA", car.Environment.IBAMAEmbargoCount))
+		row("Triagem IBAMA", fmt.Sprintf("%d intersecao(oes) espacial(is) com areas de embargo SISCOM/IBAMA; soma bruta das sobreposicoes estimadas: %s ha", car.Environment.IBAMAEmbargoCount, fmtBR(sumEmbargoOverlap(car.Environment.IBAMAEmbargos), 4)))
 	}
 	if car.Environment.FUNAIChecked {
-		row("Triagem FUNAI", fmt.Sprintf("%d intersecao(oes) espacial(is) com Terras Indigenas", car.Environment.IndigenousCount))
+		row("Triagem FUNAI", fmt.Sprintf("%d intersecao(oes) espacial(is) com Terras Indigenas; soma bruta das sobreposicoes estimadas: %s ha", car.Environment.IndigenousCount, fmtBR(sumTerritoryOverlap(car.Environment.IndigenousFindings), 4)))
 	}
 	if car.Environment.ICMBioChecked {
-		row("Triagem ICMBio", fmt.Sprintf("%d intersecao(oes) espacial(is) com Unidades de Conservacao federais", car.Environment.FederalUCCount))
+		row("Triagem ICMBio", fmt.Sprintf("%d intersecao(oes) espacial(is) com Unidades de Conservacao federais; soma bruta das sobreposicoes estimadas: %s ha", car.Environment.FederalUCCount, fmtBR(sumUCOverlap(car.Environment.FederalUCFindings), 4)))
 	}
 	if car.Environment.MCRChecked {
 		statusMCR := "CAR nao localizado na lista publica MMA/MCR consultada"
@@ -146,7 +146,7 @@ func buildCARTechnicalPDF(p Property, car CARResult, kml KMLResult, cmp Geometry
 		c.rect(40, mapBottom, 515, mapTop-mapBottom, false)
 		c.b.WriteString("0.30 0.38 0.34 rg\n")
 		c.text(48, mapTop-18, 8, true, "PERIMETRO PUBLICO DO SICAR")
-		drawCombinedGeometry(&c, car.GeoJSON, kml.GeoJSON, 54, mapBottom+18, 487, mapTop-mapBottom-48)
+		drawDossierGeometry(&c, car, kml, 54, mapBottom+18, 487, mapTop-mapBottom-48)
 	}
 	c.b.WriteString("0.94 0.97 0.95 rg\n")
 	c.rect(38, 64, 519, 112, true)
@@ -159,35 +159,61 @@ func buildCARTechnicalPDF(p Property, car CARResult, kml KMLResult, cmp Geometry
 	return assembleSimplePDF(c.b.String())
 }
 
-func drawCombinedGeometry(c *pdfCanvas, carRaw, kmlRaw string, x, y, w, h float64) {
-	geometries := []struct {
+func drawDossierGeometry(c *pdfCanvas, car CARResult, kml KMLResult, x, y, w, h float64) {
+	type mapLayer struct {
+		label string
 		raw   string
-		color string
+		rgb   string
 		width float64
+		bound bool
+	}
+	layers := []mapLayer{
+		{label: "CAR SICAR", raw: car.GeoJSON, rgb: "0.055 0.42 0.29", width: 1.7, bound: true},
+	}
+	if strings.TrimSpace(kml.GeoJSON) != "" {
+		layers = append(layers, mapLayer{label: "KML cliente", raw: kml.GeoJSON, rgb: "0.84 0.40 0.08", width: 1.2, bound: true})
+	}
+	themeDefs := []struct {
+		code, label, rgb string
 	}{
-		{raw: carRaw, color: "0.055 0.42 0.29 RG", width: 1.5},
-		{raw: kmlRaw, color: "0.84 0.40 0.08 RG", width: 1.1},
+		{"APP", "APP", "0.23 0.51 0.96"},
+		{"RESERVA_LEGAL", "Reserva Legal", "0.09 0.40 0.20"},
+		{"VEGETACAO_NATIVA", "Vegetacao", "0.08 0.33 0.18"},
+		{"AREA_CONSOLIDADA", "Area consolidada", "0.76 0.25 0.05"},
 	}
-	type parsedGeometry struct {
+	for _, def := range themeDefs {
+		if m, ok := car.Themes.Themes[def.code]; ok && strings.TrimSpace(m.GeoJSON) != "" {
+			layers = append(layers, mapLayer{label: def.label, raw: m.GeoJSON, rgb: def.rgb, width: 0.8})
+		}
+	}
+	for _, item := range car.Environment.IBAMAEmbargos {
+		if strings.TrimSpace(item.GeoJSON) != "" {
+			layers = append(layers, mapLayer{label: "IBAMA", raw: item.GeoJSON, rgb: "0.72 0.11 0.11", width: 1.1})
+		}
+	}
+	for _, item := range car.Environment.IndigenousFindings {
+		if strings.TrimSpace(item.GeoJSON) != "" {
+			layers = append(layers, mapLayer{label: "FUNAI", raw: item.GeoJSON, rgb: "0.49 0.13 0.81", width: 1.0})
+		}
+	}
+	for _, item := range car.Environment.FederalUCFindings {
+		if strings.TrimSpace(item.GeoJSON) != "" {
+			layers = append(layers, mapLayer{label: "UC federal", raw: item.GeoJSON, rgb: "0.01 0.41 0.63", width: 1.0})
+		}
+	}
+
+	type parsedLayer struct {
+		label string
 		polys [][][][]float64
-		color string
+		rgb   string
 		width float64
+		bound bool
 	}
-	var parsed []parsedGeometry
+	var parsed []parsedLayer
 	minX, minY := math.Inf(1), math.Inf(1)
 	maxX, maxY := math.Inf(-1), math.Inf(-1)
-	for _, item := range geometries {
-		if strings.TrimSpace(item.raw) == "" {
-			continue
-		}
-		var f carGeoFeature
-		if json.Unmarshal([]byte(item.raw), &f) != nil {
-			continue
-		}
-		polys, err := carGeometryPolygons(f.Geometry)
-		if err != nil {
-			continue
-		}
+
+	addBounds := func(polys [][][][]float64) {
 		for _, poly := range polys {
 			for _, ring := range poly {
 				for _, p := range ring {
@@ -201,16 +227,49 @@ func drawCombinedGeometry(c *pdfCanvas, carRaw, kmlRaw string, x, y, w, h float6
 				}
 			}
 		}
-		parsed = append(parsed, parsedGeometry{polys: polys, color: item.color, width: item.width})
 	}
-	if len(parsed) == 0 || math.IsInf(minX, 1) || maxX <= minX || maxY <= minY {
+
+	for _, layer := range layers {
+		if strings.TrimSpace(layer.raw) == "" {
+			continue
+		}
+		var all [][][][]float64
+		for _, feature := range geoJSONFeatures(layer.raw) {
+			polys, err := carGeometryPolygons(feature.Geometry)
+			if err == nil {
+				all = append(all, polys...)
+			}
+		}
+		if len(all) == 0 {
+			continue
+		}
+		if layer.bound {
+			addBounds(all)
+		}
+		parsed = append(parsed, parsedLayer{label: layer.label, polys: all, rgb: layer.rgb, width: layer.width, bound: layer.bound})
+	}
+	if len(parsed) == 0 {
 		return
 	}
+	if math.IsInf(minX, 1) || maxX <= minX || maxY <= minY {
+		for _, item := range parsed {
+			addBounds(item.polys)
+		}
+	}
+	if math.IsInf(minX, 1) || maxX <= minX || maxY <= minY {
+		return
+	}
+
 	scale := math.Min(w/(maxX-minX), h/(maxY-minY))
 	offX := x + (w-(maxX-minX)*scale)/2
 	offY := y + (h-(maxY-minY)*scale)/2
+
+	// Recorta camadas externas ao quadro do imóvel para evitar que grandes
+	// polígonos de TI, UC ou embargo alterem a escala principal do mapa.
+	c.b.WriteString("q\n")
+	fmt.Fprintf(&c.b, "%.2f %.2f %.2f %.2f re W n\n", x, y, w, h)
 	for _, item := range parsed {
-		c.b.WriteString(item.color + "\n")
+		c.b.WriteString(item.rgb + " RG\n")
 		fmt.Fprintf(&c.b, "%.1f w\n", item.width)
 		for _, poly := range item.polys {
 			for _, ring := range poly {
@@ -218,8 +277,8 @@ func drawCombinedGeometry(c *pdfCanvas, carRaw, kmlRaw string, x, y, w, h float6
 					continue
 				}
 				step := 1
-				if len(ring) > 900 {
-					step = int(math.Ceil(float64(len(ring)) / 900))
+				if len(ring) > 700 {
+					step = int(math.Ceil(float64(len(ring)) / 700))
 				}
 				started := false
 				for i := 0; i < len(ring); i += step {
@@ -242,16 +301,33 @@ func drawCombinedGeometry(c *pdfCanvas, carRaw, kmlRaw string, x, y, w, h float6
 			}
 		}
 	}
-	// Legenda compacta.
-	c.b.WriteString("0.055 0.42 0.29 rg\n")
-	c.rect(x+5, y+4, 8, 3, true)
-	c.b.WriteString("0.18 0.25 0.21 rg\n")
-	c.text(x+17, y+2, 6, false, "CAR SICAR")
-	if strings.TrimSpace(kmlRaw) != "" {
-		c.b.WriteString("0.84 0.40 0.08 rg\n")
-		c.rect(x+75, y+4, 8, 3, true)
+	c.b.WriteString("Q\n")
+
+	// Legenda compacta, sem repetir entradas iguais.
+	seen := map[string]bool{}
+	legendX, legendY := x+5.0, y+3.0
+	colW := 92.0
+	col := 0
+	row := 0
+	for _, item := range parsed {
+		if seen[item.label] {
+			continue
+		}
+		seen[item.label] = true
+		lx := legendX + float64(col)*colW
+		ly := legendY + float64(row)*10
+		c.b.WriteString(item.rgb + " rg\n")
+		c.rect(lx, ly+2, 7, 3, true)
 		c.b.WriteString("0.18 0.25 0.21 rg\n")
-		c.text(x+87, y+2, 6, false, "KML cliente")
+		c.text(lx+10, ly, 5.5, false, item.label)
+		col++
+		if col >= 5 {
+			col = 0
+			row++
+		}
+		if row >= 2 {
+			break
+		}
 	}
 }
 
