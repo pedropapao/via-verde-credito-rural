@@ -258,7 +258,7 @@ func queryICMBioFederalUCs(ctx context.Context, carRaw string) ([]UCFindings, er
 	if err != nil {
 		return nil, err
 	}
-	var fc carRaw
+	var fc carGeoJSON
 	if err := json.Unmarshal(body, &fc); err != nil {
 		return nil, err
 	}
