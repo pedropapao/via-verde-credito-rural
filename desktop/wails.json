@@ -1,0 +1,17 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "ViaVerdeCAR",
+  "outputfilename": "ViaVerdeCAR",
+  "frontend:dir": "frontend",
+  "assetdir": "frontend/dist",
+  "author": {
+    "name": "Via Verde"
+  },
+  "info": {
+    "companyName": "Via Verde",
+    "productName": "Via Verde CAR",
+    "productVersion": "1.0.7",
+    "copyright": "Via Verde",
+    "comments": "Aplicativo desktop para organização e conferência de CAR, KML e imóveis rurais."
+  }
+}
