@@ -363,35 +363,130 @@ func scanMCRZip(zipPath, car, updated string) (bool, map[string]string, string, 
 	defer zr.Close()
 	targetFull := strings.ToUpper(strings.TrimSpace(car))
 	targetCompact := strings.ReplaceAll(targetFull, ".", "")
+	supportedFiles := 0
+
 	for _, zf := range zr.File {
 		name := strings.ToLower(zf.Name)
-		if !(strings.HasSuffix(name, ".csv") || strings.HasSuffix(name, ".txt")) {
-			continue
-		}
-		r, err := zf.Open()
-		if err != nil {
-			continue
-		}
-		scanner := bufio.NewScanner(r)
-		scanner.Buffer(make([]byte, 64*1024), 4*1024*1024)
-		var header string
-		if scanner.Scan() {
-			header = scanner.Text()
-		}
-		for scanner.Scan() {
-			line := scanner.Text()
-			upper := strings.ToUpper(line)
-			compact := strings.ReplaceAll(upper, ".", "")
-			if !strings.Contains(upper, targetFull) && !strings.Contains(compact, targetCompact) {
+		switch {
+		case strings.HasSuffix(name, ".csv") || strings.HasSuffix(name, ".txt"):
+			supportedFiles++
+			r, err := zf.Open()
+			if err != nil {
 				continue
 			}
-			fields := rowToMap(header, line)
+			scanner := bufio.NewScanner(r)
+			scanner.Buffer(make([]byte, 64*1024), 4*1024*1024)
+			var header string
+			if scanner.Scan() {
+				header = scanner.Text()
+			}
+			for scanner.Scan() {
+				line := scanner.Text()
+				upper := strings.ToUpper(line)
+				compact := strings.ReplaceAll(upper, ".", "")
+				if !strings.Contains(upper, targetFull) && !strings.Contains(compact, targetCompact) {
+					continue
+				}
+				fields := rowToMap(header, line)
+				r.Close()
+				return true, fields, updated, nil
+			}
 			r.Close()
-			return true, fields, updated, nil
+
+		case strings.HasSuffix(name, ".dbf"):
+			supportedFiles++
+			r, err := zf.Open()
+			if err != nil {
+				continue
+			}
+			found, fields, scanErr := scanDBFForCAR(r, targetFull, targetCompact)
+			r.Close()
+			if scanErr != nil {
+				return false, nil, updated, scanErr
+			}
+			if found {
+				return true, fields, updated, nil
+			}
 		}
-		r.Close()
+	}
+	if supportedFiles == 0 {
+		return false, nil, updated, errors.New("pacote MMA/MCR sem CSV, TXT ou DBF pesquisável; resultado não pode ser classificado como não listado")
 	}
 	return false, map[string]string{}, updated, nil
+}
+
+type dbfField struct {
+	Name   string
+	Length int
+}
+
+func scanDBFForCAR(r io.Reader, targetFull, targetCompact string) (bool, map[string]string, error) {
+	header := make([]byte, 32)
+	if _, err := io.ReadFull(r, header); err != nil {
+		return false, nil, err
+	}
+	numRecords := int(binary.LittleEndian.Uint32(header[4:8]))
+	headerLen := int(binary.LittleEndian.Uint16(header[8:10]))
+	recordLen := int(binary.LittleEndian.Uint16(header[10:12]))
+	if numRecords < 0 || headerLen < 33 || recordLen < 2 || recordLen > 1<<20 {
+		return false, nil, errors.New("DBF inválido no pacote MMA/MCR")
+	}
+	fieldBytes := headerLen - 33
+	if fieldBytes < 0 || fieldBytes%32 != 0 {
+		return false, nil, errors.New("cabeçalho DBF inválido no pacote MMA/MCR")
+	}
+	fields := make([]dbfField, 0, fieldBytes/32)
+	for i := 0; i < fieldBytes/32; i++ {
+		desc := make([]byte, 32)
+		if _, err := io.ReadFull(r, desc); err != nil {
+			return false, nil, err
+		}
+		nameBytes := desc[:11]
+		if idx := bytes.IndexByte(nameBytes, 0); idx >= 0 {
+			nameBytes = nameBytes[:idx]
+		}
+		name := strings.TrimSpace(string(nameBytes))
+		if name == "" {
+			name = fmt.Sprintf("campo_%d", i+1)
+		}
+		fields = append(fields, dbfField{Name: name, Length: int(desc[16])})
+	}
+	terminator := make([]byte, 1)
+	if _, err := io.ReadFull(r, terminator); err != nil {
+		return false, nil, err
+	}
+	if terminator[0] != 0x0D {
+		return false, nil, errors.New("terminador de cabeçalho DBF ausente")
+	}
+
+	record := make([]byte, recordLen)
+	for row := 0; row < numRecords; row++ {
+		if _, err := io.ReadFull(r, record); err != nil {
+			if err == io.EOF || err == io.ErrUnexpectedEOF {
+				return false, nil, nil
+			}
+			return false, nil, err
+		}
+		if record[0] == '*' {
+			continue
+		}
+		lineUpper := strings.ToUpper(string(record[1:]))
+		lineCompact := strings.ReplaceAll(lineUpper, ".", "")
+		if !strings.Contains(lineUpper, targetFull) && !strings.Contains(lineCompact, targetCompact) {
+			continue
+		}
+		out := map[string]string{}
+		offset := 1
+		for _, field := range fields {
+			if offset+field.Length > len(record) {
+				break
+			}
+			out[field.Name] = strings.TrimSpace(string(record[offset : offset+field.Length]))
+			offset += field.Length
+		}
+		return true, out, nil
+	}
+	return false, map[string]string{}, nil
 }
 
 func rowToMap(header, line string) map[string]string {
