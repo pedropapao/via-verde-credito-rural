@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const AppVersion = "1.0.1"
+const AppVersion = "1.0.2"
 
 type App struct {
 	ctx     context.Context
@@ -95,8 +95,10 @@ func (a *App) openDatabase() error {
 		return err
 	}
 	a.dataDir = filepath.Join(root, "ViaVerdeCAR")
-	if err := os.MkdirAll(filepath.Join(a.dataDir, "properties"), 0o755); err != nil {
-		return err
+	for _, dir := range []string{"properties", "backups", "updates"} {
+		if err := os.MkdirAll(filepath.Join(a.dataDir, dir), 0o755); err != nil {
+			return err
+		}
 	}
 	dbPath := filepath.Join(a.dataDir, "viaverde.db")
 	db, err := sql.Open("sqlite", dbPath)
@@ -374,17 +376,20 @@ func (a *App) writeBackup(target string) error {
 		if walkErr != nil {
 			return walkErr
 		}
+		rel, relErr := filepath.Rel(a.dataDir, path)
+		if relErr != nil {
+			return relErr
+		}
 		if info.IsDir() {
+			if rel == "backups" || rel == "updates" {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		absTarget, _ := filepath.Abs(target)
 		absPath, _ := filepath.Abs(path)
 		if absTarget == absPath {
 			return nil
-		}
-		rel, err := filepath.Rel(a.dataDir, path)
-		if err != nil {
-			return err
 		}
 		w, err := zw.Create(filepath.ToSlash(rel))
 		if err != nil {
