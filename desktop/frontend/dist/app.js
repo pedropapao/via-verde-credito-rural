@@ -87,6 +87,7 @@ function bindForms(){
   $('exportKmlBtn').onclick=exportKML;$('reportBtn').onclick=exportReport;$('packageBtn').onclick=exportPackage;
   $('copyCarBtn').onclick=()=>copyText(state.car?.car||'','CAR copiado.');$('copyCenterBtn').onclick=()=>copyText(state.car?Number(state.car.center_lat).toFixed(6)+', '+Number(state.car.center_lon).toFixed(6):'','Coordenadas copiadas.');
   $('openOfficialBtn').onclick=()=>openExternal(state.car?.official_url);$('openMeuImovelBtn').onclick=()=>openExternal(state.car?.meu_imovel_url);$('openMapsBtn').onclick=()=>openExternal(state.car?.google_maps_url);
+  $('openICMBioBtn').onclick=()=>openExternal(state.car?.environment?.icmbio_source_url);$('openMCRBtn').onclick=()=>openExternal(state.car?.environment?.mcr_source_url);$('openSharingBtn').onclick=()=>openExternal('https://www.gov.br/pt-br/servicos/compartilhar-cadastros-de-imoveis-rurais-com-terceiros-na-plataforma-meu-imovel-rural-car-sncr-e-sigef');
   $('backupBtn').onclick=$('settingsBackupBtn').onclick=backup;$('openDataBtn').onclick=async()=>{try{await api().OpenDataFolder()}catch(e){toast(String(e),true)}};
   $('checkUpdateBtn').onclick=checkUpdates;$('downloadUpdateBtn').onclick=installUpdate;
   document.querySelectorAll('.external').forEach(b=>b.onclick=()=>openExternal(b.dataset.url));
@@ -131,9 +132,10 @@ async function lookupCAR(){
   finally{$('lookupCarBtn').disabled=false;$('lookupCarBtn').textContent='Consultar SICAR'}
 }
 function renderCAR(r){
-  $('rCar').textContent=r.car||'—';$('rMunicipality').textContent=[r.municipality,r.uf].filter(Boolean).join(' / ')||'—';$('rArea').textContent=r.area_ha?fmt(r.area_ha,4)+' ha':'—';$('rGeoArea').textContent=r.geometry_area_ha?fmt(r.geometry_area_ha,4)+' ha':'—';$('rPerimeter').textContent=r.perimeter_m?fmt(r.perimeter_m/1000,3)+' km':'—';$('rCenter').textContent=(r.center_lat||r.center_lon)?`${Number(r.center_lat).toFixed(6)}, ${Number(r.center_lon).toFixed(6)}`:'—';$('rPropertyType').textContent=r.property_type||'—';$('rModules').textContent=r.fiscal_modules?fmt(r.fiscal_modules,2):'—';$('rCondition').textContent=r.condition||'—';$('rCreatedDate').textContent=formatSourceDate(r.data_cadastro);$('rUpdatedDate').textContent=formatSourceDate(r.data_atualizacao);
+  $('rCar').textContent=r.car||'—';$('rMunicipality').textContent=[r.municipality,r.uf].filter(Boolean).join(' / ')||'—';$('rPropertyName').textContent=r.property_name||state.selectedProperty?.name||'—';$('rArea').textContent=r.area_ha?fmt(r.area_ha,4)+' ha':'—';$('rGeoArea').textContent=r.geometry_area_ha?fmt(r.geometry_area_ha,4)+' ha':'—';$('rPerimeter').textContent=r.perimeter_m?fmt(r.perimeter_m/1000,3)+' km':'—';$('rCenter').textContent=(r.center_lat||r.center_lon)?`${Number(r.center_lat).toFixed(6)}, ${Number(r.center_lon).toFixed(6)}`:'—';$('rPropertyType').textContent=r.property_type||'—';$('rModules').textContent=r.fiscal_modules?fmt(r.fiscal_modules,2):'—';$('rCondition').textContent=r.condition||'—';$('rCreatedDate').textContent=formatSourceDate(r.data_cadastro);$('rUpdatedDate').textContent=formatSourceDate(r.data_atualizacao);$('rAutoKML').textContent=r.auto_kml_path?'Salvo automaticamente':'Disponível para exportar';$('rOwnerAccess').textContent=r.owner_data_access||'Acesso autorizado necessário';
   const badge=$('carStatusBadge');badge.textContent=r.status||(!r.found?'Não localizado':'Localizado');badge.className='status-badge '+(r.status==='Ativo'?'ok':r.found?'warning':'error');
-  $('openOfficialBtn').disabled=!r.official_url;$('openMeuImovelBtn').disabled=!r.meu_imovel_url;$('openMapsBtn').disabled=!r.google_maps_url;$('exportKmlBtn').disabled=!r.has_geometry;$('reportBtn').disabled=!state.selectedProperty||!r.found;$('packageBtn').disabled=!state.selectedProperty||!r.found;$('copyCarBtn').disabled=!r.car;$('copyCenterBtn').disabled=!(r.center_lat||r.center_lon);renderChecks(r.checks||[]);updateProfessional()
+  $('openOfficialBtn').disabled=!r.official_url;$('openMeuImovelBtn').disabled=!r.meu_imovel_url;$('openMapsBtn').disabled=!r.google_maps_url;$('exportKmlBtn').disabled=!r.has_geometry;$('reportBtn').disabled=!state.selectedProperty||!r.found;$('packageBtn').disabled=!state.selectedProperty||!r.found;$('copyCarBtn').disabled=!r.car;$('copyCenterBtn').disabled=!(r.center_lat||r.center_lon);
+  renderEnvironment(r.environment||{});renderChecks(r.checks||[]);updateProfessional()
 }
 function renderChecks(checks){const box=$('qualityChecks');box.innerHTML=checks.length?checks.map(c=>`<div class="quality-item ${c.level||'info'}"><span class="qicon">${c.level==='ok'?'✓':c.level==='warning'?'!':c.level==='error'?'×':'i'}</span><div><strong>${esc(c.title)}</strong><span>${esc(c.detail)}</span></div></div>`).join(''):'<div class="empty-state">Nenhuma análise realizada.</div>'}
 
@@ -160,11 +162,11 @@ function resetCARWorkspace(){
   state.car=null;state.kml=null;state.comparison=null;state.history=[];
   if(state.carLayer&&state.map){state.map.removeLayer(state.carLayer);state.carLayer=null}
   if(state.kmlLayer&&state.map){state.map.removeLayer(state.kmlLayer);state.kmlLayer=null}
-  ['rCar','rMunicipality','rArea','rGeoArea','rPerimeter','rCenter','rPropertyType','rModules','rCondition','rCreatedDate','rUpdatedDate','kArea','kPerimeter','kPoints','kCenter'].forEach(id=>{if($(id))$(id).textContent='—'});
+  ['rCar','rMunicipality','rPropertyName','rArea','rGeoArea','rPerimeter','rCenter','rPropertyType','rModules','rCondition','rCreatedDate','rUpdatedDate','rAutoKML','kArea','kPerimeter','kPoints','kCenter'].forEach(id=>{if($(id))$(id).textContent='—'});
   $('carStatusBadge').textContent='Aguardando';$('carStatusBadge').className='status-badge neutral';$('kmlBadge').textContent='Não carregado';$('kmlBadge').className='status-badge neutral';
   $('comparisonBox').className='comparison-box neutral';$('comparisonBox').innerHTML='<strong>Comparação KML × CAR</strong><span>Carregue as duas geometrias.</span>';$('comparisonMetrics').classList.add('hidden');
   ['openOfficialBtn','openMeuImovelBtn','openMapsBtn','exportKmlBtn','reportBtn','packageBtn','copyCarBtn','copyCenterBtn'].forEach(id=>$(id).disabled=true);
-  renderChecks([]);renderHistory([]);updateProfessional();
+  renderChecks([]);renderHistory([]);renderEnvironment({});updateProfessional();
 }
 async function loadHistory(){
   if(!state.selectedProperty){renderHistory([]);return}
@@ -180,10 +182,27 @@ function updateProfessional(){
   const title=$('professionalTitle'),badge=$('professionalBadge'),summary=$('professionalSummary');
   if(!state.car){title.textContent='Aguardando análise do imóvel';badge.textContent='Sem dados';badge.className='status-badge neutral';summary.textContent='Selecione um imóvel, consulte o CAR e, quando disponível, compare com o KML do cliente.';$('metricAreaDiff').textContent='—';$('metricOverlap').textContent='—';$('metricCenterDist').textContent='—';return}
   if(!state.car.found){title.textContent='CAR não localizado na camada pública';badge.textContent='Revisar';badge.className='status-badge error';summary.textContent='Confira o número informado e faça a validação no portal oficial.';return}
-  if(!state.kml){title.textContent='CAR localizado — falta o KML para conferência geométrica';badge.textContent=state.car.status||'Localizado';badge.className='status-badge '+(state.car.status==='Ativo'?'ok':'warning');summary.textContent='Dados cadastrais e geometria pública carregados. Anexe o KML do cliente para comparar limites, área e deslocamento.';$('metricAreaDiff').textContent='—';$('metricOverlap').textContent='—';$('metricCenterDist').textContent='—';return}
+  if(!state.kml){title.textContent=state.car.auto_kml_path?'CAR localizado — KML SICAR salvo automaticamente':'CAR localizado — geometria pública pronta';badge.textContent=state.car.status||'Localizado';badge.className='status-badge '+(state.car.status==='Ativo'?'ok':'warning');summary.textContent=state.car.auto_kml_path?'O perímetro público foi convertido para KML e salvo com o nome do cliente/imóvel. Um KML externo continua opcional para confronto independente.':'A consulta pública retornou a geometria. Vincule o CAR a um imóvel para o app salvar o KML automaticamente com o nome do cliente.';$('metricAreaDiff').textContent='—';$('metricOverlap').textContent='—';$('metricCenterDist').textContent='—';return}
   if(!state.comparison){title.textContent='Preparando comparação geométrica';badge.textContent='Analisando';badge.className='status-badge neutral';return}
   const c=state.comparison;title.textContent=c.level==='ok'?'Geometria compatível':c.level==='warning'?'Conferência requer atenção':'Divergência geométrica relevante';badge.textContent=c.level==='ok'?'Compatível':c.level==='warning'?'Atenção':'Divergente';badge.className='status-badge '+c.level;summary.textContent=c.summary;
   $('metricAreaDiff').textContent=fmt(c.area_difference_pct,2)+'%';$('metricCenterDist').textContent=fmt(c.center_distance_m,0)+' m';$('metricOverlap').textContent=c.overlap_method?fmt(Math.min(c.kml_inside_car_pct,c.car_inside_kml_pct),1)+'%':'—';
+}
+function renderEnvironment(env){
+  const badge=$('environmentBadge'),findings=$('environmentFindings');
+  $('openICMBioBtn').disabled=!env.icmbio_source_url;$('openMCRBtn').disabled=!env.mcr_source_url;
+  if(!env.checked_at){
+    badge.textContent='Aguardando';badge.className='status-badge neutral';$('envIbama').textContent='—';$('envIbamaDetail').textContent='Não consultado';$('envFunai').textContent='—';$('envFunaiDetail').textContent='Não consultado';$('envOwner').textContent='Dados protegidos';$('envOwnerDetail').textContent='A camada pública do SICAR não fornece nome/CPF do titular.';findings.classList.add('hidden');findings.innerHTML='';return
+  }
+  const alerts=(env.ibama_embargo_count||0)+(env.indigenous_count||0);
+  badge.textContent=alerts?'Atenção':'Triagem concluída';badge.className='status-badge '+(alerts?'warning':'ok');
+  $('envIbama').textContent=env.ibama_checked?String(env.ibama_embargo_count||0):'Indisponível';$('envIbamaDetail').textContent=env.ibama_checked?(env.ibama_embargo_count?'interseção(ões) espacial(is) encontrada(s)':'nenhuma interseção encontrada'):'fonte não respondeu';
+  $('envFunai').textContent=env.funai_checked?String(env.indigenous_count||0):'Indisponível';$('envFunaiDetail').textContent=env.funai_checked?(env.indigenous_count?'interseção(ões) com Terra Indígena':'nenhuma interseção encontrada'):'fonte não respondeu';
+  $('envOwner').textContent=state.selectedClient?.name||'Dados protegidos';$('envOwnerDetail').textContent=state.selectedClient?.cpf_cnpj?('CPF/CNPJ do cadastro local: '+state.selectedClient.cpf_cnpj):'Nome/CPF do titular não são inferidos pela consulta pública do CAR.';
+  const parts=[];
+  (env.ibama_embargos||[]).forEach(x=>parts.push(`<div class="environment-finding warning"><strong>Embargo IBAMA • ${esc(x.number||'sem número')}</strong><span>${esc([x.situation,x.status,x.municipality].filter(Boolean).join(' • '))}</span><small>${esc(x.infraction||'Confira o registro oficial.')}</small></div>`));
+  (env.indigenous_findings||[]).forEach(x=>parts.push(`<div class="environment-finding warning"><strong>Terra Indígena • ${esc(x.name||'área identificada')}</strong><span>Interseção estimada: ${fmt(x.overlap_area_ha,4)} ha (${fmt(x.overlap_car_pct,2)}% do CAR)</span><small>${esc(x.phase||'Confira a fase/situação na FUNAI.')}</small></div>`));
+  (env.warnings||[]).forEach(x=>parts.push(`<div class="environment-finding info"><strong>Fonte temporariamente indisponível</strong><span>${esc(x)}</span></div>`));
+  findings.innerHTML=parts.join('');findings.classList.toggle('hidden',!parts.length);
 }
 function formatSourceDate(v){if(!v)return'—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleDateString('pt-BR')}
 function formatDateTime(v){if(!v)return'—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}
