@@ -95,6 +95,7 @@ function bindForms(){
 
 async function selectCarProperty(id){
   state.selectedProperty=state.properties.find(p=>p.id===id)||null;
+  state.selectedClient=state.selectedProperty?state.clients.find(c=>c.id===state.selectedProperty.client_id)||null:null;
   resetCARWorkspace();
   $('attachKmlBtn').disabled=!state.selectedProperty;$('loadKmlBtn').disabled=!state.selectedProperty||!state.selectedProperty.kml_path;
   if(state.selectedProperty?.car_number){$('carInput').value=state.selectedProperty.car_number}else if(id){$('carInput').value=''}
@@ -191,16 +192,34 @@ function renderEnvironment(env){
   const badge=$('environmentBadge'),findings=$('environmentFindings');
   $('openICMBioBtn').disabled=!env.icmbio_source_url;$('openMCRBtn').disabled=!env.mcr_source_url;
   if(!env.checked_at){
-    badge.textContent='Aguardando';badge.className='status-badge neutral';$('envIbama').textContent='—';$('envIbamaDetail').textContent='Não consultado';$('envFunai').textContent='—';$('envFunaiDetail').textContent='Não consultado';$('envOwner').textContent='Dados protegidos';$('envOwnerDetail').textContent='A camada pública do SICAR não fornece nome/CPF do titular.';findings.classList.add('hidden');findings.innerHTML='';return
+    badge.textContent='Aguardando';badge.className='status-badge neutral';
+    $('envIbama').textContent='—';$('envIbamaDetail').textContent='Não consultado';
+    $('envFunai').textContent='—';$('envFunaiDetail').textContent='Não consultado';
+    $('envICMBio').textContent='—';$('envICMBioDetail').textContent='Não consultado';
+    $('envMCR').textContent='—';$('envMCRDetail').textContent='Não consultado';
+    $('envOwner').textContent='Dados protegidos';$('envOwnerDetail').textContent='A camada pública do SICAR não fornece nome/CPF do titular.';
+    findings.classList.add('hidden');findings.innerHTML='';return
   }
-  const alerts=(env.ibama_embargo_count||0)+(env.indigenous_count||0);
+  const alerts=(env.ibama_embargo_count||0)+(env.indigenous_count||0)+(env.federal_uc_count||0)+(env.mcr_listed?1:0);
   badge.textContent=alerts?'Atenção':'Triagem concluída';badge.className='status-badge '+(alerts?'warning':'ok');
-  $('envIbama').textContent=env.ibama_checked?String(env.ibama_embargo_count||0):'Indisponível';$('envIbamaDetail').textContent=env.ibama_checked?(env.ibama_embargo_count?'interseção(ões) espacial(is) encontrada(s)':'nenhuma interseção encontrada'):'fonte não respondeu';
-  $('envFunai').textContent=env.funai_checked?String(env.indigenous_count||0):'Indisponível';$('envFunaiDetail').textContent=env.funai_checked?(env.indigenous_count?'interseção(ões) com Terra Indígena':'nenhuma interseção encontrada'):'fonte não respondeu';
-  $('envOwner').textContent=state.selectedClient?.name||'Dados protegidos';$('envOwnerDetail').textContent=state.selectedClient?.cpf_cnpj?('CPF/CNPJ do cadastro local: '+state.selectedClient.cpf_cnpj):'Nome/CPF do titular não são inferidos pela consulta pública do CAR.';
+  $('envIbama').textContent=env.ibama_checked?String(env.ibama_embargo_count||0):'Indisponível';
+  $('envIbamaDetail').textContent=env.ibama_checked?(env.ibama_embargo_count?'interseção(ões) espacial(is) encontrada(s)':'nenhuma interseção encontrada'):'fonte não respondeu';
+  $('envFunai').textContent=env.funai_checked?String(env.indigenous_count||0):'Indisponível';
+  $('envFunaiDetail').textContent=env.funai_checked?(env.indigenous_count?'interseção(ões) com Terra Indígena':'nenhuma interseção encontrada'):'fonte não respondeu';
+  $('envICMBio').textContent=env.icmbio_checked?String(env.federal_uc_count||0):'Indisponível';
+  $('envICMBioDetail').textContent=env.icmbio_checked?(env.federal_uc_count?'interseção(ões) com UC federal':'nenhuma interseção encontrada'):'fonte não respondeu';
+  $('envMCR').textContent=env.mcr_checked?(env.mcr_listed?'LISTADO':'NÃO LISTADO'):'Indisponível';
+  $('envMCRDetail').textContent=env.mcr_checked?(env.mcr_listed?'CAR localizado na lista pública MMA/MCR-PRODES':'CAR não localizado na lista pública consultada'):'lista não pôde ser verificada';
+  $('envOwner').textContent=state.selectedClient?.name||'Dados protegidos';
+  $('envOwnerDetail').textContent=state.selectedClient?.cpf_cnpj?('CPF/CNPJ do cadastro local: '+state.selectedClient.cpf_cnpj):'Nome/CPF do titular não são inferidos pela consulta pública do CAR.';
   const parts=[];
   (env.ibama_embargos||[]).forEach(x=>parts.push(`<div class="environment-finding warning"><strong>Embargo IBAMA • ${esc(x.number||'sem número')}</strong><span>${esc([x.situation,x.status,x.municipality].filter(Boolean).join(' • '))}</span><small>${esc(x.infraction||'Confira o registro oficial.')}</small></div>`));
   (env.indigenous_findings||[]).forEach(x=>parts.push(`<div class="environment-finding warning"><strong>Terra Indígena • ${esc(x.name||'área identificada')}</strong><span>Interseção estimada: ${fmt(x.overlap_area_ha,4)} ha (${fmt(x.overlap_car_pct,2)}% do CAR)</span><small>${esc(x.phase||'Confira a fase/situação na FUNAI.')}</small></div>`));
+  (env.federal_uc_findings||[]).forEach(x=>parts.push(`<div class="environment-finding warning"><strong>UC Federal • ${esc(x.name||'área protegida')}</strong><span>Interseção estimada: ${fmt(x.overlap_area_ha,4)} ha (${fmt(x.overlap_car_pct,2)}% do CAR)</span><small>${esc([x.category,x.group,x.uf].filter(Boolean).join(' • ')||'Confira categoria e plano de manejo na fonte oficial.')}</small></div>`));
+  if(env.mcr_checked&&env.mcr_listed){
+    const keys=Object.entries(env.mcr_fields||{}).filter(([k,v])=>v&&v!=='').slice(0,8).map(([k,v])=>esc(k)+': '+esc(v)).join(' • ');
+    parts.push(`<div class="environment-finding warning"><strong>MMA / MCR-PRODES</strong><span>O CAR aparece na lista pública vinculada às verificações do Manual de Crédito Rural.</span><small>${keys||'Abra a fonte oficial para conferir o registro e a documentação aplicável.'}</small></div>`);
+  }
   (env.warnings||[]).forEach(x=>parts.push(`<div class="environment-finding info"><strong>Fonte temporariamente indisponível</strong><span>${esc(x)}</span></div>`));
   findings.innerHTML=parts.join('');findings.classList.toggle('hidden',!parts.length);
 }
