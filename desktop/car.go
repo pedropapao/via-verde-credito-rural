@@ -168,8 +168,11 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 	}
 
 	if result.HasGeometry {
-		envCtx, envCancel := context.WithTimeout(context.Background(), 18*time.Second)
+		envCtx, envCancel := context.WithTimeout(context.Background(), 35*time.Second)
 		result.Environment = screenEnvironment(envCtx, result.GeoJSON)
+		if a != nil && a.dataDir != "" {
+			a.enrichMCRScreening(envCtx, result.CAR, &result.Environment)
+		}
 		envCancel()
 		if result.Environment.IBAMAChecked {
 			if result.Environment.IBAMAEmbargoCount == 0 {
@@ -183,6 +186,20 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 				result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "Terras Indígenas FUNAI", Detail: "Nenhuma interseção espacial foi identificada na camada pública consultada."})
 			} else {
 				result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "Terras Indígenas FUNAI", Detail: fmt.Sprintf("%d interseção(ões) espacial(is) encontrada(s). Verifique a situação e os limites na fonte oficial.", result.Environment.IndigenousCount)})
+			}
+		}
+		if result.Environment.ICMBioChecked {
+			if result.Environment.FederalUCCount == 0 {
+				result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "Unidades de Conservação federais", Detail: "Nenhuma interseção espacial foi identificada na camada oficial ICMBio/INDE consultada."})
+			} else {
+				result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "Unidades de Conservação federais", Detail: fmt.Sprintf("%d interseção(ões) espacial(is) encontrada(s). Verifique categoria, plano de manejo e fonte oficial.", result.Environment.FederalUCCount)})
+			}
+		}
+		if result.Environment.MCRChecked {
+			if result.Environment.MCRListed {
+				result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "MMA / Manual de Crédito Rural", Detail: "O código CAR foi localizado na lista pública do MMA relacionada à verificação de supressão de vegetação/PRODES para crédito rural. A presença na lista exige conferência documental e não presume ilegalidade."})
+			} else {
+				result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "MMA / Manual de Crédito Rural", Detail: "O código CAR não foi localizado na lista pública MMA/MCR baixada pelo aplicativo na consulta atual."})
 			}
 		}
 		for _, warning := range result.Environment.Warnings {
