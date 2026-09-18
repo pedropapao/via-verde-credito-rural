@@ -172,6 +172,7 @@
             <dl class="data-list">
               <div><dt>CAR</dt><dd id="rCar">—</dd></div>
               <div><dt>Município</dt><dd id="rMunicipality">—</dd></div>
+              <div><dt>Nome do imóvel</dt><dd id="rPropertyName">—</dd></div>
               <div><dt>Área SICAR</dt><dd id="rArea">—</dd></div>
               <div><dt>Área geométrica</dt><dd id="rGeoArea">—</dd></div>
               <div><dt>Perímetro</dt><dd id="rPerimeter">—</dd></div>
@@ -181,6 +182,8 @@
               <div><dt>Condição</dt><dd id="rCondition">—</dd></div>
               <div><dt>Cadastro</dt><dd id="rCreatedDate">—</dd></div>
               <div><dt>Última atualização</dt><dd id="rUpdatedDate">—</dd></div>
+              <div><dt>KML SICAR</dt><dd id="rAutoKML">—</dd></div>
+              <div><dt>Detentor / CPF</dt><dd id="rOwnerAccess">Acesso autorizado necessário</dd></div>
             </dl>
             <div class="action-grid">
               <button class="btn ghost" id="openOfficialBtn" disabled>Consulta oficial</button>
@@ -207,6 +210,21 @@
             </div>
           </article>
         </aside>
+      </div>
+
+      <div class="environment-panel panel">
+        <div class="panel-title">
+          <div><span class="eyebrow">TRIAGEM SOCIOAMBIENTAL PÚBLICA</span><h3>CAR + bases oficiais</h3><p>Cruzamentos automáticos são auxiliares e devem ser confirmados na fonte oficial quando houver ocorrência.</p></div>
+          <span id="environmentBadge" class="status-badge neutral">Aguardando</span>
+        </div>
+        <div class="environment-grid">
+          <article class="environment-card"><span>IBAMA • Embargos SISCOM</span><strong id="envIbama">—</strong><small id="envIbamaDetail">Não consultado</small></article>
+          <article class="environment-card"><span>FUNAI • Terras Indígenas</span><strong id="envFunai">—</strong><small id="envFunaiDetail">Não consultado</small></article>
+          <article class="environment-card"><span>ICMBio • Dados geoespaciais</span><strong>Fonte oficial</strong><small>UCs, embargos, autos e outros temas</small><button class="text-btn" id="openICMBioBtn" disabled>Abrir fonte</button></article>
+          <article class="environment-card"><span>MMA • Crédito Rural</span><strong>Consulta oficial</strong><small>CAR e restrições relacionadas ao MCR</small><button class="text-btn" id="openMCRBtn" disabled>Abrir fonte</button></article>
+          <article class="environment-card owner-card"><span>DETENTOR DO IMÓVEL</span><strong id="envOwner">Dados protegidos</strong><small id="envOwnerDetail">A camada pública do SICAR não fornece nome/CPF do titular.</small><button class="text-btn" id="openSharingBtn">Acesso autorizado</button></article>
+        </div>
+        <div id="environmentFindings" class="environment-findings hidden"></div>
       </div>
 
       <div class="car-bottom-grid professional-bottom">
