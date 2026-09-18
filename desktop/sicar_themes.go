@@ -73,11 +73,20 @@ func (a *App) analyzeSICARThemes(ctx context.Context, car, uf, municipalityCode,
 	}
 	ch := make(chan result, len(sicarThemeDefinitions))
 	var wg sync.WaitGroup
+	// Limita downloads simultâneos para não sobrecarregar o GeoServices público.
+	sem := make(chan struct{}, 2)
 	for _, def := range sicarThemeDefinitions {
 		def := def
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-ctx.Done():
+				ch <- result{metric: SICARThemeMetric{Code: def.Code, Label: def.Label}, err: ctx.Err()}
+				return
+			}
 			m, err := a.analyzeSingleSICARTheme(ctx, car, uf, municipalityCode, carGeoJSON, carAreaHa, def.Code, def.Label)
 			ch <- result{metric: m, err: err}
 		}()
