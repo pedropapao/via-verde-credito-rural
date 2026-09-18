@@ -36,11 +36,16 @@ type KMLResult struct {
 }
 
 type GeometryComparison struct {
-	AreaDifferenceHa  float64 `json:"area_difference_ha"`
-	AreaDifferencePct float64 `json:"area_difference_pct"`
-	CenterDistanceM   float64 `json:"center_distance_m"`
-	Level             string  `json:"level"`
-	Summary           string  `json:"summary"`
+	AreaDifferenceHa       float64 `json:"area_difference_ha"`
+	AreaDifferencePct      float64 `json:"area_difference_pct"`
+	CenterDistanceM        float64 `json:"center_distance_m"`
+	PerimeterDifferencePct float64 `json:"perimeter_difference_pct"`
+	IntersectionAreaHa     float64 `json:"intersection_area_ha"`
+	KMLInsideCARPct        float64 `json:"kml_inside_car_pct"`
+	CARInsideKMLPct        float64 `json:"car_inside_kml_pct"`
+	OverlapMethod          string  `json:"overlap_method"`
+	Level                  string  `json:"level"`
+	Summary                string  `json:"summary"`
 }
 
 type parsedKML struct {
@@ -273,6 +278,37 @@ func (a *App) CompareKMLWithCAR(kml KMLResult, car CARResult) GeometryComparison
 	if kml.CenterLat != 0 && car.CenterLat != 0 {
 		out.CenterDistanceM = carHaversineM(kml.CenterLat, kml.CenterLon, car.CenterLat, car.CenterLon)
 	}
+	if kml.PerimeterM > 0 && car.PerimeterM > 0 {
+		out.PerimeterDifferencePct = math.Abs(kml.PerimeterM-car.PerimeterM) / car.PerimeterM * 100
+	}
+
+	if kml.GeoJSON != "" && car.GeoJSON != "" {
+		if area, kpct, cpct, err := estimateGeometryOverlap(kml.GeoJSON, car.GeoJSON); err == nil {
+			out.IntersectionAreaHa = area
+			out.KMLInsideCARPct = kpct
+			out.CARInsideKMLPct = cpct
+			out.OverlapMethod = "estimativa espacial por malha de alta resolução"
+		}
+	}
+
+	// A classificação é uma conferência geométrica auxiliar, não uma conclusão
+	// ambiental ou cadastral oficial. Os limites são explícitos e conservadores.
+	if out.OverlapMethod != "" {
+		minOverlap := math.Min(out.KMLInsideCARPct, out.CARInsideKMLPct)
+		switch {
+		case minOverlap >= 95 && out.AreaDifferencePct <= 2 && out.CenterDistanceM <= 250:
+			out.Level = "ok"
+			out.Summary = "Geometrias muito compatíveis: forte sobreposição, área próxima e centros coerentes."
+		case minOverlap >= 85 && out.AreaDifferencePct <= 5 && out.CenterDistanceM <= 750:
+			out.Level = "warning"
+			out.Summary = "Geometrias parcialmente compatíveis. Confira visualmente limites, retificações e origem do KML."
+		default:
+			out.Level = "error"
+			out.Summary = "Divergência geométrica relevante entre KML e CAR. Confira se os arquivos representam o mesmo imóvel e a mesma versão cadastral."
+		}
+		return out
+	}
+
 	switch {
 	case out.AreaDifferencePct <= 1 && out.CenterDistanceM <= 150:
 		out.Level = "ok"
@@ -285,4 +321,215 @@ func (a *App) CompareKMLWithCAR(kml KMLResult, car CARResult) GeometryComparison
 		out.Summary = "KML e CAR apresentam diferença relevante. Confira se os arquivos pertencem ao mesmo imóvel e se houve retificação."
 	}
 	return out
+}
+
+type planarPoint struct{ X, Y float64 }
+type planarRing []planarPoint
+type planarPolygon []planarRing
+type planarMultiPolygon []planarPolygon
+
+func estimateGeometryOverlap(kmlGeoJSON, carGeoJSON string) (intersectionHa, kmlInsidePct, carInsidePct float64, err error) {
+	kmlPolys, err := geoJSONToPlanar(kmlGeoJSON, 0)
+	if err != nil || len(kmlPolys) == 0 {
+		return 0, 0, 0, errors.New("KML sem geometria comparável")
+	}
+	carPolys, err := geoJSONToPlanar(carGeoJSON, sharedLatitude(kmlGeoJSON, carGeoJSON))
+	if err != nil || len(carPolys) == 0 {
+		return 0, 0, 0, errors.New("CAR sem geometria comparável")
+	}
+	// Reprojeta também o KML com a mesma latitude de referência do CAR para que
+	// a malha espacial use o mesmo sistema local em metros.
+	lat0 := sharedLatitude(kmlGeoJSON, carGeoJSON)
+	kmlPolys, err = geoJSONToPlanar(kmlGeoJSON, lat0)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	carPolys, err = geoJSONToPlanar(carGeoJSON, lat0)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	kx0, ky0, kx1, ky1, okK := planarBounds(kmlPolys)
+	cx0, cy0, cx1, cy1, okC := planarBounds(carPolys)
+	if !okK || !okC {
+		return 0, 0, 0, errors.New("limites geométricos inválidos")
+	}
+	x0, y0 := math.Max(kx0, cx0), math.Max(ky0, cy0)
+	x1, y1 := math.Min(kx1, cx1), math.Min(ky1, cy1)
+	if x1 <= x0 || y1 <= y0 {
+		return 0, 0, 0, nil
+	}
+
+	const grid = 320
+	dx, dy := (x1-x0)/grid, (y1-y0)/grid
+	insideBoth := 0
+	for iy := 0; iy < grid; iy++ {
+		y := y0 + (float64(iy)+0.5)*dy
+		for ix := 0; ix < grid; ix++ {
+			x := x0 + (float64(ix)+0.5)*dx
+			p := planarPoint{X: x, Y: y}
+			if pointInMultiPolygon(p, kmlPolys) && pointInMultiPolygon(p, carPolys) {
+				insideBoth++
+			}
+		}
+	}
+	intersectionM2 := float64(insideBoth) * dx * dy
+	intersectionHa = intersectionM2 / 10000
+	kAreaM2 := planarMultiArea(kmlPolys)
+	cAreaM2 := planarMultiArea(carPolys)
+	if kAreaM2 > 0 {
+		kmlInsidePct = math.Min(100, intersectionM2/kAreaM2*100)
+	}
+	if cAreaM2 > 0 {
+		carInsidePct = math.Min(100, intersectionM2/cAreaM2*100)
+	}
+	return intersectionHa, kmlInsidePct, carInsidePct, nil
+}
+
+func sharedLatitude(raws ...string) float64 {
+	total, count := 0.0, 0
+	for _, raw := range raws {
+		var f carGeoFeature
+		if json.Unmarshal([]byte(raw), &f) != nil {
+			continue
+		}
+		polys, err := carGeometryPolygons(f.Geometry)
+		if err != nil {
+			continue
+		}
+		for _, poly := range polys {
+			for _, ring := range poly {
+				for _, p := range ring {
+					if len(p) >= 2 {
+						total += p[1]
+						count++
+					}
+				}
+			}
+		}
+	}
+	if count == 0 {
+		return 0
+	}
+	return total / float64(count)
+}
+
+func geoJSONToPlanar(raw string, lat0 float64) (planarMultiPolygon, error) {
+	var f carGeoFeature
+	if err := json.Unmarshal([]byte(raw), &f); err != nil {
+		return nil, err
+	}
+	polys, err := carGeometryPolygons(f.Geometry)
+	if err != nil {
+		return nil, err
+	}
+	if lat0 == 0 {
+		lat0 = sharedLatitude(raw)
+	}
+	const earthR = 6371008.8
+	cos0 := math.Cos(lat0 * math.Pi / 180)
+	out := make(planarMultiPolygon, 0, len(polys))
+	for _, poly := range polys {
+		pp := make(planarPolygon, 0, len(poly))
+		for _, ring := range poly {
+			pr := make(planarRing, 0, len(ring))
+			for _, p := range ring {
+				if len(p) < 2 {
+					continue
+				}
+				pr = append(pr, planarPoint{
+					X: earthR * p[0] * math.Pi / 180 * cos0,
+					Y: earthR * p[1] * math.Pi / 180,
+				})
+			}
+			if len(pr) >= 3 {
+				pp = append(pp, pr)
+			}
+		}
+		if len(pp) > 0 {
+			out = append(out, pp)
+		}
+	}
+	return out, nil
+}
+
+func planarBounds(mp planarMultiPolygon) (minX, minY, maxX, maxY float64, ok bool) {
+	minX, minY = math.Inf(1), math.Inf(1)
+	maxX, maxY = math.Inf(-1), math.Inf(-1)
+	for _, poly := range mp {
+		for _, ring := range poly {
+			for _, p := range ring {
+				minX, minY = math.Min(minX, p.X), math.Min(minY, p.Y)
+				maxX, maxY = math.Max(maxX, p.X), math.Max(maxY, p.Y)
+				ok = true
+			}
+		}
+	}
+	return
+}
+
+func planarRingArea(r planarRing) float64 {
+	if len(r) < 3 {
+		return 0
+	}
+	s := 0.0
+	for i := range r {
+		j := (i + 1) % len(r)
+		s += r[i].X*r[j].Y - r[j].X*r[i].Y
+	}
+	return math.Abs(s / 2)
+}
+
+func planarMultiArea(mp planarMultiPolygon) float64 {
+	total := 0.0
+	for _, poly := range mp {
+		for i, ring := range poly {
+			a := planarRingArea(ring)
+			if i == 0 {
+				total += a
+			} else {
+				total -= a
+			}
+		}
+	}
+	if total < 0 {
+		return 0
+	}
+	return total
+}
+
+func pointInMultiPolygon(p planarPoint, mp planarMultiPolygon) bool {
+	for _, poly := range mp {
+		if len(poly) == 0 || !pointInRing(p, poly[0]) {
+			continue
+		}
+		inHole := false
+		for _, hole := range poly[1:] {
+			if pointInRing(p, hole) {
+				inHole = true
+				break
+			}
+		}
+		if !inHole {
+			return true
+		}
+	}
+	return false
+}
+
+func pointInRing(p planarPoint, ring planarRing) bool {
+	inside := false
+	j := len(ring) - 1
+	for i := 0; i < len(ring); i++ {
+		pi, pj := ring[i], ring[j]
+		crosses := (pi.Y > p.Y) != (pj.Y > p.Y)
+		if crosses {
+			x := (pj.X-pi.X)*(p.Y-pi.Y)/(pj.Y-pi.Y) + pi.X
+			if p.X < x {
+				inside = !inside
+			}
+		}
+		j = i
+	}
+	return inside
 }
