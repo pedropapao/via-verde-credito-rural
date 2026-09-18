@@ -103,41 +103,38 @@ func screenEnvironment(ctx context.Context, carGeoJSON string) EnvironmentalSumm
 }
 
 func queryIBAMAEmbargos(ctx context.Context, carGeoJSON string) ([]EmbargoFinding, error) {
-	esriGeom, err := geoJSONToEsriPolygon(carGeoJSON)
-	if err != nil {
-		return nil, err
+	minLon, minLat, maxLon, maxLat, ok := geoJSONBounds(carGeoJSON)
+	if !ok {
+		return nil, fmt.Errorf("limites do CAR indisponíveis")
 	}
-	geomJSON, _ := json.Marshal(esriGeom)
 	params := url.Values{}
 	params.Set("where", "1=1")
-	params.Set("geometry", string(geomJSON))
-	params.Set("geometryType", "esriGeometryPolygon")
+	params.Set("geometry", fmt.Sprintf("%.8f,%.8f,%.8f,%.8f", minLon, minLat, maxLon, maxLat))
+	params.Set("geometryType", "esriGeometryEnvelope")
 	params.Set("inSR", "4326")
 	params.Set("spatialRel", "esriSpatialRelIntersects")
 	params.Set("outFields", "numero_tad,data_tad,status_tad,sit_embarg,qtd_area_d,nom_munici,orgao,des_infrac")
-	params.Set("returnGeometry", "false")
-	params.Set("resultRecordCount", "100")
-	params.Set("f", "json")
+	params.Set("returnGeometry", "true")
+	params.Set("outSR", "4326")
+	params.Set("resultRecordCount", "200")
+	params.Set("f", "geojson")
 
 	body, err := fetchCARBody(ctx, ibamaEmbargoLayerURL+"?"+params.Encode())
 	if err != nil {
 		return nil, err
 	}
-	var response struct {
-		Features []struct {
-			Attributes map[string]any `json:"attributes"`
-		} `json:"features"`
-		Error any `json:"error"`
-	}
-	if err := json.Unmarshal(body, &response); err != nil {
+	var fc carGeoJSON
+	if err := json.Unmarshal(body, &fc); err != nil {
 		return nil, err
 	}
-	if response.Error != nil {
-		return nil, fmt.Errorf("serviço retornou erro")
-	}
-	out := make([]EmbargoFinding, 0, len(response.Features))
-	for _, f := range response.Features {
-		a := f.Attributes
+	out := make([]EmbargoFinding, 0, len(fc.Features))
+	for _, feature := range fc.Features {
+		raw, _ := json.Marshal(carGeoFeature{Type: "Feature", Properties: feature.Properties, Geometry: feature.Geometry})
+		intersection, _, _, err := estimateGeometryOverlap(carGeoJSON, string(raw))
+		if err != nil || intersection <= 0.0001 {
+			continue
+		}
+		a := feature.Properties
 		out = append(out, EmbargoFinding{
 			Number:       anyString(a, "numero_tad"),
 			Date:         arcGISDateString(a["data_tad"]),
