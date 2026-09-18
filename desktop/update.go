@@ -173,7 +173,7 @@ func (a *App) InstallUpdate(info UpdateInfo) (UpdateInstallResult, error) {
 		"-ExecutionPolicy", "Bypass",
 		"-WindowStyle", "Hidden",
 		"-File", scriptPath,
-		"-Pid", fmt.Sprint(os.Getpid()),
+		"-TargetPid", fmt.Sprint(os.Getpid()),
 		"-CurrentExe", currentExe,
 		"-NewExe", staged,
 		"-OldExe", oldExe,
@@ -254,7 +254,7 @@ func safeVersionFilename(v string) string {
 
 func buildWindowsUpdateScript() string {
 	return `param(
-  [int]$Pid,
+  [int]$TargetPid,
   [string]$CurrentExe,
   [string]$NewExe,
   [string]$OldExe,
@@ -266,12 +266,12 @@ function Log([string]$m) {
   Add-Content -LiteralPath $LogFile -Value $line -Encoding UTF8
 }
 try {
-  Log "Aguardando Via Verde encerrar (PID $Pid)."
+  Log "Aguardando Via Verde encerrar (PID $TargetPid)."
   for ($i = 0; $i -lt 120; $i++) {
-    if (-not (Get-Process -Id $Pid -ErrorAction SilentlyContinue)) { break }
+    if (-not (Get-Process -Id $TargetPid -ErrorAction SilentlyContinue)) { break }
     Start-Sleep -Milliseconds 250
   }
-  if (Get-Process -Id $Pid -ErrorAction SilentlyContinue) {
+  if (Get-Process -Id $TargetPid -ErrorAction SilentlyContinue) {
     throw "O processo antigo não encerrou a tempo."
   }
 
