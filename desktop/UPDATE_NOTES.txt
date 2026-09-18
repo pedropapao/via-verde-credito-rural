@@ -1,0 +1,1 @@
+Atualizador automático integrado. Agora o próprio Via Verde baixa, valida, instala e reinicia quando uma nova versão está disponível. Também cria backup automático antes da atualização e mantém a versão anterior para recuperação.
