@@ -1,6 +1,6 @@
 const state = {
   clients: [], properties: [], selectedClient: null, selectedProperty: null,
-  car: null, kml: null, comparison: null, map: null, carLayer: null, kmlLayer: null,
+  car: null, kml: null, comparison: null, history: [], map: null, carLayer: null, kmlLayer: null,
   update: null,
 };
 
@@ -84,7 +84,8 @@ function bindForms(){
   $('propertyForm').onsubmit=async e=>{e.preventDefault();try{const p={id:Number($('propertyId').value)||0,client_id:state.selectedClient?.id||0,name:$('propertyName').value,municipality:$('propertyMunicipality').value,uf:$('propertyUF').value,registry:$('propertyRegistry').value,car_number:$('propertyCAR').value,declared_area_ha:Number($('propertyArea').value)||0};const saved=await api().SaveProperty(p);$('propertyForm').classList.add('hidden');await Promise.all([loadProperties(),loadDashboard()]);state.selectedProperty=state.properties.find(x=>x.id===saved.id)||saved;toast('Imóvel salvo.')}catch(err){toast(String(err),true)}};
   $('carPropertySelect').onchange=()=>selectCarProperty(Number($('carPropertySelect').value)||0);
   $('lookupCarBtn').onclick=lookupCAR;$('attachKmlBtn').onclick=attachKML;$('loadKmlBtn').onclick=loadSavedKML;$('fitMapBtn').onclick=fitMap;
-  $('exportKmlBtn').onclick=exportKML;$('reportBtn').onclick=exportReport;
+  $('exportKmlBtn').onclick=exportKML;$('reportBtn').onclick=exportReport;$('packageBtn').onclick=exportPackage;
+  $('copyCarBtn').onclick=()=>copyText(state.car?.car||'','CAR copiado.');$('copyCenterBtn').onclick=()=>copyText(state.car?Number(state.car.center_lat).toFixed(6)+', '+Number(state.car.center_lon).toFixed(6):'','Coordenadas copiadas.');
   $('openOfficialBtn').onclick=()=>openExternal(state.car?.official_url);$('openMeuImovelBtn').onclick=()=>openExternal(state.car?.meu_imovel_url);$('openMapsBtn').onclick=()=>openExternal(state.car?.google_maps_url);
   $('backupBtn').onclick=$('settingsBackupBtn').onclick=backup;$('openDataBtn').onclick=async()=>{try{await api().OpenDataFolder()}catch(e){toast(String(e),true)}};
   $('checkUpdateBtn').onclick=checkUpdates;$('downloadUpdateBtn').onclick=installUpdate;
@@ -93,9 +94,18 @@ function bindForms(){
 
 async function selectCarProperty(id){
   state.selectedProperty=state.properties.find(p=>p.id===id)||null;
+  resetCARWorkspace();
   $('attachKmlBtn').disabled=!state.selectedProperty;$('loadKmlBtn').disabled=!state.selectedProperty||!state.selectedProperty.kml_path;
   if(state.selectedProperty?.car_number){$('carInput').value=state.selectedProperty.car_number}else if(id){$('carInput').value=''}
+  if(!state.selectedProperty){renderHistory([]);updateProfessional();return}
+  await loadHistory();
+  try{
+    const latest=await api().GetLatestCAR(state.selectedProperty.id);
+    if(latest?.car){state.car=latest;renderCAR(latest);if(latest.geojson)drawGeoJSON('car',latest.geojson)}
+  }catch(e){}
   if(state.selectedProperty?.kml_path){try{await loadSavedKML()}catch(e){}}
+  if(state.car&&state.kml)await compareGeometries();
+  updateProfessional();
 }
 
 function initMap(){
@@ -115,25 +125,70 @@ async function lookupCAR(){
   const number=$('carInput').value.trim();if(!number){toast('Informe o número completo do CAR.',true);return}
   $('lookupCarBtn').disabled=true;$('lookupCarBtn').textContent='Consultando...';
   try{
-    const propertyID=state.selectedProperty?.id||0;const r=propertyID?await api().AnalyzePropertyCAR(propertyID,number):await api().LookupCAR(number);state.car=r;renderCAR(r);if(r.geojson)drawGeoJSON('car',r.geojson);if(propertyID){await Promise.all([loadProperties(),loadDashboard()]);state.selectedProperty=state.properties.find(p=>p.id===propertyID)||state.selectedProperty}
-    if(state.kml)await compareGeometries();toast(r.found?'CAR consultado com sucesso.':'Código válido, mas não localizado na camada pública.',!r.found);
+    const propertyID=state.selectedProperty?.id||0;const r=propertyID?await api().AnalyzePropertyCAR(propertyID,number):await api().LookupCAR(number);state.car=r;renderCAR(r);if(r.geojson)drawGeoJSON('car',r.geojson);if(propertyID){await Promise.all([loadProperties(),loadDashboard()]);state.selectedProperty=state.properties.find(p=>p.id===propertyID)||state.selectedProperty;await loadHistory()}
+    if(state.kml)await compareGeometries();else updateProfessional();toast(r.found?'CAR consultado com sucesso.':'Código válido, mas não localizado na camada pública.',!r.found);
   }catch(e){toast(String(e),true);renderChecks([{level:'error',title:'Falha na consulta',detail:String(e)}])}
   finally{$('lookupCarBtn').disabled=false;$('lookupCarBtn').textContent='Consultar SICAR'}
 }
 function renderCAR(r){
-  $('rCar').textContent=r.car||'—';$('rMunicipality').textContent=[r.municipality,r.uf].filter(Boolean).join(' / ')||'—';$('rArea').textContent=r.area_ha?fmt(r.area_ha,4)+' ha':'—';$('rGeoArea').textContent=r.geometry_area_ha?fmt(r.geometry_area_ha,4)+' ha':'—';$('rPerimeter').textContent=r.perimeter_m?fmt(r.perimeter_m/1000,3)+' km':'—';$('rCenter').textContent=(r.center_lat||r.center_lon)?`${Number(r.center_lat).toFixed(6)}, ${Number(r.center_lon).toFixed(6)}`:'—';$('rModules').textContent=r.fiscal_modules?fmt(r.fiscal_modules,2):'—';$('rCondition').textContent=r.condition||'—';
+  $('rCar').textContent=r.car||'—';$('rMunicipality').textContent=[r.municipality,r.uf].filter(Boolean).join(' / ')||'—';$('rArea').textContent=r.area_ha?fmt(r.area_ha,4)+' ha':'—';$('rGeoArea').textContent=r.geometry_area_ha?fmt(r.geometry_area_ha,4)+' ha':'—';$('rPerimeter').textContent=r.perimeter_m?fmt(r.perimeter_m/1000,3)+' km':'—';$('rCenter').textContent=(r.center_lat||r.center_lon)?`${Number(r.center_lat).toFixed(6)}, ${Number(r.center_lon).toFixed(6)}`:'—';$('rPropertyType').textContent=r.property_type||'—';$('rModules').textContent=r.fiscal_modules?fmt(r.fiscal_modules,2):'—';$('rCondition').textContent=r.condition||'—';$('rCreatedDate').textContent=formatSourceDate(r.data_cadastro);$('rUpdatedDate').textContent=formatSourceDate(r.data_atualizacao);
   const badge=$('carStatusBadge');badge.textContent=r.status||(!r.found?'Não localizado':'Localizado');badge.className='status-badge '+(r.status==='Ativo'?'ok':r.found?'warning':'error');
-  $('openOfficialBtn').disabled=!r.official_url;$('openMeuImovelBtn').disabled=!r.meu_imovel_url;$('openMapsBtn').disabled=!r.google_maps_url;$('exportKmlBtn').disabled=!r.has_geometry;$('reportBtn').disabled=!state.selectedProperty||!r.found;renderChecks(r.checks||[])
+  $('openOfficialBtn').disabled=!r.official_url;$('openMeuImovelBtn').disabled=!r.meu_imovel_url;$('openMapsBtn').disabled=!r.google_maps_url;$('exportKmlBtn').disabled=!r.has_geometry;$('reportBtn').disabled=!state.selectedProperty||!r.found;$('packageBtn').disabled=!state.selectedProperty||!r.found;$('copyCarBtn').disabled=!r.car;$('copyCenterBtn').disabled=!(r.center_lat||r.center_lon);renderChecks(r.checks||[]);updateProfessional()
 }
 function renderChecks(checks){const box=$('qualityChecks');box.innerHTML=checks.length?checks.map(c=>`<div class="quality-item ${c.level||'info'}"><span class="qicon">${c.level==='ok'?'✓':c.level==='warning'?'!':c.level==='error'?'×':'i'}</span><div><strong>${esc(c.title)}</strong><span>${esc(c.detail)}</span></div></div>`).join(''):'<div class="empty-state">Nenhuma análise realizada.</div>'}
 
 async function attachKML(){if(!state.selectedProperty){toast('Selecione um imóvel salvo.',true);return}try{const r=await api().AttachKML(state.selectedProperty.id);state.kml=r;renderKML(r);drawGeoJSON('kml',r.geojson);await Promise.all([loadProperties(),loadDashboard()]);state.selectedProperty=state.properties.find(p=>p.id===state.selectedProperty.id)||state.selectedProperty;if(state.car)await compareGeometries();toast('KML importado e salvo no imóvel.')}catch(e){if(!String(e).includes('cancelado'))toast(String(e),true)}}
 async function loadSavedKML(){if(!state.selectedProperty)return;try{const r=await api().LoadPropertyKML(state.selectedProperty.id);state.kml=r;renderKML(r);drawGeoJSON('kml',r.geojson);if(state.car)await compareGeometries()}catch(e){toast(String(e),true)}}
-function renderKML(r){$('kArea').textContent=r.area_ha?fmt(r.area_ha,4)+' ha':'—';$('kPerimeter').textContent=r.perimeter_m?fmt(r.perimeter_m/1000,3)+' km':'—';$('kPoints').textContent=r.points||'—';$('kCenter').textContent=(r.center_lat||r.center_lon)?`${Number(r.center_lat).toFixed(6)}, ${Number(r.center_lon).toFixed(6)}`:'—';$('kmlBadge').textContent='Carregado';$('kmlBadge').className='status-badge ok'}
-async function compareGeometries(){if(!state.car||!state.kml)return;state.comparison=await api().CompareKMLWithCAR(state.kml,state.car);const c=state.comparison;const box=$('comparisonBox');box.className='comparison-box '+c.level;box.innerHTML=`<strong>Comparação KML × CAR</strong><span>${esc(c.summary)}<br>Diferença de área: ${fmt(c.area_difference_ha,4)} ha (${fmt(c.area_difference_pct,2)}%). Distância entre centros: ${fmt(c.center_distance_m,0)} m.</span>`}
+function renderKML(r){$('kArea').textContent=r.area_ha?fmt(r.area_ha,4)+' ha':'—';$('kPerimeter').textContent=r.perimeter_m?fmt(r.perimeter_m/1000,3)+' km':'—';$('kPoints').textContent=r.points||'—';$('kCenter').textContent=(r.center_lat||r.center_lon)?`${Number(r.center_lat).toFixed(6)}, ${Number(r.center_lon).toFixed(6)}`:'—';$('kmlBadge').textContent='Carregado';$('kmlBadge').className='status-badge ok';updateProfessional()}
+async function compareGeometries(){
+  if(!state.car||!state.kml)return;
+  state.comparison=await api().CompareKMLWithCAR(state.kml,state.car);const c=state.comparison;const box=$('comparisonBox');
+  box.className='comparison-box '+c.level;
+  box.innerHTML=`<strong>Comparação KML × CAR</strong><span>${esc(c.summary)}<br>Diferença de área: ${fmt(c.area_difference_ha,4)} ha (${fmt(c.area_difference_pct,2)}%). Distância entre centros: ${fmt(c.center_distance_m,0)} m.</span>`;
+  const hasOverlap=!!c.overlap_method;$('comparisonMetrics').classList.toggle('hidden',!hasOverlap);
+  $('cmpIntersection').textContent=hasOverlap?fmt(c.intersection_area_ha,4)+' ha':'—';
+  $('cmpKmlInside').textContent=hasOverlap?fmt(c.kml_inside_car_pct,1)+'%':'—';
+  $('cmpCarInside').textContent=hasOverlap?fmt(c.car_inside_kml_pct,1)+'%':'—';
+  $('cmpPerimeterDiff').textContent=c.perimeter_difference_pct?fmt(c.perimeter_difference_pct,1)+'%':'—';
+  updateProfessional();
+}
 
 async function exportKML(){try{const p=await api().ExportCARKML(state.car.car);toast('KML salvo em '+p)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
 async function exportReport(){if(!state.selectedProperty||!state.car)return;try{if(state.kml&&!state.comparison)await compareGeometries();const p=await api().ExportCARReport(state.selectedProperty.id,state.car,state.kml||{},state.comparison||{});toast('PDF salvo em '+p)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
+async function exportPackage(){if(!state.selectedProperty||!state.car)return;try{if(state.kml&&!state.comparison)await compareGeometries();const r=await api().ExportPropertyPackage(state.selectedProperty.id,state.car,state.kml||{},state.comparison||{});toast(r.message+' '+r.path)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
+function resetCARWorkspace(){
+  state.car=null;state.kml=null;state.comparison=null;state.history=[];
+  if(state.carLayer&&state.map){state.map.removeLayer(state.carLayer);state.carLayer=null}
+  if(state.kmlLayer&&state.map){state.map.removeLayer(state.kmlLayer);state.kmlLayer=null}
+  ['rCar','rMunicipality','rArea','rGeoArea','rPerimeter','rCenter','rPropertyType','rModules','rCondition','rCreatedDate','rUpdatedDate','kArea','kPerimeter','kPoints','kCenter'].forEach(id=>{if($(id))$(id).textContent='—'});
+  $('carStatusBadge').textContent='Aguardando';$('carStatusBadge').className='status-badge neutral';$('kmlBadge').textContent='Não carregado';$('kmlBadge').className='status-badge neutral';
+  $('comparisonBox').className='comparison-box neutral';$('comparisonBox').innerHTML='<strong>Comparação KML × CAR</strong><span>Carregue as duas geometrias.</span>';$('comparisonMetrics').classList.add('hidden');
+  ['openOfficialBtn','openMeuImovelBtn','openMapsBtn','exportKmlBtn','reportBtn','packageBtn','copyCarBtn','copyCenterBtn'].forEach(id=>$(id).disabled=true);
+  renderChecks([]);renderHistory([]);updateProfessional();
+}
+async function loadHistory(){
+  if(!state.selectedProperty){renderHistory([]);return}
+  try{state.history=await api().GetCARHistory(state.selectedProperty.id)||[];renderHistory(state.history)}catch(e){state.history=[];renderHistory([])}
+}
+function renderHistory(items){
+  $('metricHistory').textContent=items.length||0;const box=$('carHistory');const badge=$('historyChangeBadge');
+  if(!items.length){box.innerHTML='<div class="empty-state">Nenhuma consulta registrada para este imóvel.</div>';badge.textContent='Sem histórico';badge.className='status-badge neutral';return}
+  const changed=items[0]?.changes?.length>0;badge.textContent=changed?'Alteração detectada':items.length>1?'Sem alteração recente':'1ª consulta';badge.className='status-badge '+(changed?'warning':items.length>1?'ok':'neutral');
+  box.innerHTML=items.slice(0,8).map((h,i)=>`<div class="history-item ${i===0?'latest':''}"><div class="history-dot"></div><div><strong>${formatDateTime(h.checked_at)} ${i===0?'<em>mais recente</em>':''}</strong><span>${esc(h.status||h.condition||'Consulta registrada')} • ${h.area_ha?fmt(h.area_ha,4)+' ha':'área não informada'} • ${esc(h.municipality||'município não informado')}</span>${h.changes?.length?`<small>${h.changes.map(x=>'⚠ '+esc(x)).join('<br>')}</small>`:''}</div></div>`).join('');
+}
+function updateProfessional(){
+  const title=$('professionalTitle'),badge=$('professionalBadge'),summary=$('professionalSummary');
+  if(!state.car){title.textContent='Aguardando análise do imóvel';badge.textContent='Sem dados';badge.className='status-badge neutral';summary.textContent='Selecione um imóvel, consulte o CAR e, quando disponível, compare com o KML do cliente.';$('metricAreaDiff').textContent='—';$('metricOverlap').textContent='—';$('metricCenterDist').textContent='—';return}
+  if(!state.car.found){title.textContent='CAR não localizado na camada pública';badge.textContent='Revisar';badge.className='status-badge error';summary.textContent='Confira o número informado e faça a validação no portal oficial.';return}
+  if(!state.kml){title.textContent='CAR localizado — falta o KML para conferência geométrica';badge.textContent=state.car.status||'Localizado';badge.className='status-badge '+(state.car.status==='Ativo'?'ok':'warning');summary.textContent='Dados cadastrais e geometria pública carregados. Anexe o KML do cliente para comparar limites, área e deslocamento.';$('metricAreaDiff').textContent='—';$('metricOverlap').textContent='—';$('metricCenterDist').textContent='—';return}
+  if(!state.comparison){title.textContent='Preparando comparação geométrica';badge.textContent='Analisando';badge.className='status-badge neutral';return}
+  const c=state.comparison;title.textContent=c.level==='ok'?'Geometria compatível':c.level==='warning'?'Conferência requer atenção':'Divergência geométrica relevante';badge.textContent=c.level==='ok'?'Compatível':c.level==='warning'?'Atenção':'Divergente';badge.className='status-badge '+c.level;summary.textContent=c.summary;
+  $('metricAreaDiff').textContent=fmt(c.area_difference_pct,2)+'%';$('metricCenterDist').textContent=fmt(c.center_distance_m,0)+' m';$('metricOverlap').textContent=c.overlap_method?fmt(Math.min(c.kml_inside_car_pct,c.car_inside_kml_pct),1)+'%':'—';
+}
+function formatSourceDate(v){if(!v)return'—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleDateString('pt-BR')}
+function formatDateTime(v){if(!v)return'—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}
+async function copyText(value,message){if(!value)return;try{await navigator.clipboard.writeText(value);toast(message)}catch(e){toast('Não foi possível copiar.',true)}}
+
 async function backup(){try{const r=await api().BackupData();toast(r.message+' '+r.path)}catch(e){if(!String(e).includes('cancelado'))toast(String(e),true)}}
 async function checkUpdatesSilently(){
   try{
