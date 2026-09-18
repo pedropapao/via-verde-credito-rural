@@ -65,12 +65,13 @@ jobs:
           $sha = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
           $notes = (Get-Content "UPDATE_NOTES.txt" -Raw).Trim()
           $notes64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($notes))
+          $publishUrl = $env:UPDATE_ENDPOINT + "?action=publish"
           $args = @(
             "--fail-with-body",
             "--retry", "3",
             "--retry-delay", "2",
             "--request", "POST",
-            "$env:UPDATE_ENDPOINT?action=publish",
+            $publishUrl,
             "--header", "x-publish-token: $env:UPDATE_PUBLISH_TOKEN",
             "--header", "x-version: $env:APP_VERSION",
             "--header", "x-sha256: $sha",
