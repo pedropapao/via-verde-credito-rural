@@ -136,7 +136,7 @@ function renderCAR(r){
   $('rCar').textContent=r.car||'—';$('rMunicipality').textContent=[r.municipality,r.uf].filter(Boolean).join(' / ')||'—';$('rPropertyName').textContent=r.property_name||state.selectedProperty?.name||'—';$('rArea').textContent=r.area_ha?fmt(r.area_ha,4)+' ha':'—';$('rGeoArea').textContent=r.geometry_area_ha?fmt(r.geometry_area_ha,4)+' ha':'—';$('rPerimeter').textContent=r.perimeter_m?fmt(r.perimeter_m/1000,3)+' km':'—';$('rCenter').textContent=(r.center_lat||r.center_lon)?`${Number(r.center_lat).toFixed(6)}, ${Number(r.center_lon).toFixed(6)}`:'—';$('rPropertyType').textContent=r.property_type||'—';$('rModules').textContent=r.fiscal_modules?fmt(r.fiscal_modules,2):'—';$('rCondition').textContent=r.condition||'—';$('rCreatedDate').textContent=formatSourceDate(r.data_cadastro);$('rUpdatedDate').textContent=formatSourceDate(r.data_atualizacao);$('rAutoKML').textContent=r.auto_kml_path?'Salvo automaticamente':'Disponível para exportar';$('rOwnerAccess').textContent=r.owner_data_access||'Acesso autorizado necessário';
   const badge=$('carStatusBadge');badge.textContent=r.status||(!r.found?'Não localizado':'Localizado');badge.className='status-badge '+(r.status==='Ativo'?'ok':r.found?'warning':'error');
   $('openOfficialBtn').disabled=!r.official_url;$('openMeuImovelBtn').disabled=!r.meu_imovel_url;$('openMapsBtn').disabled=!r.google_maps_url;$('exportKmlBtn').disabled=!r.has_geometry;$('reportBtn').disabled=!state.selectedProperty||!r.found;$('packageBtn').disabled=!state.selectedProperty||!r.found;$('copyCarBtn').disabled=!r.car;$('copyCenterBtn').disabled=!(r.center_lat||r.center_lon);
-  renderEnvironment(r.environment||{});renderChecks(r.checks||[]);updateProfessional()
+  renderEnvironment(r.environment||{});renderThemes(r.themes||{});renderChecks(r.checks||[]);updateProfessional()
 }
 function renderChecks(checks){const box=$('qualityChecks');box.innerHTML=checks.length?checks.map(c=>`<div class="quality-item ${c.level||'info'}"><span class="qicon">${c.level==='ok'?'✓':c.level==='warning'?'!':c.level==='error'?'×':'i'}</span><div><strong>${esc(c.title)}</strong><span>${esc(c.detail)}</span></div></div>`).join(''):'<div class="empty-state">Nenhuma análise realizada.</div>'}
 
@@ -167,7 +167,7 @@ function resetCARWorkspace(){
   $('carStatusBadge').textContent='Aguardando';$('carStatusBadge').className='status-badge neutral';$('kmlBadge').textContent='Não carregado';$('kmlBadge').className='status-badge neutral';
   $('comparisonBox').className='comparison-box neutral';$('comparisonBox').innerHTML='<strong>Comparação KML × CAR</strong><span>Carregue as duas geometrias.</span>';$('comparisonMetrics').classList.add('hidden');
   ['openOfficialBtn','openMeuImovelBtn','openMapsBtn','exportKmlBtn','reportBtn','packageBtn','copyCarBtn','copyCenterBtn'].forEach(id=>$(id).disabled=true);
-  renderChecks([]);renderHistory([]);renderEnvironment({});updateProfessional();
+  renderChecks([]);renderHistory([]);renderEnvironment({});renderThemes({});updateProfessional();
 }
 async function loadHistory(){
   if(!state.selectedProperty){renderHistory([]);return}
@@ -188,6 +188,21 @@ function updateProfessional(){
   const c=state.comparison;title.textContent=c.level==='ok'?'Geometria compatível':c.level==='warning'?'Conferência requer atenção':'Divergência geométrica relevante';badge.textContent=c.level==='ok'?'Compatível':c.level==='warning'?'Atenção':'Divergente';badge.className='status-badge '+c.level;summary.textContent=c.summary;
   $('metricAreaDiff').textContent=fmt(c.area_difference_pct,2)+'%';$('metricCenterDist').textContent=fmt(c.center_distance_m,0)+' m';$('metricOverlap').textContent=c.overlap_method?fmt(Math.min(c.kml_inside_car_pct,c.car_inside_kml_pct),1)+'%':'—';
 }
+function renderThemes(themes){
+  const badge=$('themesBadge'),warnings=$('themesWarnings');
+  const map=themes.themes||{};
+  const setMetric=(id,code)=>{const m=map[code];$(id).textContent=m?.available?fmt(m.area_ha,4)+' ha':'—'};
+  setMetric('themeAPP','APP');setMetric('themeRL','RESERVA_LEGAL');setMetric('themeVN','VEGETACAO_NATIVA');setMetric('themeAC','AREA_CONSOLIDADA');setMetric('themeUR','USO_RESTRITO');setMetric('themeSA','SERVIDAO_ADMINISTRATIVA');
+  if(!themes.checked_at){
+    badge.textContent='Aguardando';badge.className='status-badge neutral';warnings.classList.add('hidden');warnings.innerHTML='';return
+  }
+  const available=Object.values(map).filter(x=>x?.available).length;
+  badge.textContent=available?available+' tema(s) carregado(s)':'Indisponível';
+  badge.className='status-badge '+(available>=4?'ok':available?'warning':'error');
+  const items=(themes.warnings||[]).map(x=>'<span>• '+esc(x)+'</span>');
+  if(items.length){warnings.innerHTML=items.join('');warnings.classList.remove('hidden')}else{warnings.classList.add('hidden');warnings.innerHTML=''}
+}
+
 function renderEnvironment(env){
   const badge=$('environmentBadge'),findings=$('environmentFindings');
   $('openICMBioBtn').disabled=!env.icmbio_source_url;$('openMCRBtn').disabled=!env.mcr_source_url;
