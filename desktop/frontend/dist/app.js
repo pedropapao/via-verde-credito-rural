@@ -100,9 +100,12 @@ async function selectCarProperty(id){
 function initMap(){
   if(!window.L){$('map').innerHTML='<div class="map-placeholder"><strong>Mapa online indisponível</strong><span>Verifique a conexão com a internet.</span></div>';return}
   $('map').innerHTML='';state.map=L.map('map',{zoomControl:true}).setView([-18.5,-44.0],5);
-  const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(state.map);
-  const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri'});
-  L.control.layers({'Mapa':street,'Satélite':sat},{}).addTo(state.map);
+  // O tile.openstreetmap.org bloqueia aplicações desktop que usam o serviço
+  // como provedor de tiles. Usamos os serviços públicos da Esri como bases
+  // e mantemos a atribuição exibida no mapa.
+  const street=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri'});
+  const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri'}).addTo(state.map);
+  L.control.layers({'Satélite':sat,'Mapa':street},{}).addTo(state.map);
 }
 function drawGeoJSON(which,geojson){if(!state.map||!geojson)return;try{const obj=typeof geojson==='string'?JSON.parse(geojson):geojson;if(which==='car'&&state.carLayer)state.map.removeLayer(state.carLayer);if(which==='kml'&&state.kmlLayer)state.map.removeLayer(state.kmlLayer);const style=which==='car'?{color:'#2c7a49',weight:3,fillColor:'#4ca36b',fillOpacity:.16}:{color:'#d77922',weight:3,dashArray:'8 5',fillColor:'#e89a44',fillOpacity:.08};const layer=L.geoJSON(obj,{style}).addTo(state.map);if(which==='car')state.carLayer=layer;else state.kmlLayer=layer;fitMap()}catch(e){toast('Não foi possível desenhar a geometria.',true)}}
 function fitMap(){if(!state.map)return;const layers=[state.carLayer,state.kmlLayer].filter(Boolean);if(!layers.length)return;const group=L.featureGroup(layers);const b=group.getBounds();if(b.isValid())state.map.fitBounds(b.pad(.08),{maxZoom:17})}
