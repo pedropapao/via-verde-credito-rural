@@ -351,8 +351,8 @@ func estimateGeometryOverlap(kmlGeoJSON, carGeoJSON string) (intersectionHa, kml
 	// A comparação é deliberadamente aproximada. Para polígonos com milhares
 	// de vértices usamos uma amostragem uniforme, evitando travar a interface
 	// sem alterar o KML original nem a geometria exibida no mapa.
-	kmlPolys = simplifyPlanarMulti(kmlPolys, 450)
-	carPolys = simplifyPlanarMulti(carPolys, 450)
+	kmlPolys = simplifyPlanarMulti(kmlPolys, 150)
+	carPolys = simplifyPlanarMulti(carPolys, 150)
 
 	kx0, ky0, kx1, ky1, okK := planarBounds(kmlPolys)
 	cx0, cy0, cx1, cy1, okC := planarBounds(carPolys)
@@ -365,7 +365,7 @@ func estimateGeometryOverlap(kmlGeoJSON, carGeoJSON string) (intersectionHa, kml
 		return 0, 0, 0, nil
 	}
 
-	const grid = 220
+	const grid = 120
 	dx, dy := (x1-x0)/grid, (y1-y0)/grid
 	insideBoth := 0
 	for iy := 0; iy < grid; iy++ {
