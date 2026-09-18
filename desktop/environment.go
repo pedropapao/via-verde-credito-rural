@@ -59,6 +59,7 @@ type EmbargoFinding struct {
 	Municipality string `json:"municipality"`
 	Agency       string `json:"agency"`
 	Infraction   string `json:"infraction"`
+	GeoJSON      string `json:"geojson"`
 }
 
 type TerritoryFinding struct {
@@ -67,6 +68,7 @@ type TerritoryFinding struct {
 	OverlapAreaHa  float64 `json:"overlap_area_ha"`
 	OverlapCARPct  float64 `json:"overlap_car_pct"`
 	Source         string  `json:"source"`
+	GeoJSON        string  `json:"geojson"`
 }
 
 type UCFindings struct {
@@ -77,6 +79,7 @@ type UCFindings struct {
 	OverlapAreaHa float64 `json:"overlap_area_ha"`
 	OverlapCARPct float64 `json:"overlap_car_pct"`
 	Source        string  `json:"source"`
+	GeoJSON       string  `json:"geojson"`
 }
 
 func screenEnvironment(ctx context.Context, carGeoJSON string) EnvironmentalSummary {
@@ -184,6 +187,7 @@ func queryIBAMAEmbargos(ctx context.Context, carGeoJSON string) ([]EmbargoFindin
 			Municipality: anyString(a, "nom_munici"),
 			Agency:       anyString(a, "orgao"),
 			Infraction:   anyString(a, "des_infrac"),
+			GeoJSON:      string(raw),
 		})
 	}
 	return out, nil
@@ -226,6 +230,7 @@ func queryFUNAITerritories(ctx context.Context, carGeoJSON string) ([]TerritoryF
 			OverlapAreaHa: intersection,
 			OverlapCARPct: carPct,
 			Source:        "FUNAI",
+			GeoJSON:       string(raw),
 		})
 	}
 	return out, nil
@@ -269,6 +274,7 @@ func queryICMBioFederalUCs(ctx context.Context, carGeoJSON string) ([]UCFindings
 			OverlapAreaHa: intersection,
 			OverlapCARPct: carPct,
 			Source:        "ICMBio/INDE",
+			GeoJSON:       string(raw),
 		})
 	}
 	return out, nil
