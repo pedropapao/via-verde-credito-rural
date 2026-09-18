@@ -39,6 +39,7 @@ async function boot(){
   try{
     const info=await api().GetAppInfo(); $('versionLabel').textContent='Versão '+info.version; $('settingsVersion').textContent=info.version; $('dataDir').textContent=info.data_dir;
     await Promise.all([loadDashboard(),loadClients(),loadProperties()]);
+    setTimeout(checkUpdatesSilently,3500);
   }catch(e){toast(String(e),true)}
 }
 
@@ -134,6 +135,16 @@ async function compareGeometries(){if(!state.car||!state.kml)return;state.compar
 async function exportKML(){try{const p=await api().ExportCARKML(state.car.car);toast('KML salvo em '+p)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
 async function exportReport(){if(!state.selectedProperty||!state.car)return;try{if(state.kml&&!state.comparison)await compareGeometries();const p=await api().ExportCARReport(state.selectedProperty.id,state.car,state.kml||{},state.comparison||{});toast('PDF salvo em '+p)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
 async function backup(){try{const r=await api().BackupData();toast(r.message+' '+r.path)}catch(e){if(!String(e).includes('cancelado'))toast(String(e),true)}}
+async function checkUpdatesSilently(){
+  try{
+    const u=await api().CheckUpdates();state.update=u;
+    if(u.available){
+      $('updateMessage').textContent=u.notes ? u.message+' '+u.notes : u.message;
+      const install=$('downloadUpdateBtn');install.classList.remove('hidden');install.textContent='Atualizar para '+u.available_version;
+      toast('Nova versão '+u.available_version+' disponível em Configurações.');
+    }
+  }catch(e){}
+}
 async function checkUpdates(){
   const btn=$('checkUpdateBtn');btn.disabled=true;btn.textContent='Verificando...';
   try{
