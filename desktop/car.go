@@ -38,6 +38,7 @@ type CARResult struct {
 	UF               string         `json:"uf"`
 	MunicipalityCode string         `json:"municipality_code"`
 	Municipality     string         `json:"municipality"`
+	PropertyName     string         `json:"property_name"`
 	AreaHa           float64        `json:"area_ha"`
 	GeometryAreaHa   float64        `json:"geometry_area_ha"`
 	PerimeterM       float64        `json:"perimeter_m"`
@@ -57,6 +58,9 @@ type CARResult struct {
 	OfficialURL      string         `json:"official_url"`
 	MeuImovelURL     string         `json:"meu_imovel_url"`
 	GoogleMapsURL    string         `json:"google_maps_url"`
+	AutoKMLPath      string         `json:"auto_kml_path"`
+	SnapshotSaved    bool           `json:"snapshot_saved"`
+	OwnerDataAccess  string         `json:"owner_data_access"`
 	Checks           []QualityCheck `json:"checks"`
 }
 
@@ -118,13 +122,15 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 	}
 	result.Found = true
 	result.Municipality = carStringProp(feature.Properties, "nom_munici", "nom_municipio", "municipio", "nm_muni", "nome_municipio")
-	result.Status = carStatusLabel(carStringProp(feature.Properties, "ind_status", "situacao", "status"))
+	result.PropertyName = carStringProp(feature.Properties, "nom_imovel", "nome_imovel", "imovel")
+	result.Status = carStatusLabel(carStringProp(feature.Properties, "status_imovel", "ind_status", "situacao", "status"))
 	result.Condition = carStringProp(feature.Properties, "des_condic", "condicao", "descricao_condicao")
-	result.PropertyType = carPropertyTypeLabel(carStringProp(feature.Properties, "ind_tipo", "tipo_imove", "tipo_imovel", "des_tipo", "tipo"))
-	result.AreaHa = carFloatProp(feature.Properties, "num_area", "area_ha", "area")
-	result.FiscalModules = carFloatProp(feature.Properties, "mod_fiscal", "modulos_fiscais")
-	result.DataCadastro = carStringProp(feature.Properties, "dat_criaca", "data_cadastro", "data_criacao")
-	result.DataAtualizacao = carStringProp(feature.Properties, "dat_atuali", "data_atualizacao", "data_ultima_atualizacao")
+	result.PropertyType = carPropertyTypeLabel(carStringProp(feature.Properties, "tipo_imovel", "ind_tipo_i", "ind_tipo", "tipo_imove", "des_tipo", "tipo"))
+	result.AreaHa = carFloatProp(feature.Properties, "num_area", "num_area_i", "area_imove", "area_ha", "area")
+	result.FiscalModules = carFloatProp(feature.Properties, "m_fiscal", "num_modulo", "mod_fiscal", "modulos_fiscais")
+	result.DataCadastro = carStringProp(feature.Properties, "dat_criacao", "dat_criaca", "data_cadastro", "data_criacao")
+	result.DataAtualizacao = carStringProp(feature.Properties, "data_atualizacao", "dat_atuali", "data_ultima_atualizacao")
+	result.OwnerDataAccess = "Nome e CPF do detentor não são publicados pela camada pública nacional consultada; exigem acesso autorizado do titular."
 	result.HasGeometry = carGeometryUsable(feature.Geometry)
 	if result.HasGeometry {
 		result.GeometryAreaHa = carGeometryAreaHa(feature.Geometry)
@@ -175,15 +181,31 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 				}
 				result.Checks = append(result.Checks, QualityCheck{Level: level, Title: "Área cadastrada × SICAR", Detail: fmt.Sprintf("Local %.4f ha; SICAR %.4f ha; diferença %.4f ha (%.2f%%).", p.DeclaredAreaHa, result.AreaHa, diff, pct)})
 			}
+			if result.HasGeometry {
+				if kmlPath, kErr := a.saveAutomaticCARKML(p, result, feature.Geometry); kErr == nil {
+					result.AutoKMLPath = kmlPath
+					result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "KML SICAR automático", Detail: "O perímetro público foi salvo automaticamente com o nome do cliente/imóvel."})
+				} else {
+					result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "KML automático", Detail: "Não foi possível salvar o KML automaticamente: " + kErr.Error()})
+				}
+			}
 		}
 		var duplicates int
 		_ = a.db.QueryRow(`SELECT COUNT(*) FROM properties WHERE car_number=? AND id<>?`, car, propertyID).Scan(&duplicates)
 		if duplicates > 0 {
 			result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "CAR já usado", Detail: "Este número também está vinculado a outro imóvel no cadastro local."})
 		}
+
+		var previousRaw string
+		_ = a.db.QueryRow(`SELECT result_json FROM car_checks WHERE property_id=? ORDER BY checked_at DESC,id DESC LIMIT 1`, propertyID).Scan(&previousRaw)
+		result.SnapshotSaved = strings.TrimSpace(previousRaw) == "" || carResultMateriallyChanged(previousRaw, result)
 		blob := marshalJSON(result)
 		_, _ = a.db.Exec(`UPDATE properties SET car_number=?,last_car_json=?,updated_at=? WHERE id=?`, car, blob, time.Now().Format(time.RFC3339), propertyID)
-		_, _ = a.db.Exec(`INSERT INTO car_checks(property_id,car_number,checked_at,status,condition_text,area_ha,municipality,geometry_json,result_json) VALUES(?,?,?,?,?,?,?,?,?)`, propertyID, car, result.CheckedAt, result.Status, result.Condition, result.AreaHa, result.Municipality, result.GeoJSON, blob)
+		if result.SnapshotSaved {
+			_, _ = a.db.Exec(`INSERT INTO car_checks(property_id,car_number,checked_at,status,condition_text,area_ha,municipality,geometry_json,result_json) VALUES(?,?,?,?,?,?,?,?,?)`, propertyID, car, result.CheckedAt, result.Status, result.Condition, result.AreaHa, result.Municipality, result.GeoJSON, blob)
+		} else {
+			result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "Histórico sem duplicação", Detail: "A consulta não alterou o CAR; nenhum registro repetido foi criado."})
+		}
 	}
 	return result, nil
 }
