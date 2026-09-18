@@ -3,8 +3,11 @@ package main
 import (
 	"archive/zip"
 	"bufio"
+	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -145,8 +148,8 @@ func screenEnvironment(ctx context.Context, carGeoJSON string) EnvironmentalSumm
 	return out
 }
 
-func queryIBAMAEmbargos(ctx context.Context, carGeoJSON string) ([]EmbargoFinding, error) {
-	minLon, minLat, maxLon, maxLat, ok := geoJSONBounds(carGeoJSON)
+func queryIBAMAEmbargos(ctx context.Context, carRaw string) ([]EmbargoFinding, error) {
+	minLon, minLat, maxLon, maxLat, ok := geoJSONBounds(carRaw)
 	if !ok {
 		return nil, fmt.Errorf("limites do CAR indisponíveis")
 	}
@@ -173,7 +176,7 @@ func queryIBAMAEmbargos(ctx context.Context, carGeoJSON string) ([]EmbargoFindin
 	out := make([]EmbargoFinding, 0, len(fc.Features))
 	for _, feature := range fc.Features {
 		raw, _ := json.Marshal(carGeoFeature{Type: "Feature", Properties: feature.Properties, Geometry: feature.Geometry})
-		intersection, _, _, err := estimateGeometryOverlap(carGeoJSON, string(raw))
+		intersection, _, _, err := estimateGeometryOverlap(carRaw, string(raw))
 		if err != nil || intersection <= 0.0001 {
 			continue
 		}
@@ -193,8 +196,8 @@ func queryIBAMAEmbargos(ctx context.Context, carGeoJSON string) ([]EmbargoFindin
 	return out, nil
 }
 
-func queryFUNAITerritories(ctx context.Context, carGeoJSON string) ([]TerritoryFinding, error) {
-	minLon, minLat, maxLon, maxLat, ok := geoJSONBounds(carGeoJSON)
+func queryFUNAITerritories(ctx context.Context, carRaw string) ([]TerritoryFinding, error) {
+	minLon, minLat, maxLon, maxLat, ok := geoJSONBounds(carRaw)
 	if !ok {
 		return nil, fmt.Errorf("limites do CAR indisponíveis")
 	}
@@ -218,7 +221,7 @@ func queryFUNAITerritories(ctx context.Context, carGeoJSON string) ([]TerritoryF
 	out := []TerritoryFinding{}
 	for _, feature := range fc.Features {
 		raw, _ := json.Marshal(carGeoFeature{Type: "Feature", Properties: feature.Properties, Geometry: feature.Geometry})
-		intersection, _, carPct, err := estimateGeometryOverlap(carGeoJSON, string(raw))
+		intersection, _, carPct, err := estimateGeometryOverlap(carRaw, string(raw))
 		if err != nil || intersection <= 0.0001 {
 			continue
 		}
@@ -237,8 +240,8 @@ func queryFUNAITerritories(ctx context.Context, carGeoJSON string) ([]TerritoryF
 }
 
 
-func queryICMBioFederalUCs(ctx context.Context, carGeoJSON string) ([]UCFindings, error) {
-	minLon, minLat, maxLon, maxLat, ok := geoJSONBounds(carGeoJSON)
+func queryICMBioFederalUCs(ctx context.Context, carRaw string) ([]UCFindings, error) {
+	minLon, minLat, maxLon, maxLat, ok := geoJSONBounds(carRaw)
 	if !ok {
 		return nil, fmt.Errorf("limites do CAR indisponíveis")
 	}
@@ -255,14 +258,14 @@ func queryICMBioFederalUCs(ctx context.Context, carGeoJSON string) ([]UCFindings
 	if err != nil {
 		return nil, err
 	}
-	var fc carGeoJSON
+	var fc carRaw
 	if err := json.Unmarshal(body, &fc); err != nil {
 		return nil, err
 	}
 	out := []UCFindings{}
 	for _, feature := range fc.Features {
 		raw, _ := json.Marshal(carGeoFeature{Type: "Feature", Properties: feature.Properties, Geometry: feature.Geometry})
-		intersection, _, carPct, err := estimateGeometryOverlap(carGeoJSON, string(raw))
+		intersection, _, carPct, err := estimateGeometryOverlap(carRaw, string(raw))
 		if err != nil || intersection <= 0.0001 {
 			continue
 		}
