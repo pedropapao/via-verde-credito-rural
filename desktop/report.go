@@ -119,6 +119,18 @@ func buildCARTechnicalPDF(p Property, car CARResult, kml KMLResult, cmp Geometry
 	if car.CenterLat != 0 || car.CenterLon != 0 {
 		row("Centro aproximado", fmt.Sprintf("%.6f, %.6f", car.CenterLat, car.CenterLon))
 	}
+	if len(car.Themes.Themes) > 0 {
+		parts := []string{}
+		for _, code := range []string{"APP", "RESERVA_LEGAL", "VEGETACAO_NATIVA", "AREA_CONSOLIDADA"} {
+			if m, ok := car.Themes.Themes[code]; ok && m.Available {
+				parts = append(parts, m.Code+" "+fmtBR(m.AreaHa, 4)+" ha")
+			}
+		}
+		if len(parts) > 0 {
+			row("Temas SICAR", strings.Join(parts, "; "))
+		}
+	}
+
 	if kml.AreaHa > 0 {
 		row("KML local", fmtBR(kml.AreaHa, 4)+" ha; "+fmtBR(kml.PerimeterM/1000, 3)+" km de perimetro")
 		comparisonText := cmp.Summary+" Diferenca de area: "+fmtBR(cmp.AreaDifferenceHa, 4)+" ha ("+fmtBR(cmp.AreaDifferencePct, 2)+"%). Distancia entre centros: "+fmtBR(cmp.CenterDistanceM, 0)+" m."
