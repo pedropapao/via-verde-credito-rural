@@ -124,6 +124,25 @@ func compareCARHistoryJSON(olderRaw, newerRaw string) []string {
 	if oldR.GeoJSON != "" && newR.GeoJSON != "" && oldR.GeoJSON != newR.GeoJSON {
 		changes = append(changes, "Geometria pública alterada")
 	}
+	if oldR.Environment.IBAMAEmbargoCount != newR.Environment.IBAMAEmbargoCount {
+		changes = append(changes, fmt.Sprintf("Embargos IBAMA: %d → %d", oldR.Environment.IBAMAEmbargoCount, newR.Environment.IBAMAEmbargoCount))
+	}
+	if oldR.Environment.IndigenousCount != newR.Environment.IndigenousCount {
+		changes = append(changes, fmt.Sprintf("Interseções FUNAI: %d → %d", oldR.Environment.IndigenousCount, newR.Environment.IndigenousCount))
+	}
+	if oldR.Environment.FederalUCCount != newR.Environment.FederalUCCount {
+		changes = append(changes, fmt.Sprintf("UCs federais: %d → %d", oldR.Environment.FederalUCCount, newR.Environment.FederalUCCount))
+	}
+	if oldR.Environment.MCRListed != newR.Environment.MCRListed {
+		changes = append(changes, fmt.Sprintf("Lista MMA/MCR: %t → %t", oldR.Environment.MCRListed, newR.Environment.MCRListed))
+	}
+	for _, code := range []string{"APP", "RESERVA_LEGAL", "VEGETACAO_NATIVA", "AREA_CONSOLIDADA"} {
+		oldM, oldOK := oldR.Themes.Themes[code]
+		newM, newOK := newR.Themes.Themes[code]
+		if oldOK && newOK && absFloat(oldM.AreaHa-newM.AreaHa) > 0.01 {
+			changes = append(changes, fmt.Sprintf("%s: %.2f ha → %.2f ha", code, oldM.AreaHa, newM.AreaHa))
+		}
+	}
 	return changes
 }
 
