@@ -97,6 +97,15 @@ func buildCARTechnicalPDF(p Property, car CARResult, kml KMLResult, cmp Geometry
 	row("Area SICAR", fmtBR(car.AreaHa, 4)+" ha")
 	row("Area geometria SICAR", fmtBR(car.GeometryAreaHa, 4)+" ha")
 	row("Perimetro SICAR", fmtBR(car.PerimeterM/1000, 3)+" km")
+	if car.AutoKMLPath != "" {
+		row("KML SICAR", "Gerado e salvo automaticamente pelo aplicativo")
+	}
+	if car.Environment.IBAMAChecked {
+		row("Triagem IBAMA", fmt.Sprintf("%d intersecao(oes) espacial(is) com areas de embargo SISCOM/IBAMA", car.Environment.IBAMAEmbargoCount))
+	}
+	if car.Environment.FUNAIChecked {
+		row("Triagem FUNAI", fmt.Sprintf("%d intersecao(oes) espacial(is) com Terras Indigenas", car.Environment.IndigenousCount))
+	}
 	if car.CenterLat != 0 || car.CenterLon != 0 {
 		row("Centro aproximado", fmt.Sprintf("%.6f, %.6f", car.CenterLat, car.CenterLon))
 	}
