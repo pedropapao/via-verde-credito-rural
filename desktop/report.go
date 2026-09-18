@@ -102,7 +102,11 @@ func buildCARTechnicalPDF(p Property, car CARResult, kml KMLResult, cmp Geometry
 	}
 	if kml.AreaHa > 0 {
 		row("KML local", fmtBR(kml.AreaHa, 4)+" ha; "+fmtBR(kml.PerimeterM/1000, 3)+" km de perimetro")
-		row("Comparacao KML x CAR", cmp.Summary+" Diferenca de area: "+fmtBR(cmp.AreaDifferenceHa, 4)+" ha ("+fmtBR(cmp.AreaDifferencePct, 2)+"%). Distancia entre centros: "+fmtBR(cmp.CenterDistanceM, 0)+" m.")
+		comparisonText := cmp.Summary+" Diferenca de area: "+fmtBR(cmp.AreaDifferenceHa, 4)+" ha ("+fmtBR(cmp.AreaDifferencePct, 2)+"%). Distancia entre centros: "+fmtBR(cmp.CenterDistanceM, 0)+" m."
+		if cmp.OverlapMethod != "" {
+			comparisonText += " Intersecao estimada: "+fmtBR(cmp.IntersectionAreaHa, 4)+" ha; KML dentro do CAR: "+fmtBR(cmp.KMLInsideCARPct, 1)+"%; CAR dentro do KML: "+fmtBR(cmp.CARInsideKMLPct, 1)+"%."
+		}
+		row("Comparacao KML x CAR", comparisonText)
 	}
 	mapTop := math.Min(y-5, 390.0)
 	mapBottom := 205.0
@@ -111,7 +115,7 @@ func buildCARTechnicalPDF(p Property, car CARResult, kml KMLResult, cmp Geometry
 		c.rect(40, mapBottom, 515, mapTop-mapBottom, false)
 		c.b.WriteString("0.30 0.38 0.34 rg\n")
 		c.text(48, mapTop-18, 8, true, "PERIMETRO PUBLICO DO SICAR")
-		drawCARGeometryFromResult(&c, car, 54, mapBottom+18, 487, mapTop-mapBottom-48)
+		drawCombinedGeometry(&c, car.GeoJSON, kml.GeoJSON, 54, mapBottom+18, 487, mapTop-mapBottom-48)
 	}
 	c.b.WriteString("0.94 0.97 0.95 rg\n")
 	c.rect(38, 64, 519, 112, true)
@@ -124,65 +128,99 @@ func buildCARTechnicalPDF(p Property, car CARResult, kml KMLResult, cmp Geometry
 	return assembleSimplePDF(c.b.String())
 }
 
-func drawCARGeometryFromResult(c *pdfCanvas, car CARResult, x, y, w, h float64) {
-	var f carGeoFeature
-	if json.Unmarshal([]byte(car.GeoJSON), &f) != nil {
-		return
+func drawCombinedGeometry(c *pdfCanvas, carRaw, kmlRaw string, x, y, w, h float64) {
+	geometries := []struct {
+		raw   string
+		color string
+		width float64
+	}{
+		{raw: carRaw, color: "0.055 0.42 0.29 RG", width: 1.5},
+		{raw: kmlRaw, color: "0.84 0.40 0.08 RG", width: 1.1},
 	}
-	polys, err := carGeometryPolygons(f.Geometry)
-	if err != nil {
-		return
+	type parsedGeometry struct {
+		polys [][][][]float64
+		color string
+		width float64
 	}
+	var parsed []parsedGeometry
 	minX, minY := math.Inf(1), math.Inf(1)
 	maxX, maxY := math.Inf(-1), math.Inf(-1)
-	for _, poly := range polys {
-		for _, ring := range poly {
-			for _, p := range ring {
-				if len(p) < 2 {
-					continue
+	for _, item := range geometries {
+		if strings.TrimSpace(item.raw) == "" {
+			continue
+		}
+		var f carGeoFeature
+		if json.Unmarshal([]byte(item.raw), &f) != nil {
+			continue
+		}
+		polys, err := carGeometryPolygons(f.Geometry)
+		if err != nil {
+			continue
+		}
+		for _, poly := range polys {
+			for _, ring := range poly {
+				for _, p := range ring {
+					if len(p) < 2 {
+						continue
+					}
+					minX = math.Min(minX, p[0])
+					maxX = math.Max(maxX, p[0])
+					minY = math.Min(minY, p[1])
+					maxY = math.Max(maxY, p[1])
 				}
-				minX = math.Min(minX, p[0])
-				maxX = math.Max(maxX, p[0])
-				minY = math.Min(minY, p[1])
-				maxY = math.Max(maxY, p[1])
 			}
 		}
+		parsed = append(parsed, parsedGeometry{polys: polys, color: item.color, width: item.width})
 	}
-	if math.IsInf(minX, 1) || maxX <= minX || maxY <= minY {
+	if len(parsed) == 0 || math.IsInf(minX, 1) || maxX <= minX || maxY <= minY {
 		return
 	}
 	scale := math.Min(w/(maxX-minX), h/(maxY-minY))
 	offX := x + (w-(maxX-minX)*scale)/2
 	offY := y + (h-(maxY-minY)*scale)/2
-	c.b.WriteString("0.055 0.42 0.29 RG 1.2 w\n")
-	for _, poly := range polys {
-		for _, ring := range poly {
-			if len(ring) < 2 {
-				continue
-			}
-			step := 1
-			if len(ring) > 900 {
-				step = int(math.Ceil(float64(len(ring)) / 900))
-			}
-			started := false
-			for i := 0; i < len(ring); i += step {
-				p := ring[i]
-				if len(p) < 2 {
+	for _, item := range parsed {
+		c.b.WriteString(item.color + "\n")
+		fmt.Fprintf(&c.b, "%.1f w\n", item.width)
+		for _, poly := range item.polys {
+			for _, ring := range poly {
+				if len(ring) < 2 {
 					continue
 				}
-				px := offX + (p[0]-minX)*scale
-				py := offY + (p[1]-minY)*scale
-				if !started {
-					fmt.Fprintf(&c.b, "%.2f %.2f m\n", px, py)
-					started = true
-				} else {
-					fmt.Fprintf(&c.b, "%.2f %.2f l\n", px, py)
+				step := 1
+				if len(ring) > 900 {
+					step = int(math.Ceil(float64(len(ring)) / 900))
+				}
+				started := false
+				for i := 0; i < len(ring); i += step {
+					p := ring[i]
+					if len(p) < 2 {
+						continue
+					}
+					px := offX + (p[0]-minX)*scale
+					py := offY + (p[1]-minY)*scale
+					if !started {
+						fmt.Fprintf(&c.b, "%.2f %.2f m\n", px, py)
+						started = true
+					} else {
+						fmt.Fprintf(&c.b, "%.2f %.2f l\n", px, py)
+					}
+				}
+				if started {
+					c.b.WriteString("h S\n")
 				}
 			}
-			if started {
-				c.b.WriteString("h S\n")
-			}
 		}
+	}
+	// Legenda compacta.
+	c.b.WriteString("0.055 0.42 0.29 rg\n")
+	c.rect(x+5, y+4, 8, 3, true)
+	c.b.WriteString("0.18 0.25 0.21 rg\n")
+	c.text(x+17, y+2, 6, false, "CAR SICAR")
+	if strings.TrimSpace(kmlRaw) != "" {
+		c.b.WriteString("0.84 0.40 0.08 rg\n")
+		c.rect(x+75, y+4, 8, 3, true)
+		c.b.WriteString("0.18 0.25 0.21 rg\n")
+		c.text(x+87, y+2, 6, false, "KML cliente")
 	}
 }
 
