@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -22,6 +23,7 @@ import (
 
 const (
 	carWFSURL       = "https://geoserver.car.gov.br/geoserver/sicar/ows"
+	carWFSFallback = "https://geoserver.car.gov.br/geoserver/sicar/wfs"
 	carPublicURL    = "https://www.car.gov.br/#/consultar"
 	carMeuImovelURL = "https://meuimovelrural.sistema.gov.br/#/"
 )
@@ -306,34 +308,98 @@ func lookupCARPublicVersion(ctx context.Context, car, uf, version, typeKey strin
 		params.Set("maxFeatures", "2")
 	}
 	params.Set("CQL_FILTER", "cod_imovel='"+strings.ReplaceAll(car, "'", "''")+"'")
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, carWFSURL+"?"+params.Encode(), nil)
+
+	var lastErr error
+	for _, endpoint := range []string{carWFSURL, carWFSFallback} {
+		body, err := fetchCARBody(ctx, endpoint+"?"+params.Encode())
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		var fc carGeoJSON
+		if err := json.Unmarshal(body, &fc); err != nil {
+			lastErr = err
+			continue
+		}
+		if len(fc.Features) == 0 {
+			return nil, nil
+		}
+		return &fc.Features[0], nil
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, errors.New("consulta SICAR sem resposta")
+}
+
+// fetchCARBody tenta primeiro o cliente HTTP nativo. Alguns servidores do SICAR
+// recusam esporadicamente o handshake TLS do Go/Windows embora funcionem no
+// navegador. Nessa situação usamos o curl.exe do próprio Windows (Schannel)
+// como fallback, sem desabilitar validação TLS.
+func fetchCARBody(ctx context.Context, target string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Cache-Control", "no-cache")
-	req.Header.Set("User-Agent", "ViaVerdeCAR/1.0")
-	resp, err := (&http.Client{Timeout: 18 * time.Second}).Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+	req.Header.Set("User-Agent", "Mozilla/5.0 ViaVerdeCAR/1.0.1")
+	resp, directErr := (&http.Client{Timeout: 18 * time.Second}).Do(req)
+	if directErr == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			return io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+		}
+		directErr = fmt.Errorf("SICAR respondeu HTTP %d", resp.StatusCode)
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		return nil, fmt.Errorf("SICAR respondeu HTTP %d", resp.StatusCode)
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+
+	body, fallbackErr := fetchCARWithCurl(ctx, target)
+	if fallbackErr == nil {
+		return body, nil
+	}
+	return nil, fmt.Errorf("conexão HTTPS direta falhou (%v); fallback do Windows também falhou (%v)", directErr, fallbackErr)
+}
+
+func fetchCARWithCurl(ctx context.Context, target string) ([]byte, error) {
+	bin, err := exec.LookPath("curl.exe")
 	if err != nil {
+		bin, err = exec.LookPath("curl")
+	}
+	if err != nil {
+		return nil, errors.New("curl do sistema não encontrado")
+	}
+	cmd := exec.CommandContext(ctx, bin,
+		"--location",
+		"--silent",
+		"--show-error",
+		"--fail-with-body",
+		"--connect-timeout", "10",
+		"--max-time", "20",
+		"--header", "Accept: application/json",
+		"--user-agent", "Mozilla/5.0 ViaVerdeCAR/1.0.1",
+		target,
+	)
+	body, err := cmd.Output()
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			msg := strings.TrimSpace(string(ee.Stderr))
+			if len(msg) > 260 {
+				msg = msg[len(msg)-260:]
+			}
+			if msg != "" {
+				return nil, fmt.Errorf("curl: %s", msg)
+			}
+		}
 		return nil, err
 	}
-	var fc carGeoJSON
-	if err := json.Unmarshal(body, &fc); err != nil {
-		return nil, err
+	if len(body) == 0 {
+		return nil, errors.New("curl retornou resposta vazia")
 	}
-	if len(fc.Features) == 0 {
-		return nil, nil
+	if len(body) > 8<<20 {
+		return nil, errors.New("resposta SICAR excedeu 8 MB")
 	}
-	return &fc.Features[0], nil
+	return body, nil
 }
 
 func carStatusLabel(v string) string {
