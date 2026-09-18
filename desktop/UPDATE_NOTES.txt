@@ -1,1 +1,1 @@
-Atualizador automático integrado. Agora o próprio Via Verde baixa, valida, instala e reinicia quando uma nova versão está disponível. Também cria backup automático antes da atualização e mantém a versão anterior para recuperação.
+Atualizador automático validado como canal oficial do Via Verde CAR. A partir desta versão o aplicativo também verifica silenciosamente, ao abrir, se existe nova versão e avisa quando houver. O botão Configurações > Atualizar agora continua criando backup, validando SHA-256, substituindo o EXE e reiniciando automaticamente.
