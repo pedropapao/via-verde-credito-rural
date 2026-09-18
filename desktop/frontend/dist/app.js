@@ -86,7 +86,7 @@ function bindForms(){
   $('exportKmlBtn').onclick=exportKML;$('reportBtn').onclick=exportReport;
   $('openOfficialBtn').onclick=()=>openExternal(state.car?.official_url);$('openMeuImovelBtn').onclick=()=>openExternal(state.car?.meu_imovel_url);$('openMapsBtn').onclick=()=>openExternal(state.car?.google_maps_url);
   $('backupBtn').onclick=$('settingsBackupBtn').onclick=backup;$('openDataBtn').onclick=async()=>{try{await api().OpenDataFolder()}catch(e){toast(String(e),true)}};
-  $('checkUpdateBtn').onclick=checkUpdates;$('downloadUpdateBtn').onclick=()=>api().OpenUpdateDownload(state.update?.download_url||'');
+  $('checkUpdateBtn').onclick=checkUpdates;$('downloadUpdateBtn').onclick=installUpdate;
   document.querySelectorAll('.external').forEach(b=>b.onclick=()=>openExternal(b.dataset.url));
 }
 
@@ -134,7 +134,26 @@ async function compareGeometries(){if(!state.car||!state.kml)return;state.compar
 async function exportKML(){try{const p=await api().ExportCARKML(state.car.car);toast('KML salvo em '+p)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
 async function exportReport(){if(!state.selectedProperty||!state.car)return;try{if(state.kml&&!state.comparison)await compareGeometries();const p=await api().ExportCARReport(state.selectedProperty.id,state.car,state.kml||{},state.comparison||{});toast('PDF salvo em '+p)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
 async function backup(){try{const r=await api().BackupData();toast(r.message+' '+r.path)}catch(e){if(!String(e).includes('cancelado'))toast(String(e),true)}}
-async function checkUpdates(){try{const u=await api().CheckUpdates();state.update=u;$('updateMessage').textContent=u.message;$('downloadUpdateBtn').classList.toggle('hidden',!u.available);toast(u.message)}catch(e){toast(String(e),true)}}
+async function checkUpdates(){
+  const btn=$('checkUpdateBtn');btn.disabled=true;btn.textContent='Verificando...';
+  try{
+    const u=await api().CheckUpdates();state.update=u;
+    $('updateMessage').textContent=u.available&&u.notes ? u.message+' '+u.notes : u.message;
+    const install=$('downloadUpdateBtn');install.classList.toggle('hidden',!u.available);
+    install.textContent=u.available ? 'Atualizar para '+u.available_version : 'Atualizar agora';
+    toast(u.message);
+  }catch(e){toast(String(e),true)}
+  finally{btn.disabled=false;btn.textContent='Verificar agora'}
+}
+async function installUpdate(){
+  const u=state.update;if(!u?.available){toast('Nenhuma atualização disponível.',true);return}
+  if(!confirm('Atualizar o Via Verde CAR da versão '+u.current_version+' para '+u.available_version+'?\n\nO aplicativo fará backup dos dados e reiniciará automaticamente.'))return;
+  const btn=$('downloadUpdateBtn');btn.disabled=true;btn.textContent='Baixando e validando...';
+  try{
+    const r=await api().InstallUpdate(u);
+    $('updateMessage').textContent=r.message;toast(r.message);
+  }catch(e){btn.disabled=false;btn.textContent='Atualizar para '+u.available_version;toast(String(e),true)}
+}
 function openExternal(url){if(!url)return;if(window.runtime?.BrowserOpenURL)window.runtime.BrowserOpenURL(url);else window.open(url,'_blank')}
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 
