@@ -229,8 +229,29 @@ func (a *App) ExportPropertyPackage(propertyID int64, car CARResult, kml KMLResu
 		return closeWithError(err)
 	}
 
-	readme := "VIA VERDE CAR — DOSSIÊ TÉCNICO\r\n\r\n" +
-		"Este pacote reúne a conferência local do imóvel, a consulta pública registrada, a geometria disponível, o KML do cliente quando anexado e o histórico de consultas.\r\n\r\n" +
+	var themeBuf strings.Builder
+	tw := csv.NewWriter(&themeBuf)
+	_ = tw.Write([]string{"Tema", "Descrição", "Área estimada (ha)", "Feições intersectadas", "Disponível", "Método"})
+	for _, code := range []string{"APP", "RESERVA_LEGAL", "VEGETACAO_NATIVA", "AREA_CONSOLIDADA", "USO_RESTRITO", "SERVIDAO_ADMINISTRATIVA"} {
+		m, ok := car.Themes.Themes[code]
+		if !ok {
+			continue
+		}
+		_ = tw.Write([]string{m.Code, m.Label, strconv.FormatFloat(m.AreaHa, 'f', 4, 64), strconv.Itoa(m.FeatureCount), strconv.FormatBool(m.Available), m.Method})
+	}
+	tw.Flush()
+	if err := zipWriteBytes(zw, "06_Temas_SICAR.csv", []byte(themeBuf.String())); err != nil {
+		return closeWithError(err)
+	}
+
+	envJSON, _ := json.MarshalIndent(car.Environment, "", "  ")
+	if err := zipWriteBytes(zw, "07_Triagem_Socioambiental.json", envJSON); err != nil {
+		return closeWithError(err)
+	}
+
+	readme := "VIA VERDE CAR — DOSSIÊ TÉCNICO E SOCIOAMBIENTAL\r\n\r\n" +
+		"Este pacote reúne a conferência do imóvel, geometria pública do SICAR, KML, temas declarados do CAR quando disponíveis, histórico e triagens espaciais em bases públicas oficiais.\r\n\r\n" +
+		"Os temas APP, Reserva Legal, vegetação nativa e demais camadas são estimativas por interseção espacial com pacotes municipais públicos do SICAR. As ocorrências em IBAMA, FUNAI, ICMBio e MMA/MCR exigem confirmação na fonte oficial e análise do contexto jurídico e documental.\r\n\r\n" +
 		"IMPORTANTE: este material é auxiliar e não substitui o Demonstrativo oficial do CAR, certidões, memorial descritivo, georreferenciamento, análise ambiental ou documento emitido pelo órgão competente.\r\n"
 	if err := zipWriteBytes(zw, "LEIA-ME.txt", []byte(readme)); err != nil {
 		return closeWithError(err)
