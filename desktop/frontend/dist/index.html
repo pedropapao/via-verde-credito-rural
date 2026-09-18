@@ -135,6 +135,27 @@
         </div>
       </div>
 
+      <div class="professional-strip">
+        <article class="professional-main panel">
+          <div>
+            <span class="eyebrow">CONFERÊNCIA TÉCNICA</span>
+            <div class="professional-title-row">
+              <h3 id="professionalTitle">Aguardando análise do imóvel</h3>
+              <span id="professionalBadge" class="status-badge neutral">Sem dados</span>
+            </div>
+            <p id="professionalSummary">Selecione um imóvel, consulte o CAR e, quando disponível, compare com o KML do cliente.</p>
+          </div>
+          <div class="professional-actions">
+            <button class="btn ghost" id="copyCarBtn" disabled>Copiar CAR</button>
+            <button class="btn ghost" id="copyCenterBtn" disabled>Copiar centro</button>
+          </div>
+        </article>
+        <article class="metric-card"><span>Diferença de área</span><strong id="metricAreaDiff">—</strong><small>KML × SICAR</small></article>
+        <article class="metric-card"><span>Sobreposição</span><strong id="metricOverlap">—</strong><small>menor cobertura estimada</small></article>
+        <article class="metric-card"><span>Distância dos centros</span><strong id="metricCenterDist">—</strong><small>KML × SICAR</small></article>
+        <article class="metric-card"><span>Histórico</span><strong id="metricHistory">0</strong><small>consultas salvas</small></article>
+      </div>
+
       <div class="map-layout">
         <article class="map-panel panel">
           <div class="map-head">
@@ -155,8 +176,11 @@
               <div><dt>Área geométrica</dt><dd id="rGeoArea">—</dd></div>
               <div><dt>Perímetro</dt><dd id="rPerimeter">—</dd></div>
               <div><dt>Centro aproximado</dt><dd id="rCenter">—</dd></div>
+              <div><dt>Tipo do imóvel</dt><dd id="rPropertyType">—</dd></div>
               <div><dt>Módulos fiscais</dt><dd id="rModules">—</dd></div>
               <div><dt>Condição</dt><dd id="rCondition">—</dd></div>
+              <div><dt>Cadastro</dt><dd id="rCreatedDate">—</dd></div>
+              <div><dt>Última atualização</dt><dd id="rUpdatedDate">—</dd></div>
             </dl>
             <div class="action-grid">
               <button class="btn ghost" id="openOfficialBtn" disabled>Consulta oficial</button>
@@ -175,13 +199,31 @@
               <div><dt>Centro</dt><dd id="kCenter">—</dd></div>
             </dl>
             <div id="comparisonBox" class="comparison-box neutral"><strong>Comparação KML × CAR</strong><span>Carregue as duas geometrias.</span></div>
+            <div id="comparisonMetrics" class="comparison-metrics hidden">
+              <div><span>Interseção estimada</span><strong id="cmpIntersection">—</strong></div>
+              <div><span>KML dentro do CAR</span><strong id="cmpKmlInside">—</strong></div>
+              <div><span>CAR dentro do KML</span><strong id="cmpCarInside">—</strong></div>
+              <div><span>Dif. perímetro</span><strong id="cmpPerimeterDiff">—</strong></div>
+            </div>
           </article>
         </aside>
       </div>
 
-      <div class="car-bottom-grid">
+      <div class="car-bottom-grid professional-bottom">
         <article class="panel"><div class="panel-title"><div><span class="eyebrow">CONFERÊNCIAS</span><h3>Alertas e validações</h3></div></div><div id="qualityChecks" class="quality-list"><div class="empty-state">Nenhuma análise realizada.</div></div></article>
-        <article class="panel report-panel"><span class="eyebrow">SAÍDA</span><h3>Demonstrativo técnico</h3><p>Gere um PDF com cadastro, geometria pública, KML e comparação. O documento é identificado como conferência técnica e não substitui o demonstrativo oficial do SICAR.</p><button class="btn primary" id="reportBtn" disabled>Gerar PDF técnico</button></article>
+        <article class="panel history-panel">
+          <div class="panel-title"><div><span class="eyebrow">RASTREABILIDADE</span><h3>Histórico do CAR</h3></div><span id="historyChangeBadge" class="status-badge neutral">Sem histórico</span></div>
+          <div id="carHistory" class="history-list"><div class="empty-state">Selecione um imóvel para visualizar as consultas anteriores.</div></div>
+        </article>
+        <article class="panel report-panel">
+          <span class="eyebrow">DOSSIÊ DO IMÓVEL</span>
+          <h3>Saídas profissionais</h3>
+          <p>Gere o demonstrativo técnico ou um pacote completo com PDF, JSON, KML público, KML do cliente e histórico das consultas.</p>
+          <div class="stack-actions">
+            <button class="btn primary" id="reportBtn" disabled>Gerar PDF técnico</button>
+            <button class="btn ghost" id="packageBtn" disabled>Gerar dossiê ZIP</button>
+          </div>
+        </article>
       </div>
     </section>
 
