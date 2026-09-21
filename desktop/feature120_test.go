@@ -1,12 +1,29 @@
 package main
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
 func TestGenerateProjectAreaAlternativesAvulsa(t *testing.T) {
+	oldEndpoint := terrainElevationEndpoint
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := len(strings.Split(r.URL.Query().Get("latitude"), ","))
+		values := make([]float64, n)
+		for i := range values {
+			values[i] = 800 + float64(i%7)*3
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"elevation": values})
+	}))
+	defer server.Close()
+	terrainElevationEndpoint = server.URL
+	defer func(){ terrainElevationEndpoint = oldEndpoint }()
+
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "cache"), 0o755); err != nil {
 		t.Fatal(err)
@@ -38,6 +55,9 @@ func TestGenerateProjectAreaAlternativesAvulsa(t *testing.T) {
 		}
 		if c.InsideCARPct < 95 {
 			t.Fatalf("alternativa pouco contida no CAR: %.2f", c.InsideCARPct)
+		}
+		if !c.Terrain.Available {
+			t.Fatalf("relevo deveria estar disponível: %+v", c.Terrain)
 		}
 	}
 
