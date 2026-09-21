@@ -1,12 +1,34 @@
 package main
 
 import (
+	"image"
+	"image/color"
+	"image/png"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestGenerateProjectAreaAlternativesAvulsa(t *testing.T) {
+	oldTemplate := terrainTileURLTemplate
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		img := image.NewRGBA(image.Rect(0, 0, 256, 256))
+		// 800 m em Terrarium: (R*256 + G + B/256) - 32768.
+		c := color.RGBA{R: 131, G: 32, B: 0, A: 255}
+		for y := 0; y < 256; y++ {
+			for x := 0; x < 256; x++ {
+				img.SetRGBA(x, y, c)
+			}
+		}
+		w.Header().Set("Content-Type", "image/png")
+		_ = png.Encode(w, img)
+	}))
+	defer server.Close()
+	terrainTileURLTemplate = server.URL + "/%d/%d/%d.png"
+	defer func(){ terrainTileURLTemplate = oldTemplate }()
+
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "cache"), 0o755); err != nil {
 		t.Fatal(err)
@@ -38,6 +60,9 @@ func TestGenerateProjectAreaAlternativesAvulsa(t *testing.T) {
 		}
 		if c.InsideCARPct < 95 {
 			t.Fatalf("alternativa pouco contida no CAR: %.2f", c.InsideCARPct)
+		}
+		if !c.Terrain.Available {
+			t.Fatalf("relevo deveria estar disponível: %+v", c.Terrain)
 		}
 	}
 
