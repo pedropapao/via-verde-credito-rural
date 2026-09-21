@@ -160,7 +160,40 @@ func (a *App) migrate() error {
 			FOREIGN KEY(property_id) REFERENCES properties(id) ON DELETE CASCADE
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_car_checks_property ON car_checks(property_id, checked_at DESC);`,
+		`CREATE TABLE IF NOT EXISTS project_areas (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			property_id INTEGER NOT NULL,
+			name TEXT NOT NULL,
+			purpose TEXT NOT NULL DEFAULT '',
+			area_ha REAL NOT NULL DEFAULT 0,
+			perimeter_m REAL NOT NULL DEFAULT 0,
+			center_lat REAL NOT NULL DEFAULT 0,
+			center_lon REAL NOT NULL DEFAULT 0,
+			inside_car_pct REAL NOT NULL DEFAULT 0,
+			geojson TEXT NOT NULL DEFAULT '',
+			kml_path TEXT NOT NULL DEFAULT '',
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL,
+			FOREIGN KEY(property_id) REFERENCES properties(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_project_areas_property ON project_areas(property_id, updated_at DESC);`,
+		`CREATE TABLE IF NOT EXISTS access_routes (
+			property_id INTEGER PRIMARY KEY,
+			reference_label TEXT NOT NULL DEFAULT '',
+			reference_lat REAL NOT NULL DEFAULT 0,
+			reference_lon REAL NOT NULL DEFAULT 0,
+			entrance_lat REAL NOT NULL DEFAULT 0,
+			entrance_lon REAL NOT NULL DEFAULT 0,
+			headquarters_lat REAL NOT NULL DEFAULT 0,
+			headquarters_lon REAL NOT NULL DEFAULT 0,
+			reference_to_entrance_km REAL NOT NULL DEFAULT 0,
+			entrance_to_headquarters_km REAL NOT NULL DEFAULT 0,
+			notes TEXT NOT NULL DEFAULT '',
+			updated_at TEXT NOT NULL,
+			FOREIGN KEY(property_id) REFERENCES properties(id) ON DELETE CASCADE
+		);`,
 		`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
+		`UPDATE schema_version SET version=2 WHERE version < 2;`,
 	}
 	for _, stmt := range stmts {
 		if _, err := a.db.Exec(stmt); err != nil {
