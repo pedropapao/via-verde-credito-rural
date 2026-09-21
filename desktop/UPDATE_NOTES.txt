@@ -1,13 +1,19 @@
-CAR 1.4.2: compatibilidade com variações do schema MapBiomas Alerta.
+CAR 1.4.3: correção da consulta municipal Banco Central / SICOR.
 
-• Corrige o erro exibido em alguns CARs: “Field 'coordinates' doesn't exist on type 'AlertData'”.
+• Corrige o painel “Contexto de crédito do município” que podia aparecer como “Parcial” mesmo para municípios com operações de crédito rural.
 
-• A API V2 documenta ruralProperty.alerts como RuralPropertyAlert, com o campo “coordinates”, mas o servidor pode expor alertas como AlertData, cujo campo equivalente aparece como “coordenates”. O Via Verde agora detecta automaticamente essa resposta e repete a consulta com o campo compatível.
+• A causa era a leitura de cdEstado como se fosse a sigla da UF. No SICOR esse campo usa código próprio do Banco Central; portanto uma condição como cdEstado='MG' não era válida.
 
-• O código do alerta passa a aceitar retorno textual ou numérico, evitando falha de desserialização quando o tipo retornado variar entre schemas.
+• A consulta passa a usar o recurso agregado CusteioInvestimentoComercialIndustrialSemFiltros e prioriza o código IBGE do município que já vem no próprio CAR (codMunicIbge), sem depender de tradução de código de estado.
 
-• A correção mantém a consulta sob demanda introduzida na 1.4.1. Crédito Rural / MapBiomas não é carregado automaticamente na inicialização do aplicativo.
+• Para aumentar a compatibilidade, a rotina possui alternativas de filtro por código IBGE e nome do município e valida localmente cada linha retornada antes de somar os dados.
 
-• Se uma consulta MapBiomas retornar outro erro de schema, a mensagem fica restrita à aba Crédito Rural e o restante do ViaVerdeCAR continua funcionando.
+• São consultados os dois anos mais recentes. O Via Verde consolida separadamente Custeio e Investimento, por atividade agrícola/pecuária, mostrando quantidade de contratos e valor agregado quando publicados pela fonte.
 
-Nenhuma funcionalidade da consulta CAR, mapa, Nova consulta, áreas A/B/C, roteiro, relevo, WorldCover, Ambiental, Temas SICAR, KML, histórico, relatórios, carteira e backup foi removida.
+• Os totais são calculados sobre todas as linhas válidas retornadas para o município, antes de limitar a quantidade de linhas exibidas na tela.
+
+• O status “Parcial” foi removido dessa seção. Se a consulta retornar dados, aparece “Disponível”. Se a fonte não responder de forma compatível, aparece “Indisponível” e a limitação é informada sem afetar o restante do aplicativo.
+
+• Esses números continuam sendo contexto agregado do município. Eles não são apresentados como contratos específicos do CAR ou do proprietário.
+
+MapBiomas Alerta, Monitor do Crédito Rural, consulta sob demanda, CAR, mapa, Nova consulta, glebas A/B/C, relevo, WorldCover, Ambiental, Temas SICAR, KML, histórico, relatórios, carteira e backup permanecem preservados.
