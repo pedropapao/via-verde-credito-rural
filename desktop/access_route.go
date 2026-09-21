@@ -95,15 +95,35 @@ func (a *App) ExportAccessRouteTXT(propertyID int64) (string, error) {
 	if a.ctx == nil {
 		return "", errors.New("aplicativo ainda não inicializado")
 	}
-	x, err := a.GetAccessRoute(propertyID)
+	var x AccessRoute
+	var err error
+	if propertyID > 0 {
+		x, err = a.GetAccessRoute(propertyID)
+	} else {
+		var cache CARSessionCache
+		cache, err = a.GetLastCARSession()
+		if err == nil {
+			x = cache.Result.AutoRoute
+			if !validCoordinatePair(x.EntranceLat, x.EntranceLon) {
+				err = errors.New("roteiro automático temporário indisponível")
+			}
+		}
+	}
 	if err != nil {
 		return "", err
 	}
 	if strings.TrimSpace(x.Text) == "" {
 		return "", errors.New("cadastre o roteiro de acesso antes de exportar")
 	}
-	p, _ := a.GetProperty(propertyID)
-	name := "Roteiro_de_Acesso_" + safeFilePart(p.Name) + ".txt"
+	nameBase := "Consulta_Avulsa"
+	if propertyID > 0 {
+		if p, pErr := a.GetProperty(propertyID); pErr == nil && strings.TrimSpace(p.Name) != "" {
+			nameBase = p.Name
+		}
+	} else if strings.TrimSpace(x.ReferenceLabel) != "" {
+		nameBase = x.ReferenceLabel
+	}
+	name := "Roteiro_de_Acesso_" + safeFilePart(nameBase) + ".txt"
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		Title: "Salvar roteiro de acesso", DefaultFilename: name,
 		Filters: []runtime.FileFilter{{DisplayName: "Arquivo de texto", Pattern: "*.txt"}},

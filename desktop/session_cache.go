@@ -5,12 +5,14 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
 type CARSessionCache struct {
-	SavedAt string    `json:"saved_at"`
-	Result  CARResult `json:"result"`
+	SavedAt       string       `json:"saved_at"`
+	Result        CARResult    `json:"result"`
+	TemporaryArea *ProjectArea `json:"temporary_area,omitempty"`
 }
 
 func (a *App) saveLastCARSession(result CARResult) {
@@ -45,6 +47,53 @@ func (a *App) GetLastCARSession() (CARSessionCache, error) {
 		return CARSessionCache{}, errors.New("sessão temporária expirada")
 	}
 	return out, nil
+}
+
+func (a *App) updateLastCARSessionResult(result CARResult) error {
+	if a == nil || a.dataDir == "" {
+		return errors.New("cache local indisponível")
+	}
+	cache, err := a.GetLastCARSession()
+	if err != nil {
+		return err
+	}
+	cache.SavedAt = time.Now().Format(time.RFC3339)
+	cache.Result = result
+	path := filepath.Join(a.dataDir, "cache", "last_car_session.json")
+	b, err := json.Marshal(cache)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, b, 0o644)
+}
+
+func (a *App) saveTemporaryProjectArea(area ProjectArea) error {
+	if a == nil || a.dataDir == "" {
+		return errors.New("cache local indisponível")
+	}
+	cache, err := a.GetLastCARSession()
+	if err != nil {
+		return err
+	}
+	cache.SavedAt = time.Now().Format(time.RFC3339)
+	cache.TemporaryArea = &area
+	path := filepath.Join(a.dataDir, "cache", "last_car_session.json")
+	b, err := json.Marshal(cache)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, b, 0o644)
+}
+
+func (a *App) GetTemporaryProjectArea() (ProjectArea, error) {
+	cache, err := a.GetLastCARSession()
+	if err != nil {
+		return ProjectArea{}, err
+	}
+	if cache.TemporaryArea == nil || strings.TrimSpace(cache.TemporaryArea.GeoJSON) == "" {
+		return ProjectArea{}, errors.New("nenhuma gleba temporária nesta consulta")
+	}
+	return *cache.TemporaryArea, nil
 }
 
 func (a *App) ClearLastCARSession() error {

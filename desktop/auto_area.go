@@ -5,18 +5,60 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type autoGridCell struct{ X, Y int }
 type autoGridVertex struct{ X, Y int }
 
 func (a *App) GenerateAutomaticProjectArea(propertyID int64, name, purpose string, targetAreaHa float64) (ProjectArea, error) {
-	if propertyID <= 0 {
-		return ProjectArea{}, errors.New("selecione um imóvel")
-	}
 	if targetAreaHa <= 0 {
 		return ProjectArea{}, errors.New("informe a área desejada em hectares")
+	}
+	if propertyID <= 0 {
+		cache, err := a.GetLastCARSession()
+		if err != nil || strings.TrimSpace(cache.Result.GeoJSON) == "" {
+			return ProjectArea{}, errors.New("consulte um CAR antes de gerar a área automática")
+		}
+		car := cache.Result
+		if car.GeometryAreaHa > 0 && targetAreaHa > car.GeometryAreaHa {
+			return ProjectArea{}, fmt.Errorf("a área solicitada (%.2f ha) é maior que a geometria do CAR (%.2f ha)", targetAreaHa, car.GeometryAreaHa)
+		}
+		if strings.TrimSpace(name) == "" {
+			name = fmt.Sprintf("Área automática %.2f ha", targetAreaHa)
+		}
+		seedLat, seedLon := car.CenterLat, car.CenterLon
+		if validCoordinatePair(car.AutoRoute.EntranceLat, car.AutoRoute.EntranceLon) {
+			seedLat, seedLon = car.AutoRoute.EntranceLat, car.AutoRoute.EntranceLon
+		}
+		geo, err := buildAutomaticCompactArea(car.GeoJSON, targetAreaHa, seedLat, seedLon)
+		if err != nil {
+			return ProjectArea{}, err
+		}
+		metric, err := projectAreaMetrics(geo)
+		if err != nil {
+			return ProjectArea{}, err
+		}
+		metric.Name = strings.TrimSpace(name)
+		metric.Purpose = strings.TrimSpace(purpose)
+		metric.PropertyID = 0
+		metric.CreatedAt = time.Now().Format(time.RFC3339)
+		metric.UpdatedAt = metric.CreatedAt
+		if _, inside, _, cmpErr := estimateGeometryOverlap(metric.GeoJSON, car.GeoJSON); cmpErr == nil {
+			metric.InsideCARPct = inside
+		}
+		if path, err := a.writeTemporaryProjectAreaKML(metric); err == nil {
+			metric.KMLPath = path
+		}
+		if err := a.saveTemporaryProjectArea(metric); err != nil {
+			return ProjectArea{}, err
+		}
+		return metric, nil
 	}
 	car, err := a.GetLatestCAR(propertyID)
 	if err != nil || strings.TrimSpace(car.GeoJSON) == "" {
@@ -310,4 +352,62 @@ func simplifyGridLoop(loop []autoGridVertex) []autoGridVertex {
 		out = append(out, cur)
 	}
 	return out
+}
+
+
+func (a *App) writeTemporaryProjectAreaKML(area ProjectArea) (string, error) {
+	if a == nil || a.dataDir == "" {
+		return "", errors.New("cache local indisponível")
+	}
+	var f carGeoFeature
+	if err := json.Unmarshal([]byte(area.GeoJSON), &f); err != nil || !carGeometryUsable(f.Geometry) {
+		return "", errors.New("geometria temporária inválida")
+	}
+	dir := filepath.Join(a.dataDir, "cache", "temporary")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	path := filepath.Join(dir, "GLEBA_TEMP_"+safeFilePart(area.Name)+".kml")
+	data, err := carGeometryKML(area.Name, f.Geometry)
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+func (a *App) ExportTemporaryProjectAreaKML() (string, error) {
+	if a.ctx == nil {
+		return "", errors.New("aplicativo ainda não inicializado")
+	}
+	area, err := a.GetTemporaryProjectArea()
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(area.KMLPath) == "" {
+		if area.KMLPath, err = a.writeTemporaryProjectAreaKML(area); err != nil {
+			return "", err
+		}
+	}
+	data, err := os.ReadFile(area.KMLPath)
+	if err != nil {
+		return "", err
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title: "Salvar KML da gleba temporária",
+		DefaultFilename: "GLEBA_" + safeFilePart(area.Name) + ".kml",
+		Filters: []runtime.FileFilter{{DisplayName: "Google Earth KML", Pattern: "*.kml"}},
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(path) == "" {
+		return "", errors.New("exportação cancelada")
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return "", err
+	}
+	return path, nil
 }
