@@ -71,7 +71,19 @@ type osrmRouteResponse struct {
 
 func (a *App) RegenerateAutomaticAccessRoute(propertyID int64) (AccessRoute, error) {
 	if propertyID <= 0 {
-		return AccessRoute{}, errors.New("selecione um imóvel")
+		cache, err := a.GetLastCARSession()
+		if err != nil || strings.TrimSpace(cache.Result.GeoJSON) == "" {
+			return AccessRoute{}, errors.New("consulte o CAR antes de gerar o roteiro automático")
+		}
+		route, err := a.generateAutomaticAccessRoute(0, cache.Result, true)
+		if err != nil {
+			return AccessRoute{}, err
+		}
+		cache.Result.AutoRoute = route
+		if err := a.updateLastCARSessionResult(cache.Result); err != nil {
+			return AccessRoute{}, err
+		}
+		return route, nil
 	}
 	car, err := a.GetLatestCAR(propertyID)
 	if err != nil {
