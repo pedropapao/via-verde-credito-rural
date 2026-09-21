@@ -1,0 +1,35 @@
+/* ViaVerdeCAR 1.4.0 — Crédito Rural + MapBiomas */
+.credit-grid140{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(340px,.9fr);gap:12px;align-items:start}
+.credit-stack140{display:grid;gap:12px}
+.credit-hero140{background:linear-gradient(135deg,#f4faf4,#fff);border-color:#cfe1d1}
+.credit-hero140 .panel-title{align-items:center}
+.credit-actions140{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.credit-summary140{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.credit-summary140>div{padding:9px 10px;border:1px solid #e1e8df;border-radius:9px;background:#fff}
+.credit-summary140 span,.credit-summary140 strong{display:block}
+.credit-summary140 span{font-size:8px;color:#718078;text-transform:uppercase;font-weight:800}
+.credit-summary140 strong{font-size:12px;margin-top:3px;word-break:break-word}
+.credit-note140{font-size:8px;line-height:1.5;color:#68756d;margin-top:8px}
+.credit-source140{font-size:8px;color:#748078;margin-top:8px}
+.credit-status140{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.credit-alert-list140{display:grid;gap:7px;margin-top:10px;max-height:360px;overflow:auto}
+.credit-alert140{display:grid;grid-template-columns:1fr auto;gap:10px;padding:9px 10px;border:1px solid #ead9b8;background:#fffaf0;border-radius:9px}
+.credit-alert140 strong,.credit-alert140 span,.credit-alert140 small{display:block}
+.credit-alert140 strong{font-size:10px;color:#795618}
+.credit-alert140 span{font-size:9px;margin-top:3px}
+.credit-alert140 small{font-size:8px;color:#786f61;margin-top:3px}
+.credit-table140{display:grid;gap:0;margin-top:10px;border:1px solid #e2e8e1;border-radius:10px;overflow:hidden}
+.credit-row140{display:grid;grid-template-columns:90px 85px minmax(160px,1fr) 80px 120px;gap:8px;align-items:center;padding:8px 10px;border-bottom:1px solid #edf1ec;font-size:8px;background:#fff}
+.credit-row140:last-child{border-bottom:0}
+.credit-row140.head{background:#f5f8f5;font-weight:900;color:#627067;text-transform:uppercase}
+.credit-row140 strong{font-size:9px}
+.credit-warning140{margin-top:8px;padding:8px 10px;border:1px solid #e1e7ea;background:#f5f8fa;color:#64747c;border-radius:8px;font-size:8px;line-height:1.45}
+.credit-loading140{padding:18px;border:1px dashed #ccd8cd;border-radius:10px;text-align:center;color:#6c796f;font-size:9px}
+.credit-settings140 .mapbiomas-login140{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.credit-settings140 label{font-size:9px;font-weight:800;color:#627067}
+.credit-settings140 input{width:100%;margin-top:4px;padding:9px 10px;border:1px solid #d7dfd6;border-radius:8px;background:#fff}
+.credit-settings140 .full{grid-column:1/-1}
+.credit-connected140{padding:9px 10px;border-radius:9px;background:#eef7ef;border:1px solid #d6e7d8;font-size:9px;color:#41624a;margin-top:10px}
+.alert-map-marker140{background:#c44536;border:2px solid #fff;box-shadow:0 0 0 1px #9b3328;width:12px;height:12px;border-radius:50%}
+@media(max-width:1180px){.credit-grid140{grid-template-columns:1fr}.credit-table140{overflow:auto}.credit-row140{min-width:650px}}
+@media(max-width:700px){.credit-summary140{grid-template-columns:1fr}.credit-settings140 .mapbiomas-login140{grid-template-columns:1fr}.credit-settings140 .full{grid-column:auto}}
