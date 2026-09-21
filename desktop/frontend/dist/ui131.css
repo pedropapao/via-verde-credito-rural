@@ -1,0 +1,94 @@
+/* ViaVerdeCAR 1.3.1 — workspace compacto por abas */
+#view-car{padding-top:12px}
+#view-car .car-toolbar{padding:12px 14px;border-radius:13px;display:grid;grid-template-columns:minmax(190px,.65fr) minmax(420px,1.55fr);gap:12px;align-items:end}
+#view-car .car-toolbar label{font-size:9px}
+#view-car .car-query-wrap .input-action{gap:7px}
+#view-car .car-query-wrap input{min-height:38px}
+#view-car .car-toolbar .toolbar-actions{margin:0}
+.car-reset131{background:#fff!important;border-color:#e2c9c5!important;color:#8b433d!important;white-space:nowrap}
+.car-reset131:hover{background:#fff8f7!important;border-color:#c98f88!important}
+.car-reset131:disabled{opacity:.42}
+
+.car-workspace131{margin-top:12px}
+.car-tabs131{display:flex;gap:5px;padding:5px;background:#e8eee8;border:1px solid #d8e2d7;border-radius:12px;position:sticky;top:76px;z-index:21;box-shadow:0 5px 16px rgba(36,68,46,.06)}
+.car-tab131{flex:1;border:0;background:transparent;padding:9px 10px;border-radius:8px;font-size:10px;font-weight:800;color:#66756b;cursor:pointer;white-space:nowrap}
+.car-tab131:hover{background:rgba(255,255,255,.55);color:#365642}
+.car-tab131.active{background:#fff;color:#245c3d;box-shadow:0 2px 8px rgba(40,70,49,.10)}
+.car-tab131 .tab-count131{display:inline-flex;min-width:18px;height:18px;align-items:center;justify-content:center;margin-left:5px;padding:0 5px;border-radius:999px;background:#edf3ed;font-size:8px}
+.car-tab-panel131{display:none;padding-top:12px}
+.car-tab-panel131.active{display:block}
+.car-tab-panel131>.panel,.car-tab-panel131>.professional-strip,.car-tab-panel131>.feature109-grid{margin-top:0}
+.car-section-actions131{display:flex;justify-content:flex-end;gap:7px;margin-bottom:8px}
+.car-section-note131{font-size:8px;color:#6f7b73;margin:0 0 8px}
+
+.summary-grid131{display:grid;grid-template-columns:minmax(360px,.92fr) minmax(420px,1.08fr);gap:12px;margin-top:12px;align-items:start}
+.summary-grid131 .result-card,.summary-grid131 .conference-panel{min-height:0}
+.summary-grid131 .data-list{display:grid;grid-template-columns:1fr 1fr;column-gap:18px}
+.summary-grid131 .data-list>div{min-width:0}
+.summary-grid131 .data-list dd{word-break:break-word}
+.summary-grid131 .action-grid{grid-template-columns:1fr 1fr;margin-top:10px}
+.extended-data131{display:none!important}
+.show-expanded131 .extended-data131{display:flex!important}
+.panel-tools131{display:flex;align-items:center;gap:8px}
+.data-toggle131{font-size:9px;padding:6px 8px}
+.professional-strip{margin-top:0!important}
+.professional-strip .metric-card{padding:10px 12px;min-height:66px}
+.professional-strip .metric-card strong{font-size:17px}
+.professional-main{padding:14px 15px}
+.professional-main h3{font-size:16px}
+.professional-main p{font-size:10px;margin:3px 0 0}
+.professional-actions .btn{padding:8px 10px;font-size:10px}
+
+.map-tab-stack131{display:grid;gap:12px}
+.map-tab-stack131 .map-panel{width:100%}
+.map-tab-stack131 #map{height:min(66vh,680px);min-height:500px}
+.map-kml-actions131{display:flex;gap:7px;justify-content:flex-end;flex-wrap:wrap}
+.map-kml-actions131 .toolbar-actions{display:flex;gap:7px;flex-wrap:wrap}
+.map-tab-stack131 #kmlAnalysisCard{max-width:none}
+.map-tab-stack131 #kmlAnalysisCard .data-list{display:grid;grid-template-columns:repeat(4,1fr);gap:0 16px}
+
+#carTabPlanning131 .feature109-grid{grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:12px}
+#carTabPlanning131 .project-areas-panel,#carTabPlanning131 .access-route-panel{min-height:0}
+#carTabPlanning131 .panel{padding:15px}
+#carTabPlanning131 .auto-area-box110,#carTabPlanning131 .auto-route-card110{margin-top:8px}
+#carTabPlanning131 .area-candidates120{gap:7px}
+#carTabPlanning131 .area-candidate120{padding:9px}
+#carTabPlanning131 .auto-route-steps110{max-height:160px}
+
+.environment-stack131{display:grid;gap:12px}
+.environment-stack131 .environment-panel,.environment-stack131 .themes-panel{margin-top:0}
+.environment-stack131 .environment-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.environment-stack131 .environment-card{min-height:82px;padding:10px}
+.environment-stack131 .themes-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
+.environment-stack131 .theme-card{min-height:76px;padding:10px}
+
+.docs-grid131{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:12px;align-items:start}
+.docs-grid131 .history-panel,.docs-grid131 .report-panel{min-height:0}
+.docs-grid131 .history-list{max-height:440px;overflow:auto}
+.docs-grid131 .report-panel{position:sticky;top:128px}
+.docs-grid131 .report-panel .stack-actions{margin-top:12px}
+
+.car-empty-tip131{padding:14px 16px;border:1px dashed #cdd8cd;background:#f8faf8;border-radius:10px;color:#627067;font-size:9px;line-height:1.5;margin-bottom:10px}
+.car-empty-tip131 strong{color:#375944}
+.car-clean-note131{font-size:8px;color:#77827a;margin-top:5px}
+
+@media(max-width:1350px){
+  .summary-grid131{grid-template-columns:1fr}
+  #carTabPlanning131 .feature109-grid{grid-template-columns:1fr}
+  .environment-stack131 .environment-grid{grid-template-columns:1fr 1fr}
+  .environment-stack131 .themes-grid{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:1050px){
+  #view-car .car-toolbar{grid-template-columns:1fr}
+  .car-tabs131{overflow-x:auto;justify-content:flex-start}
+  .car-tab131{flex:0 0 auto;min-width:130px}
+  .docs-grid131{grid-template-columns:1fr}
+  .docs-grid131 .report-panel{position:static}
+  .summary-grid131 .data-list{grid-template-columns:1fr}
+  .map-tab-stack131 #kmlAnalysisCard .data-list{grid-template-columns:1fr 1fr}
+}
+@media(max-width:720px){
+  .environment-stack131 .environment-grid,.environment-stack131 .themes-grid{grid-template-columns:1fr}
+  .map-tab-stack131 #map{min-height:420px;height:56vh}
+  .map-tab-stack131 #kmlAnalysisCard .data-list{grid-template-columns:1fr}
+}
