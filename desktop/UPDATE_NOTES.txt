@@ -1,17 +1,13 @@
-CAR 1.4.1: correção de estabilidade da integração Crédito Rural / MapBiomas.
+CAR 1.4.2: compatibilidade com variações do schema MapBiomas Alerta.
 
-• Crédito Rural deixa de carregar automaticamente ao abrir o aplicativo, restaurar um CAR temporário, selecionar um imóvel ou concluir uma consulta.
+• Corrige o erro exibido em alguns CARs: “Field 'coordinates' doesn't exist on type 'AlertData'”.
 
-• A nova aba permanece disponível, mas as consultas externas do Banco Central/SICOR e MapBiomas só são executadas quando o usuário entra em “Crédito Rural” e clica em “Consultar Crédito Rural agora”.
+• A API V2 documenta ruralProperty.alerts como RuralPropertyAlert, com o campo “coordinates”, mas o servidor pode expor alertas como AlertData, cujo campo equivalente aparece como “coordenates”. O Via Verde agora detecta automaticamente essa resposta e repete a consulta com o campo compatível.
 
-• A integração deixa de substituir as funções centrais de renderização, seleção de imóvel e reinício do CAR. Isso isola o módulo novo do restante do Via Verde.
+• O código do alerta passa a aceitar retorno textual ou numérico, evitando falha de desserialização quando o tipo retornado variar entre schemas.
 
-• A tela de Configurações não consulta automaticamente o status do MapBiomas no início do aplicativo. O status é verificado somente quando o usuário solicita.
+• A correção mantém a consulta sob demanda introduzida na 1.4.1. Crédito Rural / MapBiomas não é carregado automaticamente na inicialização do aplicativo.
 
-• Consultas BCB/SICOR e MapBiomas executadas em paralelo ganharam proteção contra panic. Se uma fonte externa produzir uma falha interna inesperada, o erro fica restrito à aba Crédito Rural em vez de encerrar o processo do ViaVerdeCAR.
+• Se uma consulta MapBiomas retornar outro erro de schema, a mensagem fica restrita à aba Crédito Rural e o restante do ViaVerdeCAR continua funcionando.
 
-• O botão direto “Copiar CAR e abrir Monitor” continua disponível sem iniciar nenhuma consulta de API.
-
-• Nenhuma funcionalidade da 1.3.1 foi alterada: consulta CAR, Nova consulta, mapa, áreas A/B/C, roteiro, relevo, WorldCover, Ambiental, Temas SICAR, KML, relatórios, histórico, carteira e backup continuam preservados.
-
-Esta é uma versão de hotfix focada em estabilidade.
+Nenhuma funcionalidade da consulta CAR, mapa, Nova consulta, áreas A/B/C, roteiro, relevo, WorldCover, Ambiental, Temas SICAR, KML, histórico, relatórios, carteira e backup foi removida.
