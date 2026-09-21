@@ -67,8 +67,8 @@ func buildAutomaticCompactArea(carGeoJSON string, targetAreaHa, seedLat, seedLon
 	targetM2 := targetAreaHa * 10000
 	cellArea := targetM2 / cellsWanted
 	side := math.Sqrt(cellArea)
-	if side < 0.75 {
-		side = 0.75
+	if side < 0.20 {
+		side = 0.20
 		cellArea = side * side
 	}
 	originX, originY := minX-side*2, minY-side*2
