@@ -1,0 +1,16 @@
+/* ViaVerdeCAR 1.1.0 — automação de acesso e delimitação */
+.auto-area-box110{margin:10px 0 12px;padding:13px;border:1px solid #cfe0d1;border-radius:11px;background:#f6fbf6}
+.auto-area-grid110{display:grid;grid-template-columns:1fr 1fr 170px auto;gap:9px;align-items:end}
+.auto-area-grid110 label{font-size:9px;font-weight:800;color:#5d6d63}.auto-area-grid110 input{width:100%;margin-top:4px;padding:9px 10px;border:1px solid #d5dfd4;border-radius:8px;background:#fff}
+.auto-area-hint110{font-size:8px;color:#718078;line-height:1.45;margin-top:8px}
+.manual-area-toggle110{margin-top:7px}.manual-area-actions110.hidden-manual110{display:none}
+.auto-route-card110{margin:10px 0;padding:13px;border:1px solid #cfe0d1;border-radius:11px;background:linear-gradient(145deg,#f4faf5,#fff)}
+.auto-route-head110{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.auto-route-head110 strong{font-size:12px}.auto-route-head110 span{font-size:9px;color:#67766d}
+.auto-route-metrics110{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0}.auto-route-metrics110>div{padding:8px;border:1px solid #e0e8df;border-radius:9px;background:#fff}.auto-route-metrics110 span,.auto-route-metrics110 strong{display:block}.auto-route-metrics110 span{font-size:8px;color:#758078}.auto-route-metrics110 strong{font-size:10px;margin-top:3px;word-break:break-word}
+.auto-route-text110{font-size:9px;line-height:1.55;color:#4f6056;padding:9px 0}.auto-route-actions110{display:flex;gap:7px;flex-wrap:wrap}
+.auto-route-steps110{margin-top:9px;border-top:1px solid #e6ece5;padding-top:8px;max-height:220px;overflow:auto}.auto-route-step110{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:start;padding:6px 0;border-bottom:1px solid #eef2ed;font-size:8px}.auto-route-step110 b{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#e8f2e9;color:#376348}.auto-route-step110 span{line-height:1.4}.auto-route-step110 small{color:#728078;white-space:nowrap}
+.route-source110{font-size:8px;color:#7a857d;margin-top:8px}
+.session-badge110{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:#edf4f7;color:#4d6b78;font-size:8px;font-weight:800;margin-left:7px}
+.access-route-panel .compact-form109,.access-route-panel .route-actions109[data-legacy-route],.access-route-panel .route-coords109,.access-route-panel #routeText109{display:none!important}
+@media(max-width:1100px){.auto-area-grid110{grid-template-columns:1fr 1fr}.auto-area-grid110 .btn{grid-column:1/-1}.auto-route-metrics110{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.auto-area-grid110{grid-template-columns:1fr}.auto-route-metrics110{grid-template-columns:1fr}.auto-route-head110{flex-direction:column}}

@@ -64,6 +64,7 @@ type CARResult struct {
 	OwnerDataAccess  string         `json:"owner_data_access"`
 	Environment      EnvironmentalSummary `json:"environment"`
 	Themes           SICARThemesSummary    `json:"themes"`
+	AutoRoute        AccessRoute           `json:"auto_route"`
 	Checks           []QualityCheck `json:"checks"`
 }
 
@@ -173,8 +174,10 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 		envCtx, envCancel := context.WithTimeout(context.Background(), 75*time.Second)
 		var env EnvironmentalSummary
 		var themes SICARThemesSummary
+		var autoRoute AccessRoute
+		var autoRouteErr error
 		var wg sync.WaitGroup
-		wg.Add(2)
+		wg.Add(3)
 		go func() {
 			defer wg.Done()
 			env = screenEnvironment(envCtx, result.GeoJSON)
@@ -188,10 +191,22 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 				themes = a.analyzeSICARThemes(envCtx, result.CAR, result.UF, result.MunicipalityCode, result.GeoJSON, result.AreaHa)
 			}
 		}()
+		go func() {
+			defer wg.Done()
+			if a != nil {
+				autoRoute, autoRouteErr = a.generateAutomaticAccessRoute(propertyID, result, false)
+			}
+		}()
 		wg.Wait()
 		envCancel()
 		result.Environment = env
 		result.Themes = themes
+		result.AutoRoute = autoRoute
+		if autoRouteErr == nil && autoRoute.RouteDistanceKm > 0 {
+			result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "Roteiro automático", Detail: fmt.Sprintf("Referência %s; acesso viário estimado %.2f km / %.0f min.", autoRoute.ReferenceLabel, autoRoute.RouteDistanceKm, autoRoute.RouteDurationMin)})
+		} else if autoRouteErr != nil {
+			result.Checks = append(result.Checks, QualityCheck{Level: "info", Title: "Roteiro automático", Detail: "Não foi possível calcular a rota nesta consulta: " + autoRouteErr.Error()})
+		}
 		if result.Environment.IBAMAChecked {
 			if result.Environment.IBAMAEmbargoCount == 0 {
 				result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "Embargos IBAMA", Detail: "Nenhuma área de embargo do SISCOM/IBAMA intersectou a geometria consultada nesta triagem."})
@@ -279,6 +294,9 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 		} else {
 			result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "Histórico sem duplicação", Detail: "A consulta não alterou o CAR; nenhum registro repetido foi criado."})
 		}
+	}
+	if result.Found && result.HasGeometry {
+		a.saveLastCARSession(result)
 	}
 	return result, nil
 }

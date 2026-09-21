@@ -79,10 +79,14 @@ func (a *App) GetPropertyConference(propertyID int64) (ConferenceSummary, error)
 			out.OKCount++
 		}
 		var routes int
-		_ = a.db.QueryRow(`SELECT COUNT(*) FROM access_routes WHERE property_id=?`, propertyID).Scan(&routes)
+		_ = a.db.QueryRow(`SELECT (SELECT COUNT(*) FROM access_routes WHERE property_id=?) + (SELECT COUNT(*) FROM automatic_routes WHERE property_id=?)`, propertyID, propertyID).Scan(&routes)
 		if routes > 0 {
+			detail := "Roteiro de acesso disponível."
+			if r, rErr := a.GetAccessRoute(propertyID); rErr == nil && r.Automatic && r.RouteDistanceKm > 0 {
+				detail = fmt.Sprintf("Roteiro automático calculado a partir de %s: %.2f km / %.0f min até o acesso viário estimado.", r.ReferenceLabel, r.RouteDistanceKm, r.RouteDurationMin)
+			}
 			out.Items = append(out.Items, ConferenceItem{
-				Level: "ok", Title: "Roteiro de acesso", Detail: "Entrada/sede e roteiro técnico já cadastrados.",
+				Level: "ok", Title: "Roteiro de acesso", Detail: detail,
 			})
 			out.OKCount++
 		}

@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const AppVersion = "1.0.9"
+const AppVersion = "1.1.0"
 
 type App struct {
 	ctx     context.Context
@@ -192,8 +192,34 @@ func (a *App) migrate() error {
 			updated_at TEXT NOT NULL,
 			FOREIGN KEY(property_id) REFERENCES properties(id) ON DELETE CASCADE
 		);`,
+		`CREATE TABLE IF NOT EXISTS automatic_routes (
+			property_id INTEGER PRIMARY KEY,
+			car_number TEXT NOT NULL DEFAULT '',
+			reference_label TEXT NOT NULL DEFAULT '',
+			reference_lat REAL NOT NULL DEFAULT 0,
+			reference_lon REAL NOT NULL DEFAULT 0,
+			entrance_lat REAL NOT NULL DEFAULT 0,
+			entrance_lon REAL NOT NULL DEFAULT 0,
+			center_lat REAL NOT NULL DEFAULT 0,
+			center_lon REAL NOT NULL DEFAULT 0,
+			route_distance_km REAL NOT NULL DEFAULT 0,
+			route_duration_min REAL NOT NULL DEFAULT 0,
+			route_geojson TEXT NOT NULL DEFAULT '',
+			steps_json TEXT NOT NULL DEFAULT '',
+			route_source TEXT NOT NULL DEFAULT '',
+			generated_at TEXT NOT NULL DEFAULT '',
+			car_fingerprint TEXT NOT NULL DEFAULT '',
+			FOREIGN KEY(property_id) REFERENCES properties(id) ON DELETE CASCADE
+		);`,
+		`CREATE TABLE IF NOT EXISTS route_city_cache (
+			cache_key TEXT PRIMARY KEY,
+			label TEXT NOT NULL DEFAULT '',
+			lat REAL NOT NULL DEFAULT 0,
+			lon REAL NOT NULL DEFAULT 0,
+			updated_at TEXT NOT NULL DEFAULT ''
+		);`,
 		`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
-		`UPDATE schema_version SET version=2 WHERE version < 2;`,
+		`UPDATE schema_version SET version=3 WHERE version < 3;`,
 	}
 	for _, stmt := range stmts {
 		if _, err := a.db.Exec(stmt); err != nil {

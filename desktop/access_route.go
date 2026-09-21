@@ -10,21 +10,35 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+type RouteStep struct {
+	Instruction string  `json:"instruction"`
+	Road        string  `json:"road"`
+	DistanceKm  float64 `json:"distance_km"`
+	DurationMin float64 `json:"duration_min"`
+}
+
 type AccessRoute struct {
-	PropertyID                  int64   `json:"property_id"`
-	ReferenceLabel              string  `json:"reference_label"`
-	ReferenceLat                float64 `json:"reference_lat"`
-	ReferenceLon                float64 `json:"reference_lon"`
-	EntranceLat                 float64 `json:"entrance_lat"`
-	EntranceLon                 float64 `json:"entrance_lon"`
-	HeadquartersLat             float64 `json:"headquarters_lat"`
-	HeadquartersLon             float64 `json:"headquarters_lon"`
-	ReferenceToEntranceKm       float64 `json:"reference_to_entrance_km"`
-	EntranceToHeadquartersKm    float64 `json:"entrance_to_headquarters_km"`
-	Notes                       string  `json:"notes"`
-	Text                        string  `json:"text"`
-	GoogleMapsURL               string  `json:"google_maps_url"`
-	UpdatedAt                   string  `json:"updated_at"`
+	PropertyID                  int64       `json:"property_id"`
+	ReferenceLabel              string      `json:"reference_label"`
+	ReferenceLat                float64     `json:"reference_lat"`
+	ReferenceLon                float64     `json:"reference_lon"`
+	EntranceLat                 float64     `json:"entrance_lat"`
+	EntranceLon                 float64     `json:"entrance_lon"`
+	HeadquartersLat             float64     `json:"headquarters_lat"`
+	HeadquartersLon             float64     `json:"headquarters_lon"`
+	ReferenceToEntranceKm       float64     `json:"reference_to_entrance_km"`
+	EntranceToHeadquartersKm    float64     `json:"entrance_to_headquarters_km"`
+	RouteDistanceKm             float64     `json:"route_distance_km"`
+	RouteDurationMin            float64     `json:"route_duration_min"`
+	RouteGeoJSON                string      `json:"route_geojson"`
+	Steps                       []RouteStep `json:"steps"`
+	RouteSource                 string      `json:"route_source"`
+	Automatic                   bool        `json:"automatic"`
+	GeneratedAt                 string      `json:"generated_at"`
+	Notes                       string      `json:"notes"`
+	Text                        string      `json:"text"`
+	GoogleMapsURL               string      `json:"google_maps_url"`
+	UpdatedAt                   string      `json:"updated_at"`
 }
 
 func (a *App) GetAccessRoute(propertyID int64) (AccessRoute, error) {
@@ -33,6 +47,11 @@ func (a *App) GetAccessRoute(propertyID int64) (AccessRoute, error) {
 	}
 	if propertyID <= 0 {
 		return AccessRoute{}, errors.New("imóvel inválido")
+	}
+	// A rota automática passa a ser a referência principal. Se ainda não existir,
+	// mantemos compatibilidade com o roteiro manual da 1.0.9.
+	if auto, err := a.loadAutomaticRoute(propertyID); err == nil && auto.EntranceLat != 0 {
+		return auto, nil
 	}
 	var x AccessRoute
 	err := a.db.QueryRow(`SELECT property_id,reference_label,reference_lat,reference_lon,entrance_lat,entrance_lon,headquarters_lat,headquarters_lon,reference_to_entrance_km,entrance_to_headquarters_km,notes,updated_at
@@ -96,6 +115,25 @@ func (a *App) ExportAccessRouteTXT(propertyID int64) (string, error) {
 		return "", errors.New("exportação cancelada")
 	}
 	content := "VIA VERDE CAR — ROTEIRO DE ACESSO\r\n\r\n" + x.Text + "\r\n"
+	if x.RouteDistanceKm > 0 {
+		content += fmt.Sprintf("\r\nDistância pela rota: %.2f km\r\nTempo estimado: %.0f min\r\n", x.RouteDistanceKm, x.RouteDurationMin)
+	}
+	if len(x.Steps) > 0 {
+		content += "\r\nINSTRUÇÕES DA ROTA\r\n"
+		for i, step := range x.Steps {
+			content += fmt.Sprintf("%d. %s", i+1, step.Instruction)
+			if step.Road != "" {
+				content += " — " + step.Road
+			}
+			if step.DistanceKm > 0 {
+				content += fmt.Sprintf(" (%.2f km)", step.DistanceKm)
+			}
+			content += "\r\n"
+		}
+	}
+	if x.RouteSource != "" {
+		content += "\r\nFonte de roteamento: " + x.RouteSource + "\r\n"
+	}
 	if x.Notes != "" {
 		content += "\r\nObservações: " + x.Notes + "\r\n"
 	}
