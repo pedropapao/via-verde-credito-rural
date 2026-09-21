@@ -100,9 +100,17 @@ func (a *App) ClearLastCARSession() error {
 	if a == nil || a.dataDir == "" {
 		return nil
 	}
-	path := filepath.Join(a.dataDir, "cache", "last_car_session.json")
+	cacheDir := filepath.Join(a.dataDir, "cache")
+	path := filepath.Join(cacheDir, "last_car_session.json")
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	return nil
+	// A consulta avulsa pode criar KMLs temporários. Ao iniciar uma nova
+	// consulta, removemos somente esse material transitório. O cache do SICAR,
+	// clientes, imóveis, histórico e áreas permanentes não são tocados.
+	tempDir := filepath.Join(cacheDir, "temporary")
+	if err := os.RemoveAll(tempDir); err != nil {
+		return err
+	}
+	return os.MkdirAll(tempDir, 0o755)
 }
