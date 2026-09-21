@@ -2,18 +2,19 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	_ "image/png"
 	"math"
 	"net/http"
-	"net/url"
-	"strconv"
-	"strings"
+	"sync"
 	"time"
 )
 
-var terrainElevationEndpoint = "https://api.open-meteo.com/v1/elevation"
+var terrainTileURLTemplate = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/%d/%d/%d.png"
+
+const terrainTileZoom = 13
 
 type TerrainMetric struct {
 	Available          bool    `json:"available"`
@@ -31,14 +32,12 @@ type TerrainMetric struct {
 	Warning            string  `json:"warning"`
 }
 
-type terrainElevationResponse struct {
-	Elevation []*float64 `json:"elevation"`
-}
-
 type indexedTerrainPoint struct {
 	Candidate int
 	Point     GeoPoint
 }
+
+type terrainTileKey struct{ Z, X, Y int }
 
 func enrichAreaAlternativesTerrain(candidates []AreaAlternative) (string, error) {
 	if len(candidates) == 0 {
@@ -58,7 +57,7 @@ func enrichAreaAlternativesTerrain(candidates []AreaAlternative) (string, error)
 		return "", errors.New("não foi possível amostrar pontos internos para relevo")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 18*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	elev, err := fetchTerrainElevations(ctx, indexed)
 	if err != nil {
@@ -77,7 +76,7 @@ func enrichAreaAlternativesTerrain(candidates []AreaAlternative) (string, error)
 	for i := range candidates {
 		candidates[i].Terrain = calculateTerrainMetric(pointsByCandidate[i], elevByCandidate[i], candidates[i].AreaHa)
 	}
-	return "Copernicus DEM GLO-90 (90 m) via Open-Meteo Elevation API", nil
+	return "Terrain Tiles / AWS Open Data (mosaico SRTM, GMTED2010, ETOPO1 e outras fontes)", nil
 }
 
 func terrainSamplePoints(raw string, maxPoints int) []GeoPoint {
@@ -99,7 +98,6 @@ func terrainSamplePoints(raw string, maxPoints int) []GeoPoint {
 		return GeoPoint{Lat: p.Y / earthR * 180 / math.Pi, Lon: p.X / (earthR * cos0) * 180 / math.Pi}
 	}
 	var out []GeoPoint
-	// Grade regular: ajuda a estimar relevo e inclinação sem depender dos vértices.
 	const grid = 6
 	for iy := 0; iy < grid && len(out) < maxPoints; iy++ {
 		fy := (float64(iy) + 0.5) / grid
@@ -112,7 +110,6 @@ func terrainSamplePoints(raw string, maxPoints int) []GeoPoint {
 		}
 	}
 	if len(out) < 4 {
-		// Fallback para o centro aproximado.
 		p := planarPoint{X: (minX + maxX) / 2, Y: (minY + maxY) / 2}
 		if pointInMultiPolygon(p, mp) {
 			out = append(out, toGeo(p))
@@ -125,54 +122,129 @@ func fetchTerrainElevations(ctx context.Context, indexed []indexedTerrainPoint) 
 	if len(indexed) == 0 {
 		return nil, errors.New("nenhum ponto para elevação")
 	}
-	if len(indexed) > 100 {
-		indexed = indexed[:100]
+	type sample struct {
+		key terrainTileKey
+		px  int
+		py  int
 	}
-	lat := make([]string, 0, len(indexed))
-	lon := make([]string, 0, len(indexed))
-	for _, p := range indexed {
-		lat = append(lat, strconv.FormatFloat(p.Point.Lat, 'f', 7, 64))
-		lon = append(lon, strconv.FormatFloat(p.Point.Lon, 'f', 7, 64))
+	samples := make([]sample, len(indexed))
+	keys := map[terrainTileKey]bool{}
+	for i, item := range indexed {
+		x, y, px, py := terrainTilePixel(item.Point.Lat, item.Point.Lon, terrainTileZoom)
+		k := terrainTileKey{Z: terrainTileZoom, X: x, Y: y}
+		samples[i] = sample{key: k, px: px, py: py}
+		keys[k] = true
 	}
-	q := url.Values{}
-	q.Set("latitude", strings.Join(lat, ","))
-	q.Set("longitude", strings.Join(lon, ","))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, terrainElevationEndpoint+"?"+q.Encode(), nil)
+
+	tiles := map[terrainTileKey]image.Image{}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 5)
+	var firstErr error
+	for k := range keys {
+		k := k
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-ctx.Done():
+				return
+			}
+			img, err := fetchTerrainTile(ctx, k)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				if firstErr == nil {
+					firstErr = err
+				}
+				return
+			}
+			tiles[k] = img
+		}()
+	}
+	wg.Wait()
+	if len(tiles) == 0 {
+		if firstErr == nil {
+			firstErr = errors.New("nenhum tile de relevo disponível")
+		}
+		return nil, firstErr
+	}
+
+	out := make([]float64, len(samples))
+	for i, s := range samples {
+		img := tiles[s.key]
+		if img == nil {
+			out[i] = math.NaN()
+			continue
+		}
+		r16, g16, b16, a16 := img.At(s.px, s.py).RGBA()
+		if a16 == 0 {
+			out[i] = math.NaN()
+			continue
+		}
+		r := float64(r16 >> 8)
+		g := float64(g16 >> 8)
+		b := float64(b16 >> 8)
+		z := (r*256 + g + b/256) - 32768
+		if z < -500 || z > 9000 {
+			out[i] = math.NaN()
+			continue
+		}
+		out[i] = z
+	}
+	return out, nil
+}
+
+func fetchTerrainTile(ctx context.Context, k terrainTileKey) (image.Image, error) {
+	target := fmt.Sprintf(terrainTileURLTemplate, k.Z, k.X, k.Y)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion)
-	req.Header.Set("Accept", "application/json")
-	resp, err := (&http.Client{Timeout: 18 * time.Second}).Do(req)
+	resp, err := (&http.Client{Timeout: 15 * time.Second}).Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("serviço de elevação respondeu HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("tile de relevo respondeu HTTP %d", resp.StatusCode)
 	}
-	var data terrainElevationResponse
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, err
+	img, _, err := image.Decode(resp.Body)
+	return img, err
+}
+
+func terrainTilePixel(lat, lon float64, z int) (tileX, tileY, px, py int) {
+	lat = math.Max(-85.05112878, math.Min(85.05112878, lat))
+	n := math.Exp2(float64(z))
+	xf := (lon + 180) / 360 * n
+	latRad := lat * math.Pi / 180
+	yf := (1 - math.Asinh(math.Tan(latRad))/math.Pi) / 2 * n
+	tileX = int(math.Floor(xf))
+	tileY = int(math.Floor(yf))
+	px = int(math.Floor((xf - float64(tileX)) * 256))
+	py = int(math.Floor((yf - float64(tileY)) * 256))
+	if px < 0 {
+		px = 0
 	}
-	if len(data.Elevation) != len(indexed) {
-		return nil, errors.New("serviço de elevação retornou quantidade inesperada de pontos")
+	if px > 255 {
+		px = 255
 	}
-	out := make([]float64, len(data.Elevation))
-	for i, v := range data.Elevation {
-		if v == nil {
-			out[i] = math.NaN()
-			continue
-		}
-		out[i] = *v
+	if py < 0 {
+		py = 0
 	}
-	return out, nil
+	if py > 255 {
+		py = 255
+	}
+	return
 }
 
 func calculateTerrainMetric(points []GeoPoint, elev []float64, areaHa float64) TerrainMetric {
 	out := TerrainMetric{
-		ResolutionM: 90,
-		Source:      "Copernicus DEM GLO-90 via Open-Meteo",
+		ResolutionM: 30,
+		Source:      "Terrain Tiles / AWS Open Data; fontes incluem SRTM, GMTED2010 e ETOPO1",
 	}
 	if len(points) == 0 || len(points) != len(elev) {
 		out.Warning = "amostragem de relevo insuficiente"
@@ -211,7 +283,7 @@ func calculateTerrainMetric(points []GeoPoint, elev []float64, areaHa float64) T
 				continue
 			}
 			d := carHaversineM(points[i].Lat, points[i].Lon, points[j].Lat, points[j].Lon)
-			if d < 15 || d >= bestD {
+			if d < 12 || d >= bestD {
 				continue
 			}
 			bestD = d
@@ -236,13 +308,13 @@ func calculateTerrainMetric(points []GeoPoint, elev []float64, areaHa float64) T
 	out.OperationalScore = math.Max(0, math.Min(100, slopeScore*0.72+reliefScore*0.28))
 
 	switch {
-	case areaHa < 3:
+	case areaHa < 2:
 		out.Confidence = "baixa"
-		out.Warning = "gleba pequena para um DEM de 90 m; use o relevo apenas como indicação geral"
+		out.Warning = "gleba pequena em relação à resolução do modelo; use o relevo apenas como indicação geral"
 	case valid < 7:
 		out.Confidence = "baixa"
 		out.Warning = "poucos pontos de elevação válidos"
-	case areaHa < 20:
+	case areaHa < 15:
 		out.Confidence = "média"
 	default:
 		out.Confidence = "boa"
