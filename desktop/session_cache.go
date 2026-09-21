@@ -49,6 +49,24 @@ func (a *App) GetLastCARSession() (CARSessionCache, error) {
 	return out, nil
 }
 
+func (a *App) updateLastCARSessionResult(result CARResult) error {
+	if a == nil || a.dataDir == "" {
+		return errors.New("cache local indisponível")
+	}
+	cache, err := a.GetLastCARSession()
+	if err != nil {
+		return err
+	}
+	cache.SavedAt = time.Now().Format(time.RFC3339)
+	cache.Result = result
+	path := filepath.Join(a.dataDir, "cache", "last_car_session.json")
+	b, err := json.Marshal(cache)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, b, 0o644)
+}
+
 func (a *App) saveTemporaryProjectArea(area ProjectArea) error {
 	if a == nil || a.dataDir == "" {
 		return errors.New("cache local indisponível")
