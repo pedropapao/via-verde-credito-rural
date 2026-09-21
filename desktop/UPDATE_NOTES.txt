@@ -1,19 +1,21 @@
-CAR 1.2.0: inteligência territorial preliminar para escolha de glebas.
+CAR 1.3.0: relevo automático e cobertura do solo no mapa.
 
-• O botão de delimitação automática passa a gerar até três alternativas de área, em vez de escolher silenciosamente uma única posição.
+• As alternativas de gleba agora recebem análise de relevo antes da classificação final. O aplicativo amostra elevação dentro de cada opção usando Terrain Tiles públicos disponibilizados no AWS Open Data e calcula altitude mínima, máxima e média, amplitude de relevo e inclinação média/máxima estimada.
 
-• Cada opção é comparada por critérios transparentes: percentual dentro do CAR, compacidade do formato, distância até o acesso viário automático, sobreposição com áreas de projeto já cadastradas e, quando disponíveis, temas declarados do SICAR.
+• O relevo entra com peso moderado na pontuação territorial como facilidade operacional do terreno. Menor inclinação e menor amplitude tendem a favorecer a nota, sem transformar esse resultado em recomendação agronômica para uma cultura específica.
 
-• Temas SICAR utilizados na comparação: APP, Reserva Legal, Remanescente de Vegetação Nativa, Uso Restrito, Servidão Administrativa e Área Consolidada. A presença nesses temas é tratada como informação/atenção territorial e não como conclusão de regularidade ou impedimento legal.
+• Para glebas pequenas ou com poucos pontos válidos, o Via Verde reduz a confiança da leitura e exibe um aviso. O resultado é uma indicação preliminar e não substitui levantamento topográfico, curvas de nível ou vistoria.
 
-• Áreas de projeto já salvas recebem forte penalização na pontuação quando há sobreposição, reduzindo a chance de o sistema propor novamente uma gleba já usada em outro projeto.
+• A tela das Opções A, B e C passa a mostrar altitude média, inclinação média, desnível e leitura operacional do relevo, além dos critérios já existentes de acesso, compacidade, áreas utilizadas e temas SICAR.
 
-• Quando existe roteiro automático, a proximidade do acesso também entra na pontuação. Sem roteiro, o sistema mantém uma pontuação neutra para esse critério.
+• Ao escolher uma gleba em imóvel cadastrado, os dados de relevo ficam armazenados junto à área do projeto para uso posterior em relatórios/dossiês. Em consulta avulsa, o relevo permanece no cache temporário da área escolhida.
 
-• A tela mostra Opção A, B e C com pontuação preliminar, área, percentual dentro do CAR, compacidade, distância do acesso, conflito com áreas já utilizadas, alertas dos temas disponíveis e explicação resumida.
+• Foi adicionada ao mapa a camada visual “Cobertura do solo • ESA WorldCover 2021”, com resolução de 10 m e legenda das 11 classes (árvores, arbustos, gramíneas/pastagem, cultivo, área construída, solo exposto, água etc.). A camada fica desligada por padrão e pode ser ativada na seleção inteligente.
 
-• O usuário pode visualizar qualquer alternativa no mapa e clicar em “Usar esta área”. Em imóvel cadastrado, a escolha é salva permanentemente. Em consulta avulsa, continua temporária por até 24 horas e pode ser exportada em KML.
+• A camada ESA WorldCover é usada como apoio visual. Nesta versão ela não é tratada como prova de uso atual nem como conclusão ambiental, pois o WMS disponibiliza uma representação cartográfica e o produto de referência é de 2021.
 
-• Se os temas detalhados do SICAR estiverem indisponíveis, o sistema continua funcionando e informa claramente que a comparação usou apenas geometria, acesso e áreas já registradas.
+• Fontes do relevo: Terrain Tiles / AWS Open Data, com mosaico de SRTM, GMTED2010, ETOPO1 e outras fontes conforme a região. No Brasil, a leitura é normalmente baseada em SRTM. Atribuições das fontes permanecem informadas no aplicativo.
 
-A pontuação é uma triagem territorial preliminar. Não substitui avaliação agronômica, licenciamento, análise ambiental oficial, levantamento topográfico ou verificação em campo.
+• Fonte visual de cobertura: ESA WorldCover 2021 v200 / Terrascope WMS, com dados Sentinel processados pelo consórcio WorldCover.
+
+Consulta CAR, roteiro automático, Temas SICAR, triagem ambiental, três alternativas de gleba, KML, histórico, carteira, backup e atualização automática foram preservados.
