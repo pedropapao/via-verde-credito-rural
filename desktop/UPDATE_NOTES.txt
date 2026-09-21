@@ -1,23 +1,21 @@
-CAR 1.3.1: limpeza de consulta e reorganização visual completa da tela CAR.
+CAR 1.4.0: integração inicial de Crédito Rural, Banco Central e MapBiomas.
 
-• Novo botão “Nova consulta” ao lado de Consultar SICAR. Ele limpa o CAR atual, mapa, KML carregado, rota, glebas temporárias e arquivos transitórios da consulta. Clientes, imóveis, histórico, áreas de projeto permanentes e cache técnico do SICAR não são apagados.
+• Nova aba “Crédito Rural” dentro da análise do CAR. Ela concentra informações públicas relacionadas ao crédito e mantém separadas as fontes que realmente identificam o CAR daquelas que são apenas contexto agregado.
 
-• A limpeza também remove KMLs temporários criados durante consulta avulsa e reposiciona o mapa para a visão inicial.
+• Integração com o Monitor do Crédito Rural do MapBiomas: o Via Verde copia automaticamente o CAR e abre a plataforma oficial para consulta detalhada das operações e glebas públicas disponíveis. A interface deixa explícito que ausência de operação pública não prova inexistência de financiamento.
 
-• A tela CAR deixou de exibir todos os módulos ao mesmo tempo. O workspace passa a ser dividido em cinco abas: Resumo, Mapa, Áreas e acesso, Ambiental e Histórico e saídas.
+• Integração com a Matriz de Dados do Crédito Rural (MDCR/SICOR) do Banco Central: o aplicativo tenta consultar automaticamente dados agregados de Custeio e Investimento por município/produto e apresenta finalidade, ano, produto, quantidade de contratos e valor. Esses números são identificados como contexto municipal e nunca como contratos do CAR.
 
-• Resumo: concentra situação do CAR, métricas principais, dados essenciais e conferência automática. Os campos menos usados ficam recolhidos em “Mais dados”.
+• Integração autenticada com a API oficial MapBiomas Alerta v2. Em Configurações existe um novo cartão “MapBiomas Alerta”. O usuário conecta uma conta MapBiomas confirmada uma única vez. A senha é usada apenas para obter o Bearer Token e NÃO é salva pelo Via Verde; ficam salvos localmente apenas o token e o e-mail da conta.
 
-• Mapa: exibe o mapa em área maior e concentra as ações relacionadas ao KML externo. O painel de comparação só aparece quando houver KML carregado.
+• Com o MapBiomas Alerta conectado, cada consulta de CAR busca automaticamente a ruralProperty correspondente e mostra alertas vinculados ao imóvel: código, área, data de detecção, data de publicação, fontes e link para o laudo oficial.
 
-• Áreas e acesso: reúne seleção inteligente de glebas, relevo, cobertura do solo, áreas do projeto e roteiro automático.
+• Os pontos dos alertas retornados pela API podem ser mostrados no mapa como uma camada “MapBiomas Alerta”.
 
-• Ambiental: reúne triagem pública (IBAMA, FUNAI, ICMBio e MMA/MCR) e os temas declarados do SICAR, sem ocupar espaço na tela principal.
+• A nova aba possui atalhos para abrir o Monitor do Crédito Rural, dados públicos do BCB/SICOR, imóvel no MapBiomas Alerta e laudos individuais de alertas.
 
-• Histórico e saídas: concentra rastreabilidade, histórico de consultas, PDF técnico e dossiê ZIP.
+• Alertas, cruzamentos e dados de crédito são apresentados como informação para conferência. O Via Verde não classifica automaticamente uma operação como irregular e não trata a ausência de dados públicos como prova de inexistência de crédito.
 
-• As abas mostram pequenos contadores quando há histórico, áreas do projeto ou informações ambientais disponíveis.
+• A versão não faz scraping de endpoints privados ou não documentados do Monitor do Crédito Rural. Operações/glebas individualizadas continuam sendo abertas na plataforma oficial, enquanto a automação direta usa somente API documentada do MapBiomas Alerta e API pública do Banco Central.
 
-• A barra superior da consulta ficou mais compacta. O botão Nova consulta informa explicitamente que dados salvos não serão excluídos.
-
-Nenhuma funcionalidade existente foi removida. Consulta CAR, mapa, roteiro automático, Temas SICAR, relevo, WorldCover, inteligência territorial, KML, histórico, carteira, relatórios, backup e atualização automática permanecem disponíveis.
+Consulta CAR, Nova consulta, abas compactas, mapa, glebas A/B/C, relevo, WorldCover, Temas SICAR, triagem ambiental, KML, histórico, relatórios, backup e atualização automática permanecem preservados.
