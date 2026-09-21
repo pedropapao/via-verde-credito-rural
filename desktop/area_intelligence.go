@@ -192,12 +192,20 @@ func (a *App) ChooseProjectAreaAlternative(propertyID int64, name, purpose strin
 		}
 	}
 	if propertyID > 0 {
-		return a.SaveProjectArea(ProjectArea{
+		saved, err := a.SaveProjectArea(ProjectArea{
 			PropertyID: propertyID,
 			Name:       name,
 			Purpose:    purpose,
 			GeoJSON:    alt.GeoJSON,
 		})
+		if err != nil {
+			return ProjectArea{}, err
+		}
+		saved.Terrain = alt.Terrain
+		if err := a.saveProjectAreaTerrain(saved.ID, alt.Terrain); err != nil {
+			return ProjectArea{}, err
+		}
+		return saved, nil
 	}
 	metric, err := projectAreaMetrics(alt.GeoJSON)
 	if err != nil {
@@ -207,6 +215,7 @@ func (a *App) ChooseProjectAreaAlternative(propertyID int64, name, purpose strin
 	metric.Purpose = strings.TrimSpace(purpose)
 	metric.PropertyID = 0
 	metric.InsideCARPct = alt.InsideCARPct
+	metric.Terrain = alt.Terrain
 	metric.CreatedAt = time.Now().Format(time.RFC3339)
 	metric.UpdatedAt = metric.CreatedAt
 	if path, err := a.writeTemporaryProjectAreaKML(metric); err == nil {
