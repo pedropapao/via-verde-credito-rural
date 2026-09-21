@@ -218,8 +218,13 @@ func (a *App) migrate() error {
 			lon REAL NOT NULL DEFAULT 0,
 			updated_at TEXT NOT NULL DEFAULT ''
 		);`,
+		`CREATE TABLE IF NOT EXISTS project_area_terrain (
+			area_id INTEGER PRIMARY KEY,
+			terrain_json TEXT NOT NULL DEFAULT '',
+			FOREIGN KEY(area_id) REFERENCES project_areas(id) ON DELETE CASCADE
+		);`,
 		`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
-		`UPDATE schema_version SET version=3 WHERE version < 3;`,
+		`UPDATE schema_version SET version=4 WHERE version < 4;`,
 	}
 	for _, stmt := range stmts {
 		if _, err := a.db.Exec(stmt); err != nil {
