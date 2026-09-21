@@ -25,7 +25,8 @@ type ProjectArea struct {
 	GeoJSON        string  `json:"geojson"`
 	KMLPath        string  `json:"kml_path"`
 	CreatedAt      string  `json:"created_at"`
-	UpdatedAt      string  `json:"updated_at"`
+	UpdatedAt      string        `json:"updated_at"`
+	Terrain        TerrainMetric `json:"terrain"`
 }
 
 func (a *App) ListProjectAreas(propertyID int64) ([]ProjectArea, error) {
@@ -47,6 +48,7 @@ func (a *App) ListProjectAreas(propertyID int64) ([]ProjectArea, error) {
 		if err := rows.Scan(&x.ID, &x.PropertyID, &x.Name, &x.Purpose, &x.AreaHa, &x.PerimeterM, &x.CenterLat, &x.CenterLon, &x.InsideCARPct, &x.GeoJSON, &x.KMLPath, &x.CreatedAt, &x.UpdatedAt); err != nil {
 			return nil, err
 		}
+		x.Terrain = a.loadProjectAreaTerrain(x.ID)
 		out = append(out, x)
 	}
 	return out, rows.Err()
