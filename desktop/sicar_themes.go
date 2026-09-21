@@ -22,14 +22,16 @@ import (
 const sicarGeoServicesBase = "https://consulta.car.gov.br/geoservices/estadosCSV"
 
 type SICARThemeMetric struct {
-	Code         string  `json:"code"`
-	Label        string  `json:"label"`
-	AreaHa       float64 `json:"area_ha"`
-	FeatureCount int     `json:"feature_count"`
-	Available    bool    `json:"available"`
-	SourceFile   string  `json:"source_file"`
-	Method       string  `json:"method"`
-	GeoJSON      string  `json:"geojson"`
+	Code          string  `json:"code"`
+	Label         string  `json:"label"`
+	AreaHa        float64 `json:"area_ha"`
+	FeatureCount  int     `json:"feature_count"`
+	Available     bool    `json:"available"`
+	SourceFile    string  `json:"source_file"`
+	Method        string  `json:"method"`
+	GeoJSON       string  `json:"geojson"`
+	CacheStatus   string  `json:"cache_status"`
+	CacheAgeHours float64 `json:"cache_age_hours"`
 }
 
 type SICARThemesSummary struct {
@@ -110,11 +112,19 @@ func (a *App) analyzeSICARThemes(ctx context.Context, car, uf, municipalityCode,
 
 func (a *App) analyzeSingleSICARTheme(ctx context.Context, car, uf, municipalityCode, carGeoJSON string, carAreaHa float64, theme, label string) (SICARThemeMetric, error) {
 	metric := SICARThemeMetric{Code: theme, Label: label, Method: "interseção espacial aproximada com pacote municipal público do SICAR"}
-	zipPath, err := a.ensureSICARThemeZip(ctx, strings.ToUpper(uf), municipalityCode, theme)
+	zipPath, cacheStatus, cacheAge, err := a.ensureSICARThemeZipResilient(ctx, strings.ToUpper(uf), municipalityCode, theme)
 	if err != nil {
 		return metric, err
 	}
 	metric.SourceFile = zipPath
+	metric.CacheStatus = cacheStatus
+	metric.CacheAgeHours = cacheAge
+	if cacheStatus == "cache_stale" {
+		metric.Method += " (último pacote válido em cache)"
+	}
+	if cacheStatus == "manual" {
+		metric.Method += " (pacote oficial importado manualmente)"
+	}
 	area, count, geojson, err := intersectThemeZipWithCAR(zipPath, carGeoJSON, carAreaHa)
 	if err != nil {
 		return metric, err
@@ -127,15 +137,69 @@ func (a *App) analyzeSingleSICARTheme(ctx context.Context, car, uf, municipality
 }
 
 func (a *App) ensureSICARThemeZip(ctx context.Context, uf, municipalityCode, theme string) (string, error) {
+	path, _, _, err := a.ensureSICARThemeZipResilient(ctx, uf, municipalityCode, theme)
+	return path, err
+}
+
+func (a *App) ensureSICARThemeZipResilient(ctx context.Context, uf, municipalityCode, theme string) (string, string, float64, error) {
 	cacheDir := filepath.Join(a.dataDir, "cache", "sicar", municipalityCode)
 	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
-		return "", err
+		return "", "", 0, err
 	}
 	path := filepath.Join(cacheDir, strings.ToLower(theme)+".zip")
+	manualMarker := path + ".manual"
+
 	if st, err := os.Stat(path); err == nil && st.Size() > 1024 && time.Since(st.ModTime()) < 7*24*time.Hour {
-		return path, nil
+		if err := validSICARThemeZip(path); err == nil {
+			status := "cache_fresh"
+			if _, err := os.Stat(manualMarker); err == nil {
+				status = "manual"
+			}
+			return path, status, time.Since(st.ModTime()).Hours(), nil
+		}
 	}
 
+	var downloadErr error
+	for attempt := 1; attempt <= 2; attempt++ {
+		err := a.downloadSICARThemeZip(ctx, uf, municipalityCode, theme, path)
+		if err == nil {
+			st, _ := os.Stat(path)
+			_ = os.Remove(manualMarker)
+			age := 0.0
+			if st != nil {
+				age = time.Since(st.ModTime()).Hours()
+			}
+			return path, "online", age, nil
+		}
+		downloadErr = err
+		if attempt < 2 {
+			select {
+			case <-ctx.Done():
+				break
+			case <-time.After(1200 * time.Millisecond):
+			}
+		}
+	}
+
+	// Se o serviço público estiver instável, o último pacote válido continua útil
+	// como contingência. O status e a idade são devolvidos para a interface deixar
+	// explícito que se trata de cache, não de uma consulta online atual.
+	if st, err := os.Stat(path); err == nil && st.Size() > 1024 {
+		if err := validSICARThemeZip(path); err == nil {
+			status := "cache_stale"
+			if _, err := os.Stat(manualMarker); err == nil {
+				status = "manual"
+			}
+			return path, status, time.Since(st.ModTime()).Hours(), nil
+		}
+	}
+	if downloadErr == nil {
+		downloadErr = errors.New("pacote público do SICAR indisponível")
+	}
+	return "", "", 0, downloadErr
+}
+
+func (a *App) downloadSICARThemeZip(ctx context.Context, uf, municipalityCode, theme, path string) error {
 	params := url.Values{}
 	params.Set("municipio", municipalityCode)
 	params.Set("tema", theme)
@@ -144,45 +208,59 @@ func (a *App) ensureSICARThemeZip(ctx context.Context, uf, municipalityCode, the
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
-		return "", err
+		return err
 	}
 	req.Header.Set("Accept", "application/zip, application/octet-stream, */*")
+	req.Header.Set("Cache-Control", "no-cache")
 	req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion)
 	resp, err := (&http.Client{Timeout: 75 * time.Second}).Do(req)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GeoServices respondeu HTTP %d", resp.StatusCode)
+		return fmt.Errorf("GeoServices respondeu HTTP %d", resp.StatusCode)
 	}
+
 	tmp := path + ".part"
 	f, err := os.Create(tmp)
 	if err != nil {
-		return "", err
+		return err
 	}
 	n, copyErr := io.Copy(f, io.LimitReader(resp.Body, 120<<20))
 	closeErr := f.Close()
 	if copyErr != nil || closeErr != nil {
 		_ = os.Remove(tmp)
 		if copyErr != nil {
-			return "", copyErr
+			return copyErr
 		}
-		return "", closeErr
+		return closeErr
 	}
 	if n < 512 {
 		_ = os.Remove(tmp)
-		return "", errors.New("pacote retornado está vazio")
+		return errors.New("pacote retornado está vazio")
 	}
 	if n >= 120<<20 {
 		_ = os.Remove(tmp)
-		return "", errors.New("pacote municipal excedeu 120 MB")
+		return errors.New("pacote municipal excedeu 120 MB")
 	}
-	zr, err := zip.OpenReader(tmp)
-	if err != nil {
+	if err := validSICARThemeZip(tmp); err != nil {
 		_ = os.Remove(tmp)
-		return "", errors.New("GeoServices não retornou um ZIP válido")
+		return err
 	}
+	_ = os.Remove(path)
+	if err := os.Rename(tmp, path); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validSICARThemeZip(path string) error {
+	zr, err := zip.OpenReader(path)
+	if err != nil {
+		return errors.New("GeoServices não retornou um ZIP válido")
+	}
+	defer zr.Close()
 	hasShp := false
 	for _, zf := range zr.File {
 		if strings.HasSuffix(strings.ToLower(zf.Name), ".shp") {
@@ -190,16 +268,10 @@ func (a *App) ensureSICARThemeZip(ctx context.Context, uf, municipalityCode, the
 			break
 		}
 	}
-	_ = zr.Close()
 	if !hasShp {
-		_ = os.Remove(tmp)
-		return "", errors.New("pacote não contém shapefile")
+		return errors.New("pacote não contém shapefile")
 	}
-	_ = os.Remove(path)
-	if err := os.Rename(tmp, path); err != nil {
-		return "", err
-	}
-	return path, nil
+	return nil
 }
 
 func intersectThemeZipWithCAR(zipPath, carGeoJSON string, carAreaHa float64) (float64, int, string, error) {
