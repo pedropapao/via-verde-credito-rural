@@ -1,7 +1,13 @@
-CAR 1.0.8: melhora a leitura e o aproveitamento da tela CAR sem alterar as consultas, o banco de dados ou os contratos do backend.
+CAR 1.0.9: evolução funcional do Via Verde CAR.
 
-A conferência automática ficou mais compacta e passa a ocupar melhor a largura da tela. As métricas KML × SICAR e o painel de KML local aparecem apenas quando existe um KML externo carregado. O mapa ganhou maior destaque e os dados consultados ficaram mais compactos.
+• Temas SICAR mais resilientes: duas tentativas online, validação real do ZIP/Shapefile, reaproveitamento explícito do último pacote válido em cache quando o serviço público falhar e opção de importar manualmente um pacote oficial ZIP. A interface informa quando um tema veio de cache ou de importação manual.
 
-Os cruzamentos com IBAMA, FUNAI, ICMBio e MMA/MCR agora diferenciam visualmente consulta concluída sem ocorrência, situação que exige atenção e fonte indisponível. O bloco de Temas SICAR deixa de repetir seis falhas iguais quando o serviço não retorna os pacotes públicos: nesse caso, exibe um único aviso, com opção de tentar novamente e consultar os detalhes técnicos.
+• Central de conferência do imóvel: consolida validações do CAR, bases socioambientais, Temas SICAR, KML externo, áreas do projeto e roteiro de acesso. O resultado diferencia itens OK, pontos de atenção e fontes indisponíveis e lista ações manuais necessárias, sem declarar regularidade automaticamente.
 
-Também foram adicionados atalhos de Gerar KML e Gerar relatório na conferência técnica. Backend, SQLite, histórico, KML, relatórios, dossiê ambiental, backup e atualização automática foram preservados.
+• Monitoramento da carteira: novos botões de verificação rápida e completa para todos os CARs cadastrados. A rápida compara cadastro/geometria com a linha de base e só faz análise completa quando encontra mudança ou precisa criar a primeira linha de base. A completa refaz as triagens de todos os imóveis. O painel mostra imóveis sem alteração, alterados, com ocorrência para revisão e falhas de consulta.
+
+• Glebas e áreas do projeto: permite desenhar uma área diretamente no mapa ou importar um KML. O aplicativo calcula área, perímetro, centroide e percentual estimado da gleba dentro do CAR, salva o KML automaticamente, permite exportar e mantém várias áreas por imóvel.
+
+• Roteiro de acesso: permite marcar referência, entrada e sede diretamente no mapa, registrar distâncias de acesso e observações e gerar texto técnico com coordenadas. Quando a distância não é informada, o sistema usa distância em linha reta e deixa isso explícito. O roteiro pode ser copiado ou exportado em TXT.
+
+As tabelas locais foram ampliadas por migração segura e não apagam clientes, imóveis, histórico, KMLs ou configurações existentes. Consulta CAR, dossiê ambiental, PDF, backup e atualização automática foram preservados.
