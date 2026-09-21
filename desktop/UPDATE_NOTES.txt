@@ -1,21 +1,23 @@
-CAR 1.3.0: relevo automático e cobertura do solo no mapa.
+CAR 1.3.1: limpeza de consulta e reorganização visual completa da tela CAR.
 
-• As alternativas de gleba agora recebem análise de relevo antes da classificação final. O aplicativo amostra elevação dentro de cada opção usando Terrain Tiles públicos disponibilizados no AWS Open Data e calcula altitude mínima, máxima e média, amplitude de relevo e inclinação média/máxima estimada.
+• Novo botão “Nova consulta” ao lado de Consultar SICAR. Ele limpa o CAR atual, mapa, KML carregado, rota, glebas temporárias e arquivos transitórios da consulta. Clientes, imóveis, histórico, áreas de projeto permanentes e cache técnico do SICAR não são apagados.
 
-• O relevo entra com peso moderado na pontuação territorial como facilidade operacional do terreno. Menor inclinação e menor amplitude tendem a favorecer a nota, sem transformar esse resultado em recomendação agronômica para uma cultura específica.
+• A limpeza também remove KMLs temporários criados durante consulta avulsa e reposiciona o mapa para a visão inicial.
 
-• Para glebas pequenas ou com poucos pontos válidos, o Via Verde reduz a confiança da leitura e exibe um aviso. O resultado é uma indicação preliminar e não substitui levantamento topográfico, curvas de nível ou vistoria.
+• A tela CAR deixou de exibir todos os módulos ao mesmo tempo. O workspace passa a ser dividido em cinco abas: Resumo, Mapa, Áreas e acesso, Ambiental e Histórico e saídas.
 
-• A tela das Opções A, B e C passa a mostrar altitude média, inclinação média, desnível e leitura operacional do relevo, além dos critérios já existentes de acesso, compacidade, áreas utilizadas e temas SICAR.
+• Resumo: concentra situação do CAR, métricas principais, dados essenciais e conferência automática. Os campos menos usados ficam recolhidos em “Mais dados”.
 
-• Ao escolher uma gleba em imóvel cadastrado, os dados de relevo ficam armazenados junto à área do projeto para uso posterior em relatórios/dossiês. Em consulta avulsa, o relevo permanece no cache temporário da área escolhida.
+• Mapa: exibe o mapa em área maior e concentra as ações relacionadas ao KML externo. O painel de comparação só aparece quando houver KML carregado.
 
-• Foi adicionada ao mapa a camada visual “Cobertura do solo • ESA WorldCover 2021”, com resolução de 10 m e legenda das 11 classes (árvores, arbustos, gramíneas/pastagem, cultivo, área construída, solo exposto, água etc.). A camada fica desligada por padrão e pode ser ativada na seleção inteligente.
+• Áreas e acesso: reúne seleção inteligente de glebas, relevo, cobertura do solo, áreas do projeto e roteiro automático.
 
-• A camada ESA WorldCover é usada como apoio visual. Nesta versão ela não é tratada como prova de uso atual nem como conclusão ambiental, pois o WMS disponibiliza uma representação cartográfica e o produto de referência é de 2021.
+• Ambiental: reúne triagem pública (IBAMA, FUNAI, ICMBio e MMA/MCR) e os temas declarados do SICAR, sem ocupar espaço na tela principal.
 
-• Fontes do relevo: Terrain Tiles / AWS Open Data, com mosaico de SRTM, GMTED2010, ETOPO1 e outras fontes conforme a região. No Brasil, a leitura é normalmente baseada em SRTM. Atribuições das fontes permanecem informadas no aplicativo.
+• Histórico e saídas: concentra rastreabilidade, histórico de consultas, PDF técnico e dossiê ZIP.
 
-• Fonte visual de cobertura: ESA WorldCover 2021 v200 / Terrascope WMS, com dados Sentinel processados pelo consórcio WorldCover.
+• As abas mostram pequenos contadores quando há histórico, áreas do projeto ou informações ambientais disponíveis.
 
-Consulta CAR, roteiro automático, Temas SICAR, triagem ambiental, três alternativas de gleba, KML, histórico, carteira, backup e atualização automática foram preservados.
+• A barra superior da consulta ficou mais compacta. O botão Nova consulta informa explicitamente que dados salvos não serão excluídos.
+
+Nenhuma funcionalidade existente foi removida. Consulta CAR, mapa, roteiro automático, Temas SICAR, relevo, WorldCover, inteligência territorial, KML, histórico, carteira, relatórios, backup e atualização automática permanecem disponíveis.
