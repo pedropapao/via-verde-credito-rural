@@ -24,6 +24,7 @@ type AreaAlternative struct {
 	ExistingOverlapPct  float64            `json:"existing_overlap_pct"`
 	ThemeOverlapHa      map[string]float64 `json:"theme_overlap_ha"`
 	ThemeOverlapPct     map[string]float64 `json:"theme_overlap_pct"`
+	Terrain              TerrainMetric      `json:"terrain"`
 	Flags               []string           `json:"flags"`
 	Explanation         string             `json:"explanation"`
 	GeoJSON             string             `json:"geojson"`
@@ -34,6 +35,7 @@ type AreaAlternativesResult struct {
 	Candidates      []AreaAlternative `json:"candidates"`
 	AccessUsed      bool              `json:"access_used"`
 	ThemesUsed      []string          `json:"themes_used"`
+	TerrainSource   string            `json:"terrain_source"`
 	Warnings        []string          `json:"warnings"`
 	Method          string            `json:"method"`
 }
@@ -52,7 +54,7 @@ func (a *App) GenerateProjectAreaAlternatives(propertyID int64, name, purpose st
 
 	result := AreaAlternativesResult{
 		RequestedAreaHa: targetAreaHa,
-		Method: "comparação preliminar por geometria, proximidade do acesso, conflito com áreas já usadas e temas declarados do SICAR quando disponíveis",
+		Method: "comparação preliminar por geometria, proximidade do acesso, relevo, conflito com áreas já usadas e temas declarados do SICAR quando disponíveis",
 	}
 	route := car.AutoRoute
 	if propertyID > 0 {
@@ -148,7 +150,6 @@ func (a *App) GenerateProjectAreaAlternatives(propertyID int64, name, purpose st
 				alt.ThemeOverlapPct[code] = pct
 			}
 		}
-		scoreAreaAlternative(&alt, result.AccessUsed)
 		candidates = append(candidates, alt)
 		if len(candidates) >= 8 {
 			break
@@ -156,6 +157,15 @@ func (a *App) GenerateProjectAreaAlternatives(propertyID int64, name, purpose st
 	}
 	if len(candidates) == 0 {
 		return result, errors.New("não foi possível formar opções compactas com a área solicitada dentro do CAR")
+	}
+
+	if source, terrainErr := enrichAreaAlternativesTerrain(candidates); terrainErr == nil {
+		result.TerrainSource = source
+	} else {
+		result.Warnings = append(result.Warnings, "Relevo/declividade indisponível nesta análise: "+terrainErr.Error())
+	}
+	for i := range candidates {
+		scoreAreaAlternative(&candidates[i], result.AccessUsed)
 	}
 
 	sort.SliceStable(candidates, func(i, j int) bool { return candidates[i].Score > candidates[j].Score })
@@ -341,7 +351,11 @@ func scoreAreaAlternative(a *AreaAlternative, hasAccess bool) {
 		consolidatedBonus = math.Min(5, pct/100*5)
 	}
 
-	a.Score = insideScore*30 + compactScore*20 + accessScore*20 + existingScore*20 + attentionScore*10 + consolidatedBonus
+	terrainScore := 0.5
+	if a.Terrain.Available {
+		terrainScore = math.Max(0, math.Min(1, a.Terrain.OperationalScore/100))
+	}
+	a.Score = insideScore*25 + compactScore*15 + accessScore*20 + existingScore*20 + attentionScore*10 + terrainScore*10 + consolidatedBonus
 	if a.Score > 100 {
 		a.Score = 100
 	}
@@ -351,6 +365,14 @@ func scoreAreaAlternative(a *AreaAlternative, hasAccess bool) {
 	for _, code := range []string{"APP", "VEGETACAO_NATIVA", "RESERVA_LEGAL", "USO_RESTRITO", "SERVIDAO_ADMINISTRATIVA"} {
 		if pct := a.ThemeOverlapPct[code]; pct > 0.5 {
 			a.Flags = append(a.Flags, fmt.Sprintf("%s declarado: %.1f%% da gleba", areaThemeShortLabel(code), pct))
+		}
+	}
+	if a.Terrain.Available {
+		if a.Terrain.MeanSlopePct >= 15 {
+			a.Flags = append(a.Flags, fmt.Sprintf("relevo mais acentuado: inclinação média estimada %.1f%%", a.Terrain.MeanSlopePct))
+		}
+		if a.Terrain.Warning != "" {
+			a.Flags = append(a.Flags, "relevo: "+a.Terrain.Warning)
 		}
 	}
 }
@@ -380,6 +402,10 @@ func explainAreaAlternative(a AreaAlternative, hasAccess, hasThemes bool) string
 		if pct := a.ThemeOverlapPct["AREA_CONSOLIDADA"]; pct > 0.5 {
 			parts = append(parts, fmt.Sprintf("%.0f%% em área consolidada declarada", pct))
 		}
+	}
+	if a.Terrain.Available {
+		parts = append(parts, fmt.Sprintf("altitude média %.0f m", a.Terrain.ElevationMeanM))
+		parts = append(parts, fmt.Sprintf("inclinação média estimada %.1f%%", a.Terrain.MeanSlopePct))
 	}
 	return strings.Join(parts, " • ")
 }
