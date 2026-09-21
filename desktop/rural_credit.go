@@ -346,28 +346,6 @@ func getODataRows(ctx context.Context, target string) ([]map[string]any, error) 
 	return payload.Value, nil
 }
 
-func detectBCBFields(sample map[string]any) map[string]string {
-	out := map[string]string{}
-	for key := range sample {
-		k := strings.ToLower(key)
-		switch {
-		case out["municipality"] == "" && (strings.Contains(k, "municip") || strings.Contains(k, "ibge")):
-			out["municipality"] = key
-		case out["uf"] == "" && (k == "uf" || strings.Contains(k, "siglauf") || strings.Contains(k, "estado")):
-			out["uf"] = key
-		case out["year"] == "" && strings.Contains(k, "ano"):
-			out["year"] = key
-		case out["product"] == "" && (strings.Contains(k, "produto") || strings.Contains(k, "atividade")):
-			out["product"] = key
-		case out["contracts"] == "" && (strings.Contains(k, "qtd") || strings.Contains(k, "quant")) && strings.Contains(k, "contr"):
-			out["contracts"] = key
-		case out["value"] == "" && (strings.Contains(k, "valor") || strings.HasPrefix(k, "vl")):
-			out["value"] = key
-		}
-	}
-	return out
-}
-
 func firstStringMapValue(m map[string]any, key string) string {
 	if key == "" {
 		return ""
