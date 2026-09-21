@@ -1,0 +1,18 @@
+/* ViaVerdeCAR 1.2.0 — inteligência territorial preliminar */
+.area-intelligence120{margin-top:12px}
+.area-intelligence-head120{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:9px}
+.area-intelligence-head120 strong{font-size:11px}.area-intelligence-head120 span{font-size:8px;color:#6e7b73;line-height:1.45}
+.area-candidates120{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.area-candidate120{border:1px solid #dce5da;border-radius:11px;background:#fff;padding:11px;display:grid;gap:8px;position:relative}
+.area-candidate120.best{border-color:#a9c9ae;background:#f7fbf7}
+.area-candidate-top120{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.area-candidate-top120 strong{font-size:11px}.area-score120{display:inline-flex;align-items:center;justify-content:center;min-width:52px;padding:5px 7px;border-radius:999px;background:#e9f3ea;color:#2e6841;font-weight:900;font-size:9px}
+.area-candidate120:not(.best) .area-score120{background:#f1f4f1;color:#5e6a62}
+.area-metrics120{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.area-metric120{padding:7px;border:1px solid #e7ece6;border-radius:8px;background:#fafcfa}.area-metric120 span,.area-metric120 strong{display:block}.area-metric120 span{font-size:7px;color:#7a857e;text-transform:uppercase;font-weight:800}.area-metric120 strong{font-size:9px;margin-top:2px}
+.area-explanation120{font-size:8px;line-height:1.45;color:#55645b;min-height:34px}
+.area-flags120{display:grid;gap:4px}.area-flag120{font-size:8px;line-height:1.35;padding:5px 7px;border-radius:7px;background:#fff7e8;color:#7c5b19;border:1px solid #ead9b1}.area-flag120.ok{background:#f2f8f2;color:#3d6848;border-color:#d9e8da}
+.area-candidate-actions120{display:flex;gap:6px;flex-wrap:wrap}.area-candidate-actions120 .btn{padding:7px 9px}
+.area-intelligence-note120{margin-top:8px;padding:8px 10px;border-radius:8px;background:#f4f7f8;border:1px solid #e1e7ea;font-size:8px;color:#66757d;line-height:1.45}
+.area-candidate-loading120{padding:14px;border:1px dashed #cdd8cc;border-radius:10px;font-size:9px;color:#657269;text-align:center}
+.area-chosen120{margin-top:9px;padding:9px 10px;border-radius:9px;background:#eef7ef;border:1px solid #d0e3d2;font-size:9px;color:#3e6248}
+@media(max-width:1150px){.area-candidates120{grid-template-columns:1fr}.area-candidate120{grid-template-columns:1fr}.area-metrics120{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:700px){.area-metrics120{grid-template-columns:1fr 1fr}.area-intelligence-head120{flex-direction:column}}
