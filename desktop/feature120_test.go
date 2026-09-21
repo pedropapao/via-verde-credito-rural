@@ -1,28 +1,33 @@
 package main
 
 import (
-	"encoding/json"
+	"image"
+	"image/color"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
 func TestGenerateProjectAreaAlternativesAvulsa(t *testing.T) {
-	oldEndpoint := terrainElevationEndpoint
+	oldTemplate := terrainTileURLTemplate
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		n := len(strings.Split(r.URL.Query().Get("latitude"), ","))
-		values := make([]float64, n)
-		for i := range values {
-			values[i] = 800 + float64(i%7)*3
+		img := image.NewRGBA(image.Rect(0, 0, 256, 256))
+		// 800 m em Terrarium: (R*256 + G + B/256) - 32768.
+		c := color.RGBA{R: 131, G: 32, B: 0, A: 255}
+		for y := 0; y < 256; y++ {
+			for x := 0; x < 256; x++ {
+				img.SetRGBA(x, y, c)
+			}
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"elevation": values})
+		w.Header().Set("Content-Type", "image/png")
+		_ = png.Encode(w, img)
 	}))
 	defer server.Close()
-	terrainElevationEndpoint = server.URL
-	defer func(){ terrainElevationEndpoint = oldEndpoint }()
+	terrainTileURLTemplate = server.URL + "/%d/%d/%d.png"
+	defer func(){ terrainTileURLTemplate = oldTemplate }()
 
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "cache"), 0o755); err != nil {
