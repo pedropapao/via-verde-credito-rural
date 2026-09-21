@@ -1,11 +1,19 @@
-CAR 1.1.1: correção da automação em consulta avulsa.
+CAR 1.2.0: inteligência territorial preliminar para escolha de glebas.
 
-• A delimitação automática de glebas não exige mais que o CAR esteja vinculado a um imóvel salvo. Em uma consulta avulsa, basta consultar o CAR, informar a área desejada (ex.: 1 ha, 5 ha, 25 ha) e clicar em “Delimitar automaticamente”.
+• O botão de delimitação automática passa a gerar até três alternativas de área, em vez de escolher silenciosamente uma única posição.
 
-• A gleba criada em consulta avulsa fica temporariamente vinculada à sessão do CAR por até 24 horas, aparece no mapa, mostra área/perímetro/% dentro do CAR e pode ser exportada em KML. Ao cadastrar o imóvel depois, as áreas permanentes continuam sendo salvas normalmente no banco local.
+• Cada opção é comparada por critérios transparentes: percentual dentro do CAR, compacidade do formato, distância até o acesso viário automático, sobreposição com áreas de projeto já cadastradas e, quando disponíveis, temas declarados do SICAR.
 
-• O roteiro automático também passa a permitir recalcular e exportar TXT durante uma consulta avulsa, sem exigir imóvel cadastrado.
+• Temas SICAR utilizados na comparação: APP, Reserva Legal, Remanescente de Vegetação Nativa, Uso Restrito, Servidão Administrativa e Área Consolidada. A presença nesses temas é tratada como informação/atenção territorial e não como conclusão de regularidade ou impedimento legal.
 
-• O mapa temporário, a rota automática e a gleba temporária permanecem associados à última consulta avulsa restaurável.
+• Áreas de projeto já salvas recebem forte penalização na pontuação quando há sobreposição, reduzindo a chance de o sistema propor novamente uma gleba já usada em outro projeto.
 
-Esta versão corrige especificamente o aviso “Selecione um imóvel salvo para gerar a gleba” que aparecia mesmo quando o CAR já tinha sido consultado e estava desenhado no mapa.
+• Quando existe roteiro automático, a proximidade do acesso também entra na pontuação. Sem roteiro, o sistema mantém uma pontuação neutra para esse critério.
+
+• A tela mostra Opção A, B e C com pontuação preliminar, área, percentual dentro do CAR, compacidade, distância do acesso, conflito com áreas já utilizadas, alertas dos temas disponíveis e explicação resumida.
+
+• O usuário pode visualizar qualquer alternativa no mapa e clicar em “Usar esta área”. Em imóvel cadastrado, a escolha é salva permanentemente. Em consulta avulsa, continua temporária por até 24 horas e pode ser exportada em KML.
+
+• Se os temas detalhados do SICAR estiverem indisponíveis, o sistema continua funcionando e informa claramente que a comparação usou apenas geometria, acesso e áreas já registradas.
+
+A pontuação é uma triagem territorial preliminar. Não substitui avaliação agronômica, licenciamento, análise ambiental oficial, levantamento topográfico ou verificação em campo.
