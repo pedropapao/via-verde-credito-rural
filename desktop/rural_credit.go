@@ -77,10 +77,20 @@ func (a *App) GetRuralCreditOverview(propertyID int64) (RuralCreditOverview, err
 	bcbCh := make(chan bcbResult, 1)
 	alertCh := make(chan alertResult, 1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				bcbCh <- bcbResult{err: fmt.Errorf("falha interna isolada na consulta BCB/SICOR: %v", r)}
+			}
+		}()
 		v, e := queryBCBRuralMunicipality(ctx, car.Municipality, car.UF, car.MunicipalityCode)
 		bcbCh <- bcbResult{v: v, err: e}
 	}()
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				alertCh <- alertResult{err: fmt.Errorf("falha interna isolada na consulta MapBiomas: %v", r)}
+			}
+		}()
 		v, e := a.QueryMapBiomasCAR(car.CAR)
 		alertCh <- alertResult{v: v, err: e}
 	}()

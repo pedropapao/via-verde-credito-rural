@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 1.4.0 — Crédito Rural + MapBiomas */
+/* ViaVerdeCAR 1.4.1 — Crédito Rural isolado e carregado sob demanda */
 (function(){
   const g=id=>document.getElementById(id);
   const s140={overview:null,alertLayer:null,loadedCar:''};
@@ -11,7 +11,7 @@
       tabs.insertBefore(b,docsBtn);
       const panel=document.createElement('section');panel.className='car-tab-panel131';panel.id='carTabCredit140';
       const docsPanel=g('carTabDocs131');docsPanel?.parentNode?.insertBefore(panel,docsPanel);
-      panel.innerHTML='<div id="creditWorkspace140"><div class="credit-loading140">Consulte um CAR para carregar o histórico territorial e o contexto de crédito rural.</div></div>';
+      panel.innerHTML='<div id="creditWorkspace140"></div>';
       b.onclick=()=>openCreditTab140();
     }
     prepareSettings140();
@@ -21,19 +21,34 @@
     document.querySelectorAll('[data-car-tab131]').forEach(x=>x.classList.toggle('active',x.dataset.carTab131==='credit'));
     document.querySelectorAll('.car-tab-panel131').forEach(p=>p.classList.remove('active'));
     g('carTabCredit140')?.classList.add('active');
-    if(state.car?.car&&s140.loadedCar!==state.car.car)loadCredit140();
+    renderCreditIdle140();
+  }
+
+  function renderCreditIdle140(){
+    const box=g('creditWorkspace140');if(!box)return;
+    if(!state.car?.car){
+      box.innerHTML='<div class="credit-loading140">Consulte um CAR primeiro. A integração de Crédito Rural não é carregada durante a inicialização do aplicativo.</div>';
+      return;
+    }
+    if(s140.loadedCar===state.car.car&&s140.overview){
+      renderCredit140(s140.overview);
+      return;
+    }
+    box.innerHTML='<article class="panel credit-hero140"><div class="panel-title"><div><span class="eyebrow">CRÉDITO RURAL • CAR '+esc(state.car.car)+'</span><h3>Consulta externa sob demanda</h3><p>Para proteger a estabilidade do Via Verde, Banco Central/SICOR e MapBiomas só serão consultados quando você mandar.</p></div><span class="status-badge neutral">Aguardando</span></div><div class="credit-actions140"><button class="btn primary" id="startCredit140">Consultar Crédito Rural agora</button><button class="btn ghost" id="openCreditMonitorDirect140">Copiar CAR e abrir Monitor</button></div><div class="credit-note140">Se uma fonte externa falhar, o erro ficará restrito a esta aba e o restante do aplicativo continuará funcionando.</div></article>';
+    g('startCredit140').onclick=loadCredit140;
+    g('openCreditMonitorDirect140').onclick=async()=>{await copyText(state.car.car,'CAR copiado.');openExternal('https://plataforma.creditorural.mapbiomas.org/')};
   }
 
   function prepareSettings140(){
     const grid=document.querySelector('#view-settings .settings-grid');
     if(!grid||g('mapBiomasSettings140'))return;
     const card=document.createElement('article');card.className='panel credit-settings140';card.id='mapBiomasSettings140';
-    card.innerHTML='<span class="eyebrow">MAPBIOMAS ALERTA</span><h3>Conexão da API</h3><p>A API oficial do MapBiomas Alerta exige uma conta confirmada. A senha é usada somente para obter o token e não é armazenada pelo Via Verde.</p><div id="mapBiomasStatus140" class="credit-connected140">Verificando conexão...</div><div class="mapbiomas-login140"><label>E-mail<input id="mapBiomasEmail140" type="email" autocomplete="username" placeholder="seu@email.com"></label><label>Senha<input id="mapBiomasPassword140" type="password" autocomplete="current-password" placeholder="••••••••"></label><div class="form-actions full"><button class="btn primary" id="mapBiomasConnect140">Conectar</button><button class="btn ghost" id="mapBiomasDisconnect140">Desconectar</button><button class="btn ghost" id="mapBiomasSignup140">Criar conta</button></div></div>';
+    card.innerHTML='<span class="eyebrow">MAPBIOMAS ALERTA</span><h3>Conexão da API</h3><p>A API oficial do MapBiomas Alerta exige uma conta confirmada. A senha é usada somente para obter o token e não é armazenada pelo Via Verde.</p><div id="mapBiomasStatus140" class="credit-connected140">Conexão não verificada nesta sessão.</div><div class="mapbiomas-login140"><label>E-mail<input id="mapBiomasEmail140" type="email" autocomplete="username" placeholder="seu@email.com"></label><label>Senha<input id="mapBiomasPassword140" type="password" autocomplete="current-password" placeholder="••••••••"></label><div class="form-actions full"><button class="btn ghost" id="mapBiomasCheck140">Verificar conexão</button><button class="btn primary" id="mapBiomasConnect140">Conectar</button><button class="btn ghost" id="mapBiomasDisconnect140">Desconectar</button><button class="btn ghost" id="mapBiomasSignup140">Criar conta</button></div></div>';
     grid.appendChild(card);
+    g('mapBiomasCheck140').onclick=loadMapBiomasStatus140;
     g('mapBiomasConnect140').onclick=connectMapBiomas140;
     g('mapBiomasDisconnect140').onclick=disconnectMapBiomas140;
     g('mapBiomasSignup140').onclick=()=>openExternal('https://plataforma.alerta.mapbiomas.org/sign-up');
-    setTimeout(loadMapBiomasStatus140,200);
   }
 
   async function loadMapBiomasStatus140(){
@@ -52,13 +67,13 @@
     try{
       const s=await api().MapBiomasAlertLogin(email,password);
       g('mapBiomasPassword140').value='';toast(s.message||'MapBiomas Alerta conectado.');await loadMapBiomasStatus140();
-      if(state.car?.car){s140.loadedCar='';await loadCredit140()}
+      s140.loadedCar='';s140.overview=null
     }catch(e){toast(String(e),true)}
     finally{b.disabled=false;b.textContent='Conectar'}
   }
   async function disconnectMapBiomas140(){
     if(!confirm('Desconectar a conta MapBiomas Alerta deste computador?'))return;
-    try{await api().DisconnectMapBiomasAlert();g('mapBiomasPassword140').value='';await loadMapBiomasStatus140();s140.loadedCar='';if(state.car?.car)await loadCredit140();toast('MapBiomas Alerta desconectado.')}catch(e){toast(String(e),true)}
+    try{await api().DisconnectMapBiomasAlert();g('mapBiomasPassword140').value='';await loadMapBiomasStatus140();s140.loadedCar='';s140.overview=null;toast('MapBiomas Alerta desconectado.')}catch(e){toast(String(e),true)}
   }
 
   async function loadCredit140(){
@@ -130,12 +145,11 @@
     setTimeout(()=>{try{const pts=s140.alertLayer.getLayers().map(x=>x.getLatLng()).filter(Boolean);if(pts.length)state.map.fitBounds(L.latLngBounds(pts).pad(.35),{maxZoom:15})}catch(e){}},100);
   }
 
-  function installOverrides140(){
-    const oldRender=renderCAR,oldReset=resetCARWorkspace,oldSelect=selectCarProperty;
-    renderCAR=function(r){oldRender(r);if(r?.car){s140.loadedCar='';setTimeout(loadCredit140,50)}};
-    resetCARWorkspace=function(){oldReset();clearAlertMarkers140();s140.overview=null;s140.loadedCar='';setCreditCount140(0);const box=g('creditWorkspace140');if(box)box.innerHTML='<div class="credit-loading140">Consulte um CAR para carregar o histórico territorial e o contexto de crédito rural.</div>'};
-    selectCarProperty=async function(id){await oldSelect(id);if(state.car?.car){s140.loadedCar='';setTimeout(loadCredit140,50)}};
+  function safePrepare140(){
+    try{prepare140();renderCreditIdle140()}catch(e){
+      try{console.error('ViaVerdeCAR Crédito Rural isolado:',e)}catch(_){}
+    }
   }
 
-  document.addEventListener('DOMContentLoaded',()=>{prepare140();installOverrides140()});
+  document.addEventListener('DOMContentLoaded',safePrepare140);
 })();
