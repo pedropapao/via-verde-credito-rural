@@ -73,13 +73,16 @@
     s131.ready=true;
     setCarTab131('summary');
     updateResetState131();
+    const areaList=g('areaList109');if(areaList)new MutationObserver(updateTabBadges131).observe(areaList,{childList:true,subtree:true});
+    const historyList=g('carHistory');if(historyList)new MutationObserver(updateTabBadges131).observe(historyList,{childList:true,subtree:true});
 
-    const oldRender=renderCAR,oldReset=resetCARWorkspace,oldKML=renderKML,oldEnv=renderEnvironment,oldThemes=renderThemes;
+    const oldRender=renderCAR,oldReset=resetCARWorkspace,oldKML=renderKML,oldEnv=renderEnvironment,oldThemes=renderThemes,oldHistory=renderHistory;
     renderCAR=function(r){oldRender(r);g('carEmptyTip131')?.classList.toggle('hidden',!!r?.found);updateResetState131();};
     resetCARWorkspace=function(){oldReset();g('carEmptyTip131')?.classList.remove('hidden');updateResetState131();collapseDataCard131();};
     renderKML=function(r){oldKML(r);updateTabBadges131();};
     renderEnvironment=function(r){oldEnv(r);updateTabBadges131();};
     renderThemes=function(r){oldThemes(r);updateTabBadges131();};
+    renderHistory=function(items){oldHistory(items);setTimeout(updateTabBadges131,0)};
   }
 
   function addResetButton131(toolbar){
@@ -90,6 +93,7 @@
     b.id='resetCarBtn131';b.type='button';b.className='btn ghost car-reset131';b.textContent='Nova consulta';b.disabled=true;
     b.title='Limpa a consulta atual sem apagar clientes, imóveis ou histórico salvo';
     b.onclick=clearCurrentCAR131;action.appendChild(b);
+    g('carInput')?.addEventListener('input',updateResetState131);
     const note=document.createElement('div');note.className='car-clean-note131';note.textContent='“Nova consulta” limpa somente a tela e os arquivos temporários; dados salvos permanecem.';
     toolbar.querySelector('.car-query-wrap')?.appendChild(note);
   }
