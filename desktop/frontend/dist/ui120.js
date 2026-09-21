@@ -44,10 +44,18 @@
       const access=r.access_used?metric120('Dist. acesso',x.distance_to_access_m>=1000?fmt(x.distance_to_access_m/1000,2)+' km':fmt(x.distance_to_access_m,0)+' m'):'';
       const conflicts=x.existing_overlap_pct>0.5?fmt(x.existing_overlap_pct,1)+'%':'0%';
       const flags=(x.flags||[]).length?(x.flags||[]).map(f=>'<div class="area-flag120">'+esc(f)+'</div>').join(''):'<div class="area-flag120 ok">Nenhum alerta relevante nos critérios disponíveis.</div>';
-      return '<article class="area-candidate120 '+(i===0?'best':'')+'" data-alt="'+i+'"><div class="area-candidate-top120"><div><strong>'+esc(x.label)+(i===0?' • maior pontuação':'')+'</strong><div class="area-explanation120">'+esc(x.explanation||'')+'</div></div><div class="area-score120">'+fmt(x.score,0)+'/100</div></div><div class="area-metrics120">'+metric120('Área',fmt(x.area_ha,4)+' ha')+metric120('Dentro CAR',fmt(x.inside_car_pct,1)+'%')+metric120('Compacidade',fmt(x.compactness_pct,0)+'%')+access+metric120('Área já usada',conflicts)+'</div><div class="area-flags120">'+flags+'</div><div class="area-candidate-actions120"><button class="btn ghost" data-preview-alt="'+i+'">Ver no mapa</button><button class="btn primary" data-choose-alt="'+i+'">Usar esta área</button></div></article>';
+      const terrain=x.terrain||{};
+      const terrainMetrics=terrain.available
+        ? metric120('Altitude média',fmt(terrain.elevation_mean_m,0)+' m')
+          +metric120('Inclinação média',fmt(terrain.mean_slope_pct,1)+'%')
+          +metric120('Desnível',fmt(terrain.relief_m,0)+' m')
+          +metric120('Leitura do relevo',fmt(terrain.operational_score,0)+'/100')
+        : '';
+      return '<article class="area-candidate120 '+(i===0?'best':'')+'" data-alt="'+i+'"><div class="area-candidate-top120"><div><strong>'+esc(x.label)+(i===0?' • maior pontuação':'')+'</strong><div class="area-explanation120">'+esc(x.explanation||'')+'</div></div><div class="area-score120">'+fmt(x.score,0)+'/100</div></div><div class="area-metrics120">'+metric120('Área',fmt(x.area_ha,4)+' ha')+metric120('Dentro CAR',fmt(x.inside_car_pct,1)+'%')+metric120('Compacidade',fmt(x.compactness_pct,0)+'%')+access+metric120('Área já usada',conflicts)+terrainMetrics+'</div><div class="area-flags120">'+flags+'</div><div class="area-candidate-actions120"><button class="btn ghost" data-preview-alt="'+i+'">Ver no mapa</button><button class="btn primary" data-choose-alt="'+i+'">Usar esta área</button></div></article>';
     }).join('');
     const warnings=(r.warnings||[]).map(w=>esc(w)).join(' • ');
-    out.innerHTML='<div class="area-candidates120">'+cards+'</div><div class="area-intelligence-note120">'+esc(r.method||'')+(warnings?'<br><strong>Aviso:</strong> '+warnings:'')+'</div>';
+    const terrainSource=r.terrain_source?'<br><strong>Relevo:</strong> '+esc(r.terrain_source)+'. Inclinação estimada a partir de amostras do DEM; não substitui levantamento topográfico.':'';
+    out.innerHTML='<div class="area-candidates120">'+cards+'</div><div class="area-intelligence-note120">'+esc(r.method||'')+terrainSource+(warnings?'<br><strong>Aviso:</strong> '+warnings:'')+'</div>';
     document.querySelectorAll('[data-preview-alt]').forEach(b=>b.onclick=()=>previewAlternative120(Number(b.dataset.previewAlt)));
     document.querySelectorAll('[data-choose-alt]').forEach(b=>b.onclick=()=>chooseAlternative120(Number(b.dataset.chooseAlt),b));
   }
