@@ -2,7 +2,7 @@ name: Via Verde CAR Desktop Windows
 
 on:
   push:
-    branches: [desktop-v1-car]
+    branches: [desktop-v1-car-current]
     paths:
       - 'desktop/**'
       - '.github/workflows/desktop-windows.yml'
