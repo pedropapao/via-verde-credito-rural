@@ -1,7 +1,7 @@
 /* ViaVerdeCAR 1.1.0 — automação total do mapa, acesso e área do projeto. */
 (function(){
   const q=id=>document.getElementById(id);
-  const s110={route:null,routeLayer:null};
+  const s110={route:null,routeLayer:null,tempArea:null,tempAreaLayer:null};
 
   function prepare110(){
     const areaPanel=document.querySelector('.project-areas-panel');
@@ -32,17 +32,38 @@
   }
 
   async function generateAutoArea110(){
-    if(!state.selectedProperty){toast('Selecione um imóvel salvo para gerar a gleba.',true);return}
+    if(!state.car?.geojson&&!state.selectedProperty){toast('Consulte um CAR antes de gerar a gleba.',true);return}
     const target=Number(q('autoAreaTarget110').value)||0;if(target<=0){toast('Informe a área necessária em hectares.',true);return}
     const btn=q('generateAutoArea110');btn.disabled=true;btn.textContent='Delimitando...';
     try{
-      const x=await api().GenerateAutomaticProjectArea(state.selectedProperty.id,q('autoAreaName110').value,q('autoAreaPurpose110').value,target);
-      toast('Gleba automática criada: '+fmt(x.area_ha,4)+' ha.');
-      await selectCarProperty(state.selectedProperty.id);
-      setTimeout(()=>{const layer=[...document.querySelectorAll('[data-area-fit]')].find(b=>Number(b.dataset.areaFit)===x.id);layer?.click()},250);
+      const propertyID=state.selectedProperty?.id||0;
+      const x=await api().GenerateAutomaticProjectArea(propertyID,q('autoAreaName110').value,q('autoAreaPurpose110').value,target);
+      if(propertyID){
+        toast('Gleba automática criada: '+fmt(x.area_ha,4)+' ha.');
+        await selectCarProperty(propertyID);
+        setTimeout(()=>{const layer=[...document.querySelectorAll('[data-area-fit]')].find(b=>Number(b.dataset.areaFit)===x.id);layer?.click()},250);
+      }else{
+        renderTemporaryArea110(x,true);
+        toast('Gleba temporária criada: '+fmt(x.area_ha,4)+' ha. Você pode exportar o KML mesmo sem cadastrar o imóvel.');
+      }
     }catch(e){toast(String(e),true)}
     finally{btn.disabled=false;btn.textContent='Delimitar automaticamente'}
   }
+
+  function clearTemporaryArea110(){if(s110.tempAreaLayer){try{state.map?.removeLayer(s110.tempAreaLayer);state.layerControl?.removeLayer(s110.tempAreaLayer)}catch(e){}s110.tempAreaLayer=null}s110.tempArea=null}
+  function renderTemporaryArea110(x,fit=false){
+    clearTemporaryArea110();s110.tempArea=x||null;
+    const box=document.getElementById('areaList109');
+    if(!x?.geojson){if(box&&!state.selectedProperty&&state.car?.geojson)box.innerHTML='<div class="empty-state">Consulta avulsa: informe a área necessária acima. A gleba será mantida temporariamente nesta consulta.</div>';return}
+    try{
+      const layer=L.geoJSON(JSON.parse(x.geojson),{style:{color:'#7a5a18',weight:3,dashArray:'5 3',fillColor:'#d7b866',fillOpacity:.20}});
+      layer.addTo(state.map);state.layerControl?.addOverlay(layer,'Gleba temporária • '+x.name);s110.tempAreaLayer=layer;
+      if(fit){const b=layer.getBounds();if(b.isValid())state.map.fitBounds(b.pad(.18),{maxZoom:18})}
+    }catch(e){}
+    if(box)box.innerHTML='<div class="area-row109"><div><strong>'+esc(x.name||'Gleba temporária')+'</strong><span>'+esc(x.purpose||'Consulta avulsa')+'</span><small>'+fmt(x.area_ha,4)+' ha • '+fmt((x.perimeter_m||0)/1000,3)+' km • <b class="'+((x.inside_car_pct||0)>=98?'inside-ok':'inside-warning')+'">'+fmt(x.inside_car_pct||0,1)+'% dentro do CAR</b> • temporária</small></div><div class="row-actions"><button class="btn ghost" id="exportTempArea110">Salvar KML</button></div></div>';
+    q('exportTempArea110')?.addEventListener('click',exportTemporaryArea110);
+  }
+  async function exportTemporaryArea110(){try{const p=await api().ExportTemporaryProjectAreaKML();toast('KML salvo em '+p)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
 
   function clearRouteLayer110(){if(s110.routeLayer){try{state.map?.removeLayer(s110.routeLayer);state.layerControl?.removeLayer(s110.routeLayer)}catch(e){}s110.routeLayer=null}}
   function drawRoute110(r){
@@ -63,8 +84,8 @@
     q('openAutoMaps110').onclick=()=>openExternal(r.google_maps_url);q('copyAutoRoute110').onclick=()=>copyText(fullRouteText110(r),'Roteiro copiado.');q('exportAutoRoute110').onclick=exportAutoRoute110;q('regenAutoRoute110').onclick=regenAutoRoute110;drawRoute110(r);
   }
   function fullRouteText110(r){let t=r.text||'';if((r.steps||[]).length)t+='\n\nINSTRUÇÕES DA ROTA\n'+r.steps.map((x,i)=>(i+1)+'. '+x.instruction+(x.road?' — '+x.road:'')+(x.distance_km?' ('+fmt(x.distance_km,2)+' km)':'')).join('\n');return t}
-  async function exportAutoRoute110(){if(!state.selectedProperty){toast('Selecione o imóvel salvo.',true);return}try{const p=await api().ExportAccessRouteTXT(state.selectedProperty.id);toast('Roteiro salvo em '+p)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
-  async function regenAutoRoute110(){if(!state.selectedProperty){toast('Selecione o imóvel salvo para recalcular.',true);return}const b=q('regenAutoRoute110');b.disabled=true;b.textContent='Calculando...';try{const r=await api().RegenerateAutomaticAccessRoute(state.selectedProperty.id);renderAutoRoute110(r);toast('Rota recalculada.')}catch(e){toast(String(e),true)}finally{b.disabled=false;b.textContent='Recalcular automaticamente'}}
+  async function exportAutoRoute110(){if(!state.car&&!state.selectedProperty){toast('Consulte um CAR primeiro.',true);return}try{const p=await api().ExportAccessRouteTXT(state.selectedProperty?.id||0);toast('Roteiro salvo em '+p)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
+  async function regenAutoRoute110(){if(!state.car&&!state.selectedProperty){toast('Consulte um CAR primeiro.',true);return}const b=q('regenAutoRoute110');b.disabled=true;b.textContent='Calculando...';try{const r=await api().RegenerateAutomaticAccessRoute(state.selectedProperty?.id||0);if(state.car)state.car.auto_route=r;renderAutoRoute110(r);toast('Rota recalculada.')}catch(e){toast(String(e),true)}finally{b.disabled=false;b.textContent='Recalcular automaticamente'}}
 
   async function loadAutoRouteForProperty110(){
     if(!state.selectedProperty){renderAutoRoute110(state.car?.auto_route);return}
@@ -78,7 +99,7 @@
       const c=await api().GetLastCARSession();const r=c?.result;if(!r?.car)return;
       const match=(state.properties||[]).find(p=>String(p.car_number||'').toUpperCase()===String(r.car).toUpperCase());
       if(match){q('carPropertySelect').value=String(match.id);await selectCarProperty(match.id)}
-      else{state.car=r;q('carInput').value=r.car;renderCAR(r);if(r.geojson)drawGeoJSON('car',r.geojson);renderAutoRoute110(r.auto_route)}
+      else{state.car=r;q('carInput').value=r.car;renderCAR(r);if(r.geojson)drawGeoJSON('car',r.geojson);renderAutoRoute110(r.auto_route);if(c.temporary_area)renderTemporaryArea110(c.temporary_area,false);else renderTemporaryArea110(null)}
       const title=q('professionalTitle');if(title&&!q('sessionBadge110')){const b=document.createElement('span');b.id='sessionBadge110';b.className='session-badge110';b.textContent='Mapa temporário restaurado';title.after(b)}
     }catch(e){}
   }
@@ -86,8 +107,8 @@
   function installOverrides110(){
     const oldSelect=selectCarProperty,oldRenderCAR=renderCAR,oldReset=resetCARWorkspace;
     selectCarProperty=async function(id){await oldSelect(id);await loadAutoRouteForProperty110()};
-    renderCAR=function(r){oldRenderCAR(r);if(r?.auto_route?.entrance_lat)renderAutoRoute110(r.auto_route);else if(state.selectedProperty)setTimeout(loadAutoRouteForProperty110,0)};
-    resetCARWorkspace=function(){oldReset();clearRouteLayer110();renderAutoRoute110(null);q('sessionBadge110')?.remove()};
+    renderCAR=function(r){oldRenderCAR(r);if(r?.auto_route?.entrance_lat)renderAutoRoute110(r.auto_route);else if(state.selectedProperty)setTimeout(loadAutoRouteForProperty110,0);if(!state.selectedProperty&&!s110.tempArea)renderTemporaryArea110(null)};
+    resetCARWorkspace=function(){oldReset();clearRouteLayer110();clearTemporaryArea110();renderAutoRoute110(null);q('sessionBadge110')?.remove()};
   }
 
   document.addEventListener('DOMContentLoaded',()=>{prepare110();installOverrides110();setTimeout(restoreTemporarySession110,1400)});
