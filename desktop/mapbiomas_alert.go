@@ -132,6 +132,34 @@ func (a *App) DisconnectMapBiomasAlert() error {
 	return nil
 }
 
+type mapBiomasRuralPropertyResponse struct {
+	Data struct {
+		RuralProperty *struct {
+			PropertyCode string  `json:"propertyCode"`
+			AreaHa       float64 `json:"areaHa"`
+			State        string  `json:"state"`
+			StateAcronym string  `json:"stateAcronym"`
+			CARUpdatedAt string  `json:"carUpdatedAt"`
+			Alerts       []struct {
+				AlertCode   any      `json:"alertCode"`
+				AreaHa      float64  `json:"areaHa"`
+				DetectedAt  string   `json:"detectedAt"`
+				PublishedAt string   `json:"publishedAt"`
+				Sources     []string `json:"sources"`
+				Coordinates struct {
+					Latitude  float64 `json:"latitude"`
+					Longitude float64 `json:"longitude"`
+				} `json:"coordinates"`
+				Coordenates struct {
+					Latitude  float64 `json:"latitude"`
+					Longitude float64 `json:"longitude"`
+				} `json:"coordenates"`
+			} `json:"alerts"`
+		} `json:"ruralProperty"`
+	} `json:"data"`
+	Errors []graphQLError `json:"errors"`
+}
+
 func (a *App) QueryMapBiomasCAR(car string) (MapBiomasCARSummary, error) {
 	car = strings.TrimSpace(car)
 	if car == "" {
@@ -144,54 +172,26 @@ func (a *App) QueryMapBiomasCAR(car string) (MapBiomasCARSummary, error) {
 			Message:   "Conecte uma conta MapBiomas Alerta em Configurações para consultar alertas automaticamente.",
 		}, nil
 	}
-	query := `query ruralProperty($carCode: String!) {
-		ruralProperty(carCode: $carCode) {
-			propertyCode
-			areaHa
-			state
-			stateAcronym
-			carUpdatedAt
-			alerts {
-				alertCode
-				areaHa
-				detectedAt
-				publishedAt
-				sources
-				coordinates { latitude longitude }
-			}
-		}
-	}`
-	var resp struct {
-		Data struct {
-			RuralProperty *struct {
-				PropertyCode string  `json:"propertyCode"`
-				AreaHa       float64 `json:"areaHa"`
-				State        string  `json:"state"`
-				StateAcronym string  `json:"stateAcronym"`
-				CARUpdatedAt string  `json:"carUpdatedAt"`
-				Alerts       []struct {
-					AlertCode   string   `json:"alertCode"`
-					AreaHa      float64  `json:"areaHa"`
-					DetectedAt  string   `json:"detectedAt"`
-					PublishedAt string   `json:"publishedAt"`
-					Sources     []string `json:"sources"`
-					Coordinates struct {
-						Latitude  float64 `json:"latitude"`
-						Longitude float64 `json:"longitude"`
-					} `json:"coordinates"`
-				} `json:"alerts"`
-			} `json:"ruralProperty"`
-		} `json:"data"`
-		Errors []graphQLError `json:"errors"`
-	}
-	if err := mapBiomasGraphQL(token, graphQLRequest{
-		Query: query, Variables: map[string]any{"carCode": car},
-	}, &resp); err != nil {
+
+	resp, err := queryMapBiomasRuralProperty(token, car, "coordinates")
+	if err != nil {
 		return MapBiomasCARSummary{}, err
 	}
-	if len(resp.Errors) > 0 {
-		return MapBiomasCARSummary{}, errors.New(resp.Errors[0].Message)
+	if hasGraphQLErrorContaining(resp.Errors, "coordinates", "AlertData") {
+		// A documentação pública da V2 descreve ruralProperty.alerts como
+		// RuralPropertyAlert (coordinates), mas algumas respostas do servidor
+		// expõem AlertData, cujo campo histórico possui a grafia "coordenates".
+		// O fallback mantém compatibilidade com os dois esquemas sem afetar a
+		// consulta principal nem exigir intervenção do usuário.
+		resp, err = queryMapBiomasRuralProperty(token, car, "coordenates")
+		if err != nil {
+			return MapBiomasCARSummary{}, err
+		}
 	}
+	if len(resp.Errors) > 0 {
+		return MapBiomasCARSummary{}, errors.New(joinGraphQLErrors(resp.Errors))
+	}
+
 	out := MapBiomasCARSummary{Connected: true}
 	if resp.Data.RuralProperty == nil {
 		out.Message = "CAR não localizado entre os imóveis cruzados com alertas na base consultada."
@@ -205,11 +205,18 @@ func (a *App) QueryMapBiomasCAR(car string) (MapBiomasCARSummary, error) {
 	out.StateAcronym = p.StateAcronym
 	out.CARUpdatedAt = p.CARUpdatedAt
 	for _, x := range p.Alerts {
+		code := graphQLScalarString(x.AlertCode)
+		lat, lon := x.Coordinates.Latitude, x.Coordinates.Longitude
+		if lat == 0 && lon == 0 {
+			lat, lon = x.Coordenates.Latitude, x.Coordenates.Longitude
+		}
 		item := MapBiomasCARAlert{
-			AlertCode: x.AlertCode, AreaHa: x.AreaHa,
+			AlertCode: code, AreaHa: x.AreaHa,
 			DetectedAt: x.DetectedAt, PublishedAt: x.PublishedAt,
-			Sources: x.Sources, Latitude: x.Coordinates.Latitude, Longitude: x.Coordinates.Longitude,
-			ReportURL: "https://plataforma.alerta.mapbiomas.org/alerta/" + x.AlertCode,
+			Sources: x.Sources, Latitude: lat, Longitude: lon,
+		}
+		if code != "" {
+			item.ReportURL = "https://plataforma.alerta.mapbiomas.org/alerta/" + code
 		}
 		out.Alerts = append(out.Alerts, item)
 		out.TotalAreaHa += x.AreaHa
@@ -221,6 +228,85 @@ func (a *App) QueryMapBiomasCAR(car string) (MapBiomasCARSummary, error) {
 		out.Message = fmt.Sprintf("%d alerta(s) vinculado(s) ao imóvel na base MapBiomas Alerta.", out.TotalAlerts)
 	}
 	return out, nil
+}
+
+func queryMapBiomasRuralProperty(token, car, coordinateField string) (mapBiomasRuralPropertyResponse, error) {
+	if coordinateField != "coordinates" && coordinateField != "coordenates" {
+		return mapBiomasRuralPropertyResponse{}, errors.New("campo de coordenadas MapBiomas inválido")
+	}
+	query := fmt.Sprintf(`query ruralProperty($carCode: String!) {
+		ruralProperty(carCode: $carCode) {
+			propertyCode
+			areaHa
+			state
+			stateAcronym
+			carUpdatedAt
+			alerts {
+				alertCode
+				areaHa
+				detectedAt
+				publishedAt
+				sources
+				%s { latitude longitude }
+			}
+		}
+	}`, coordinateField)
+	var resp mapBiomasRuralPropertyResponse
+	err := mapBiomasGraphQL(token, graphQLRequest{
+		Query: query, Variables: map[string]any{"carCode": car},
+	}, &resp)
+	return resp, err
+}
+
+func hasGraphQLErrorContaining(errs []graphQLError, terms ...string) bool {
+	if len(errs) == 0 {
+		return false
+	}
+	for _, e := range errs {
+		msg := strings.ToLower(e.Message)
+		match := true
+		for _, term := range terms {
+			if !strings.Contains(msg, strings.ToLower(term)) {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
+}
+
+func joinGraphQLErrors(errs []graphQLError) string {
+	parts := make([]string, 0, len(errs))
+	for _, e := range errs {
+		if msg := strings.TrimSpace(e.Message); msg != "" {
+			parts = append(parts, msg)
+		}
+	}
+	if len(parts) == 0 {
+		return "MapBiomas Alerta retornou erro sem detalhes"
+	}
+	return strings.Join(parts, " • ")
+}
+
+func graphQLScalarString(v any) string {
+	switch x := v.(type) {
+	case string:
+		return strings.TrimSpace(x)
+	case float64:
+		if x == float64(int64(x)) {
+			return fmt.Sprintf("%.0f", x)
+		}
+		return fmt.Sprintf("%v", x)
+	case json.Number:
+		return x.String()
+	case nil:
+		return ""
+	default:
+		return strings.TrimSpace(fmt.Sprint(x))
+	}
 }
 
 func mapBiomasGraphQL(token string, reqBody graphQLRequest, dst any) error {
