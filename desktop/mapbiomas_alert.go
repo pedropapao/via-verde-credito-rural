@@ -135,29 +135,29 @@ func (a *App) DisconnectMapBiomasAlert() error {
 type mapBiomasRuralPropertyResponse struct {
 	Data struct {
 		RuralProperty *struct {
-			PropertyCode string  \`json:"propertyCode"\`
-			AreaHa       float64 \`json:"areaHa"\`
-			State        string  \`json:"state"\`
-			StateAcronym string  \`json:"stateAcronym"\`
-			CARUpdatedAt string  \`json:"carUpdatedAt"\`
+			PropertyCode string  `json:"propertyCode"`
+			AreaHa       float64 `json:"areaHa"`
+			State        string  `json:"state"`
+			StateAcronym string  `json:"stateAcronym"`
+			CARUpdatedAt string  `json:"carUpdatedAt"`
 			Alerts       []struct {
-				AlertCode   any      \`json:"alertCode"\`
-				AreaHa      float64  \`json:"areaHa"\`
-				DetectedAt  string   \`json:"detectedAt"\`
-				PublishedAt string   \`json:"publishedAt"\`
-				Sources     []string \`json:"sources"\`
+				AlertCode   any      `json:"alertCode"`
+				AreaHa      float64  `json:"areaHa"`
+				DetectedAt  string   `json:"detectedAt"`
+				PublishedAt string   `json:"publishedAt"`
+				Sources     []string `json:"sources"`
 				Coordinates struct {
-					Latitude  float64 \`json:"latitude"\`
-					Longitude float64 \`json:"longitude"\`
-				} \`json:"coordinates"\`
+					Latitude  float64 `json:"latitude"`
+					Longitude float64 `json:"longitude"`
+				} `json:"coordinates"`
 				Coordenates struct {
-					Latitude  float64 \`json:"latitude"\`
-					Longitude float64 \`json:"longitude"\`
-				} \`json:"coordenates"\`
-			} \`json:"alerts"\`
-		} \`json:"ruralProperty"\`
-	} \`json:"data"\`
-	Errors []graphQLError \`json:"errors"\`
+					Latitude  float64 `json:"latitude"`
+					Longitude float64 `json:"longitude"`
+				} `json:"coordenates"`
+			} `json:"alerts"`
+		} `json:"ruralProperty"`
+	} `json:"data"`
+	Errors []graphQLError `json:"errors"`
 }
 
 func (a *App) QueryMapBiomasCAR(car string) (MapBiomasCARSummary, error) {
@@ -234,7 +234,7 @@ func queryMapBiomasRuralProperty(token, car, coordinateField string) (mapBiomasR
 	if coordinateField != "coordinates" && coordinateField != "coordenates" {
 		return mapBiomasRuralPropertyResponse{}, errors.New("campo de coordenadas MapBiomas inválido")
 	}
-	query := fmt.Sprintf(\`query ruralProperty($carCode: String!) {
+	query := fmt.Sprintf(`query ruralProperty($carCode: String!) {
 		ruralProperty(carCode: $carCode) {
 			propertyCode
 			areaHa
@@ -250,7 +250,7 @@ func queryMapBiomasRuralProperty(token, car, coordinateField string) (mapBiomasR
 				%s { latitude longitude }
 			}
 		}
-	}\`, coordinateField)
+	}`, coordinateField)
 	var resp mapBiomasRuralPropertyResponse
 	err := mapBiomasGraphQL(token, graphQLRequest{
 		Query: query, Variables: map[string]any{"carCode": car},
