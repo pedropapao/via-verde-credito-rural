@@ -1,13 +1,11 @@
-CAR 1.1.0: automação de campo e delimitação de áreas.
+CAR 1.1.1: correção da automação em consulta avulsa.
 
-• Roteiro de acesso automático: ao consultar o CAR, o aplicativo identifica automaticamente uma cidade/núcleo urbano de referência próximo ao imóvel usando OpenStreetMap/Nominatim, amostra pontos do perímetro, procura o melhor acesso à malha viária e calcula a rota de carro pelo OSRM. A tela mostra cidade de referência, coordenadas, acesso estimado, centro do CAR, distância rodoviária, tempo estimado, traçado no mapa e instruções passo a passo. Também gera link para abrir a rota no Google Maps e permite copiar/exportar o roteiro completo. A rota fica em cache e é recalculada quando a geometria muda ou quando o usuário solicita.
+• A delimitação automática de glebas não exige mais que o CAR esteja vinculado a um imóvel salvo. Em uma consulta avulsa, basta consultar o CAR, informar a área desejada (ex.: 1 ha, 5 ha, 25 ha) e clicar em “Delimitar automaticamente”.
 
-• Delimitação automática de glebas: basta informar a área necessária em hectares (por exemplo, 5 ha). O Via Verde cria uma gleba compacta dentro do CAR, preferencialmente a partir da região próxima ao acesso automático; na ausência de acesso, usa a região central. A geometria é gerada por malha interna de alta resolução, calculada e validada contra o CAR, salva como área do projeto e recebe KML automático. Desenho e importação manual continuam disponíveis como alternativa.
+• A gleba criada em consulta avulsa fica temporariamente vinculada à sessão do CAR por até 24 horas, aparece no mapa, mostra área/perímetro/% dentro do CAR e pode ser exportada em KML. Ao cadastrar o imóvel depois, as áreas permanentes continuam sendo salvas normalmente no banco local.
 
-• Mapa temporário automático: toda consulta bem-sucedida salva a última geometria/resultados em cache local temporário por 24 horas. Ao reabrir o aplicativo, o último CAR/mapa é restaurado automaticamente quando aplicável. Imóveis cadastrados continuam usando o histórico permanente já existente.
+• O roteiro automático também passa a permitir recalcular e exportar TXT durante uma consulta avulsa, sem exigir imóvel cadastrado.
 
-• Conferência: o roteiro automático passa a integrar a Central de Conferência do imóvel.
+• O mapa temporário, a rota automática e a gleba temporária permanecem associados à última consulta avulsa restaurável.
 
-Fontes de navegação: OpenStreetMap/Nominatim e OSRM. O acesso, tempo e caminho são estimativas baseadas na malha viária pública; porteiras, estradas particulares e condições reais de campo devem ser confirmadas pelo projetista.
-
-Clientes, imóveis, histórico, dossiê ambiental, Temas SICAR, KMLs existentes, backup, carteira e atualização automática foram preservados.
+Esta versão corrige especificamente o aviso “Selecione um imóvel salvo para gerar a gleba” que aparecia mesmo quando o CAR já tinha sido consultado e estava desenhado no mapa.
