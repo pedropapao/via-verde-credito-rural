@@ -133,97 +133,193 @@ func queryBCBRuralMunicipality(ctx context.Context, municipality, uf, municipali
 	out := BCBRuralCreditContext{
 		Municipality: municipality, UF: uf, SourceURL: bcbRuralDataURL,
 	}
-	endpoints := []struct{ name, kind string }{
-		{"CusteioMunicipioProduto", "Custeio"},
-		{"InvestMunicipioProduto", "Investimento"},
-	}
-	for _, ep := range endpoints {
-		rows, err := queryBCBAdaptiveEndpoint(ctx, ep.name, ep.kind, municipality, uf, municipalityCode)
+	years := []int{time.Now().Year(), time.Now().Year() - 1}
+	var all []map[string]any
+	var failures []string
+	for _, year := range years {
+		rows, err := queryBCBMunicipalityAggregate(ctx, municipality, uf, municipalityCode, year)
 		if err != nil {
+			failures = append(failures, fmt.Sprintf("%d: %v", year, err))
 			continue
 		}
-		out.Rows = append(out.Rows, rows...)
+		all = append(all, rows...)
 	}
-	if len(out.Rows) == 0 {
-		out.Message = "A API pública agregada do BCB não retornou linhas municipais compatíveis nesta tentativa."
+	if len(all) == 0 {
+		if len(failures) > 0 {
+			return out, errors.New("consulta municipal do BCB/SICOR não respondeu de forma compatível: " + strings.Join(failures, " | "))
+		}
+		out.Message = "O BCB/SICOR não retornou registros agregados para este município nos dois anos mais recentes."
 		return out, nil
+	}
+
+	out.Rows = aggregateBCBMunicipalityRows(all)
+	for _, row := range out.Rows {
+		out.Contracts += row.Contracts
+		out.Value += row.Value
 	}
 	sort.SliceStable(out.Rows, func(i, j int) bool {
 		if out.Rows[i].Year == out.Rows[j].Year {
-			return out.Rows[i].Value > out.Rows[j].Value
+			if out.Rows[i].Kind == out.Rows[j].Kind {
+				return out.Rows[i].Value > out.Rows[j].Value
+			}
+			return out.Rows[i].Kind < out.Rows[j].Kind
 		}
 		return out.Rows[i].Year > out.Rows[j].Year
 	})
 	if len(out.Rows) > 20 {
 		out.Rows = out.Rows[:20]
 	}
-	for _, row := range out.Rows {
-		out.Contracts += row.Contracts
-		out.Value += row.Value
-	}
 	out.Available = true
-	out.Message = "Contexto agregado do município na Matriz de Dados do Crédito Rural do BCB. Não representa operações específicas deste CAR."
+	out.Message = "Contexto agregado municipal do SICOR/BCB para os dois anos mais recentes. Não representa operações específicas deste CAR."
 	return out, nil
 }
 
-func queryBCBAdaptiveEndpoint(ctx context.Context, endpoint, kind, municipality, uf, municipalityCode string) ([]BCBRuralCreditRow, error) {
-	sampleURL := bcbSicorODataBase + endpoint + "?%24top=1&%24format=json"
-	sample, err := getODataRows(ctx, sampleURL)
-	if err != nil || len(sample) == 0 {
-		return nil, err
+func queryBCBMunicipalityAggregate(ctx context.Context, municipality, uf, municipalityCode string, year int) ([]map[string]any, error) {
+	const endpoint = "CusteioInvestimentoComercialIndustrialSemFiltros"
+	yearText := strconv.Itoa(year)
+	name := strings.ToUpper(strings.TrimSpace(municipality))
+	uf = strings.ToUpper(strings.TrimSpace(uf))
+	code := strings.TrimSpace(municipalityCode)
+
+	var filters []string
+	if code != "" {
+		filters = append(filters,
+			fmt.Sprintf("codMunicIbge eq '%s' and AnoEmissao eq '%s'", odataEscape(code), yearText),
+		)
+		if _, err := strconv.ParseInt(code, 10, 64); err == nil {
+			filters = append(filters,
+				fmt.Sprintf("codMunicIbge eq %s and AnoEmissao eq '%s'", code, yearText),
+			)
+		}
 	}
-	fields := detectBCBFields(sample[0])
-	munField := fields["municipality"]
-	ufField := fields["uf"]
-	if munField == "" {
-		return nil, errors.New("campo municipal não identificado no recurso " + endpoint)
+	if name != "" && uf != "" {
+		filters = append(filters,
+			fmt.Sprintf("Municipio eq '%s' and nomeUF eq '%s' and AnoEmissao eq '%s'", odataEscape(name), odataEscape(uf), yearText),
+		)
 	}
-	filterParts := []string{}
-	sampleValue := sample[0][munField]
-	if municipalityCode != "" && (strings.Contains(strings.ToLower(munField), "cod") || strings.Contains(strings.ToLower(munField), "ibge")) {
-		if _, ok := sampleValue.(float64); ok {
-			if n, e := strconv.ParseFloat(municipalityCode, 64); e == nil {
-				filterParts = append(filterParts, fmt.Sprintf("%s eq %.0f", munField, n))
+	if name != "" {
+		filters = append(filters,
+			fmt.Sprintf("Municipio eq '%s' and AnoEmissao eq '%s'", odataEscape(name), yearText),
+		)
+	}
+	if len(filters) == 0 {
+		return nil, errors.New("município sem código ou nome para consulta")
+	}
+
+	var lastErr error
+	sawSuccessfulResponse := false
+	for _, filter := range filters {
+		q := url.Values{}
+		q.Set("$format", "json")
+		q.Set("$top", "5000")
+		q.Set("$filter", filter)
+		target := bcbSicorODataBase + endpoint + "?" + q.Encode()
+		raw, err := getODataRows(ctx, target)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		sawSuccessfulResponse = true
+		matched := filterBCBMunicipalityRows(raw, municipality, uf, municipalityCode, yearText)
+		if len(matched) > 0 {
+			return matched, nil
+		}
+	}
+	if sawSuccessfulResponse {
+		return nil, nil
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, errors.New("consulta municipal do BCB/SICOR sem resposta")
+}
+
+func filterBCBMunicipalityRows(rows []map[string]any, municipality, uf, municipalityCode, year string) []map[string]any {
+	wantName := strings.ToUpper(strings.TrimSpace(municipality))
+	wantUF := strings.ToUpper(strings.TrimSpace(uf))
+	wantCode := strings.TrimLeft(strings.TrimSpace(municipalityCode), "0")
+	if wantCode == "" && strings.TrimSpace(municipalityCode) != "" {
+		wantCode = "0"
+	}
+	var out []map[string]any
+	for _, r := range rows {
+		if y := strings.TrimSpace(firstStringMapValue(r, "AnoEmissao")); year != "" && y != year {
+			continue
+		}
+		rowCode := strings.TrimLeft(strings.TrimSpace(firstNonEmptyStringMapValue(r, "codMunicIbge", "codIbge", "CD_IBGE_MUNICIPIO")), "0")
+		if rowCode == "" && firstNonEmptyStringMapValue(r, "codMunicIbge", "codIbge", "CD_IBGE_MUNICIPIO") != "" {
+			rowCode = "0"
+		}
+		rowName := strings.ToUpper(strings.TrimSpace(firstNonEmptyStringMapValue(r, "Municipio", "municipio")))
+		rowUF := strings.ToUpper(strings.TrimSpace(firstNonEmptyStringMapValue(r, "nomeUF", "UF", "uf")))
+		codeMatch := wantCode != "" && rowCode != "" && rowCode == wantCode
+		nameMatch := wantName != "" && rowName == wantName && (wantUF == "" || rowUF == "" || rowUF == wantUF)
+		if codeMatch || nameMatch {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func aggregateBCBMunicipalityRows(rows []map[string]any) []BCBRuralCreditRow {
+	type key struct {
+		Kind, Year, Activity string
+	}
+	grouped := map[key]*BCBRuralCreditRow{}
+	for _, r := range rows {
+		year := firstNonEmptyStringMapValue(r, "AnoEmissao", "ano")
+		activityCode := firstNonEmptyStringMapValue(r, "Atividade", "atividade")
+		activity := bcbActivityLabel(activityCode)
+
+		for _, spec := range []struct {
+			kind, qty, value string
+		}{
+			{"Custeio", "QtdCusteio", "VlCusteio"},
+			{"Investimento", "QtdInvestimento", "VlInvestimento"},
+		} {
+			qty := numberMapValue(r, spec.qty)
+			value := numberMapValue(r, spec.value)
+			if qty == 0 && value == 0 {
+				continue
 			}
-		} else {
-			filterParts = append(filterParts, fmt.Sprintf("%s eq '%s'", munField, odataEscape(municipalityCode)))
+			k := key{Kind: spec.kind, Year: year, Activity: activity}
+			if grouped[k] == nil {
+				grouped[k] = &BCBRuralCreditRow{
+					Kind: spec.kind, Year: year, Product: activity,
+					RawLabel: "CusteioInvestimentoComercialIndustrialSemFiltros",
+				}
+			}
+			grouped[k].Contracts += qty
+			grouped[k].Value += value
 		}
 	}
-	if len(filterParts) == 0 {
-		filterParts = append(filterParts, fmt.Sprintf("%s eq '%s'", munField, odataEscape(strings.ToUpper(strings.TrimSpace(municipality)))))
+	out := make([]BCBRuralCreditRow, 0, len(grouped))
+	for _, row := range grouped {
+		out = append(out, *row)
 	}
-	if ufField != "" && strings.TrimSpace(uf) != "" {
-		filterParts = append(filterParts, fmt.Sprintf("%s eq '%s'", ufField, odataEscape(strings.ToUpper(strings.TrimSpace(uf)))))
+	return out
+}
+
+func bcbActivityLabel(code string) string {
+	switch strings.TrimSpace(code) {
+	case "1":
+		return "Atividade agrícola"
+	case "2":
+		return "Atividade pecuária"
+	case "":
+		return "Atividade não informada"
+	default:
+		return "Atividade " + strings.TrimSpace(code)
 	}
-	q := url.Values{}
-	q.Set("$top", "80")
-	q.Set("$format", "json")
-	q.Set("$filter", strings.Join(filterParts, " and "))
-	target := bcbSicorODataBase + endpoint + "?" + q.Encode()
-	raw, err := getODataRows(ctx, target)
-	if err != nil {
-		// Alguns recursos gravam o nome municipal com capitalização diferente.
-		q.Set("$filter", fmt.Sprintf("contains(toupper(%s),'%s')", munField, odataEscape(strings.ToUpper(strings.TrimSpace(municipality)))))
-		target = bcbSicorODataBase + endpoint + "?" + q.Encode()
-		raw, err = getODataRows(ctx, target)
-	}
-	if err != nil {
-		return nil, err
-	}
-	var out []BCBRuralCreditRow
-	for _, r := range raw {
-		row := BCBRuralCreditRow{Kind: kind}
-		row.Year = firstStringMapValue(r, fields["year"])
-		row.Product = firstStringMapValue(r, fields["product"])
-		row.Contracts = numberMapValue(r, fields["contracts"])
-		row.Value = numberMapValue(r, fields["value"])
-		if row.Product == "" {
-			row.Product = "Produto não identificado"
+}
+
+func firstNonEmptyStringMapValue(m map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if v := firstStringMapValue(m, key); strings.TrimSpace(v) != "" {
+			return v
 		}
-		row.RawLabel = endpoint
-		out = append(out, row)
 	}
-	return out, nil
+	return ""
 }
 
 func getODataRows(ctx context.Context, target string) ([]map[string]any, error) {
