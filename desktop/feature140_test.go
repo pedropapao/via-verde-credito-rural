@@ -45,3 +45,20 @@ func TestMapBiomasAlertStatusDisconnected(t *testing.T) {
 		t.Fatal("app sem banco/token não pode aparecer conectado")
 	}
 }
+
+
+func TestMapBiomasGraphQLErrorSchemaFallbackDetection(t *testing.T) {
+	errs := []graphQLError{{Message: "Field 'coordinates' doesn't exist on type 'AlertData'"}}
+	if !hasGraphQLErrorContaining(errs, "coordinates", "AlertData") {
+		t.Fatal("erro de schema deveria acionar fallback de coordenadas")
+	}
+}
+
+func TestGraphQLScalarStringAcceptsStringAndNumber(t *testing.T) {
+	if got := graphQLScalarString("12345"); got != "12345" {
+		t.Fatalf("string inesperada: %s", got)
+	}
+	if got := graphQLScalarString(float64(12345)); got != "12345" {
+		t.Fatalf("número inesperado: %s", got)
+	}
+}
