@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const AppVersion = "1.2.0"
+const AppVersion = "1.3.0"
 
 type App struct {
 	ctx     context.Context
