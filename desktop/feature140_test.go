@@ -4,27 +4,52 @@ import (
 	"testing"
 )
 
-func TestDetectBCBFields(t *testing.T) {
-	sample := map[string]any{
-		"AnoEmissao":        2026.0,
-		"Municipio":         "ITABIRA",
-		"UF":                "MG",
-		"Produto":           "BOVINOS",
-		"QtdContratos":      14.0,
-		"ValorContratado":   1250000.0,
+func TestFilterBCBMunicipalityRowsByIBGE(t *testing.T) {
+	rows := []map[string]any{
+		{"codMunicIbge":"3107109","Municipio":"BOM JESUS DO AMPARO","nomeUF":"MG","AnoEmissao":"2026","Atividade":"1"},
+		{"codMunicIbge":"3550308","Municipio":"SAO PAULO","nomeUF":"SP","AnoEmissao":"2026","Atividade":"1"},
+		{"codMunicIbge":"3107109","Municipio":"BOM JESUS DO AMPARO","nomeUF":"MG","AnoEmissao":"2025","Atividade":"2"},
 	}
-	f := detectBCBFields(sample)
-	for key, want := range map[string]string{
-		"year":"AnoEmissao",
-		"municipality":"Municipio",
-		"uf":"UF",
-		"product":"Produto",
-		"contracts":"QtdContratos",
-		"value":"ValorContratado",
-	} {
-		if f[key] != want {
-			t.Fatalf("%s: esperado %s, obteve %s", key, want, f[key])
+	got := filterBCBMunicipalityRows(rows, "Bom Jesus do Amparo", "MG", "3107109", "2026")
+	if len(got) != 1 {
+		t.Fatalf("esperava 1 linha do município/ano, obteve %d: %#v", len(got), got)
+	}
+	if firstStringMapValue(got[0], "codMunicIbge") != "3107109" {
+		t.Fatalf("linha errada: %#v", got[0])
+	}
+}
+
+func TestAggregateBCBMunicipalityRows(t *testing.T) {
+	rows := []map[string]any{
+		{
+			"AnoEmissao":"2026","Atividade":"1",
+			"QtdCusteio":3.0,"VlCusteio":100000.0,
+			"QtdInvestimento":2.0,"VlInvestimento":250000.0,
+		},
+		{
+			"AnoEmissao":"2026","Atividade":"1",
+			"QtdCusteio":1.0,"VlCusteio":50000.0,
+			"QtdInvestimento":0.0,"VlInvestimento":0.0,
+		},
+	}
+	got := aggregateBCBMunicipalityRows(rows)
+	if len(got) != 2 {
+		t.Fatalf("esperava custeio e investimento, obteve %d: %#v", len(got), got)
+	}
+	var custeio, investimento *BCBRuralCreditRow
+	for i := range got {
+		switch got[i].Kind {
+		case "Custeio":
+			custeio = &got[i]
+		case "Investimento":
+			investimento = &got[i]
 		}
+	}
+	if custeio == nil || custeio.Contracts != 4 || custeio.Value != 150000 || custeio.Product != "Atividade agrícola" {
+		t.Fatalf("custeio agregado incorreto: %#v", custeio)
+	}
+	if investimento == nil || investimento.Contracts != 2 || investimento.Value != 250000 {
+		t.Fatalf("investimento agregado incorreto: %#v", investimento)
 	}
 }
 
