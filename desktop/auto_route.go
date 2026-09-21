@@ -86,7 +86,10 @@ func (a *App) generateAutomaticAccessRoute(propertyID int64, car CARResult, forc
 	}
 	if propertyID > 0 && !force {
 		if cached, err := a.loadAutomaticRoute(propertyID); err == nil && cached.GeneratedAt != "" {
-			if t, parseErr := time.Parse(time.RFC3339, cached.GeneratedAt); parseErr == nil && time.Since(t) < 30*24*time.Hour {
+			var savedFingerprint string
+			_ = a.db.QueryRow(`SELECT car_fingerprint FROM automatic_routes WHERE property_id=?`, propertyID).Scan(&savedFingerprint)
+			sameGeometry := strings.TrimSpace(savedFingerprint) != "" && savedFingerprint == geometryFingerprint(car.GeoJSON)
+			if t, parseErr := time.Parse(time.RFC3339, cached.GeneratedAt); parseErr == nil && time.Since(t) < 30*24*time.Hour && sameGeometry {
 				return cached, nil
 			}
 		}
