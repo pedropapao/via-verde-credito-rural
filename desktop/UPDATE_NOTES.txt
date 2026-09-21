@@ -1,13 +1,13 @@
-CAR 1.0.9: evolução funcional do Via Verde CAR.
+CAR 1.1.0: automação de campo e delimitação de áreas.
 
-• Temas SICAR mais resilientes: duas tentativas online, validação real do ZIP/Shapefile, reaproveitamento explícito do último pacote válido em cache quando o serviço público falhar e opção de importar manualmente um pacote oficial ZIP. A interface informa quando um tema veio de cache ou de importação manual.
+• Roteiro de acesso automático: ao consultar o CAR, o aplicativo identifica automaticamente uma cidade/núcleo urbano de referência próximo ao imóvel usando OpenStreetMap/Nominatim, amostra pontos do perímetro, procura o melhor acesso à malha viária e calcula a rota de carro pelo OSRM. A tela mostra cidade de referência, coordenadas, acesso estimado, centro do CAR, distância rodoviária, tempo estimado, traçado no mapa e instruções passo a passo. Também gera link para abrir a rota no Google Maps e permite copiar/exportar o roteiro completo. A rota fica em cache e é recalculada quando a geometria muda ou quando o usuário solicita.
 
-• Central de conferência do imóvel: consolida validações do CAR, bases socioambientais, Temas SICAR, KML externo, áreas do projeto e roteiro de acesso. O resultado diferencia itens OK, pontos de atenção e fontes indisponíveis e lista ações manuais necessárias, sem declarar regularidade automaticamente.
+• Delimitação automática de glebas: basta informar a área necessária em hectares (por exemplo, 5 ha). O Via Verde cria uma gleba compacta dentro do CAR, preferencialmente a partir da região próxima ao acesso automático; na ausência de acesso, usa a região central. A geometria é gerada por malha interna de alta resolução, calculada e validada contra o CAR, salva como área do projeto e recebe KML automático. Desenho e importação manual continuam disponíveis como alternativa.
 
-• Monitoramento da carteira: novos botões de verificação rápida e completa para todos os CARs cadastrados. A rápida compara cadastro/geometria com a linha de base e só faz análise completa quando encontra mudança ou precisa criar a primeira linha de base. A completa refaz as triagens de todos os imóveis. O painel mostra imóveis sem alteração, alterados, com ocorrência para revisão e falhas de consulta.
+• Mapa temporário automático: toda consulta bem-sucedida salva a última geometria/resultados em cache local temporário por 24 horas. Ao reabrir o aplicativo, o último CAR/mapa é restaurado automaticamente quando aplicável. Imóveis cadastrados continuam usando o histórico permanente já existente.
 
-• Glebas e áreas do projeto: permite desenhar uma área diretamente no mapa ou importar um KML. O aplicativo calcula área, perímetro, centroide e percentual estimado da gleba dentro do CAR, salva o KML automaticamente, permite exportar e mantém várias áreas por imóvel.
+• Conferência: o roteiro automático passa a integrar a Central de Conferência do imóvel.
 
-• Roteiro de acesso: permite marcar referência, entrada e sede diretamente no mapa, registrar distâncias de acesso e observações e gerar texto técnico com coordenadas. Quando a distância não é informada, o sistema usa distância em linha reta e deixa isso explícito. O roteiro pode ser copiado ou exportado em TXT.
+Fontes de navegação: OpenStreetMap/Nominatim e OSRM. O acesso, tempo e caminho são estimativas baseadas na malha viária pública; porteiras, estradas particulares e condições reais de campo devem ser confirmadas pelo projetista.
 
-As tabelas locais foram ampliadas por migração segura e não apagam clientes, imóveis, histórico, KMLs ou configurações existentes. Consulta CAR, dossiê ambiental, PDF, backup e atualização automática foram preservados.
+Clientes, imóveis, histórico, dossiê ambiental, Temas SICAR, KMLs existentes, backup, carteira e atualização automática foram preservados.
