@@ -128,3 +128,36 @@ func TestScanZARCDoesNotClaimOutsideWhenNoExactCombination170(t *testing.T) {
 	if err!=nil{t.Fatal(err)}
 	if got.Matched || got.Status!="Sem combinação exata" { t.Fatalf("não deveria declarar fora do ZARC: %+v",got) }
 }
+
+
+func TestMarketAggregation170(t *testing.T) {
+	rows:=[]map[string]any{
+		{"AnoEmissao":"2026","Produto":"Soja","QtdCusteio":3.0,"VlCusteio":150000.0},
+		{"AnoEmissao":"2026","Produto":"Soja","QtdCusteio":2.0,"VlCusteio":100000.0},
+		{"AnoEmissao":"2026","Produto":"Milho","QtdCusteio":1.0,"VlCusteio":50000.0},
+	}
+	got:=aggregateMarketRows(rows,"Município","Custeio","2026","product")
+	if len(got)!=2 { t.Fatalf("esperava 2 produtos, obteve %d: %#v",len(got),got) }
+	var soja *CreditMarketItem
+	for i:=range got { if got[i].Label=="Soja" { soja=&got[i] } }
+	if soja==nil || soja.Contracts!=5 || soja.Value!=250000 { t.Fatalf("agregação de soja inesperada: %#v",soja) }
+}
+
+func TestMarketMunicipalityFilterRejectsOtherCity170(t *testing.T) {
+	rows:=[]map[string]any{
+		{"AnoEmissao":"2026","Municipio":"GOIATUBA","nomeUF":"GO","codMunicIbge":"5209101","Produto":"Soja"},
+		{"AnoEmissao":"2026","Municipio":"GOIANIA","nomeUF":"GO","codMunicIbge":"5208707","Produto":"Milho"},
+	}
+	got:=filterMarketMunicipalityRows(rows,"Goiatuba","GO","5209101","2026")
+	if len(got)!=1 || firstNonEmptyStringMapValue(got[0],"Produto")!="Soja" { t.Fatalf("filtro municipal inesperado: %#v",got) }
+}
+
+func TestMarketTopItemsPrefersNewestAndLargest170(t *testing.T) {
+	items:=[]CreditMarketItem{
+		{Year:"2025",Label:"A",Value:900},
+		{Year:"2026",Label:"B",Value:100},
+		{Year:"2026",Label:"C",Value:500},
+	}
+	got:=topMarketItems(items,2)
+	if len(got)!=2 || got[0].Label!="C" || got[1].Label!="B" { t.Fatalf("ordenação inesperada: %#v",got) }
+}
