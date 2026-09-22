@@ -17,6 +17,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 const (
@@ -782,4 +784,69 @@ func safePercent(v float64) float64 {
 	if v < 0 { return 0 }
 	if v > 100 { return 100 }
 	return v
+}
+
+
+func (a *App) ExportSICORXRayCSV(car string) (string, error) {
+	if a.ctx == nil {
+		return "", errors.New("aplicativo ainda não inicializado")
+	}
+	car = strings.TrimSpace(car)
+	if car == "" {
+		return "", errors.New("CAR não informado")
+	}
+	cachePath := filepath.Join(a.dataDir, "cache", "sicor_xray", safeFilePart(car)+".json")
+	result, ok := loadSICORXRayCache(cachePath, 365*24*time.Hour)
+	if !ok {
+		return "", errors.New("monte o Raio X do SICOR antes de exportar")
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title: "Salvar operações públicas do SICOR",
+		DefaultFilename: "Raio_X_SICOR_" + safeFilePart(car) + ".csv",
+		Filters: []runtime.FileFilter{{DisplayName: "CSV", Pattern: "*.csv"}},
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(path) == "" {
+		return "", errors.New("exportação cancelada")
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	w := csv.NewWriter(f)
+	w.Comma = ';'
+	defer w.Flush()
+	_ = w.Write([]string{
+		"REF_BACEN","ORDEM","EMISSAO","VENCIMENTO","INSTITUICAO","SEGMENTO_IF",
+		"PROGRAMA","SUBPROGRAMA","FONTE_RECURSO","FINALIDADE","ATIVIDADE","MODALIDADE","PRODUTO",
+		"VALOR_CREDITO","AREA_FINANCIADA_HA","GLEBAS","AREA_GLEBAS_HA","CONFLITO_PROJETO_MAX_PCT",
+	})
+	for _, op := range result.Operations {
+		glebaArea := 0.0
+		maxConflict := 0.0
+		for _, g := range op.Glebas {
+			glebaArea += g.AreaHa
+			if g.ProjectOverlapPct > maxConflict {
+				maxConflict = g.ProjectOverlapPct
+			}
+		}
+		_ = w.Write([]string{
+			op.RefBacen, op.Order, op.IssueDate, op.DueDate,
+			op.InstitutionName, op.InstitutionType, op.ProgramName, op.SubprogramName,
+			op.ResourceName, op.Purpose, op.Activity, op.Modality, op.Product,
+			strconv.FormatFloat(op.CreditValue, 'f', 2, 64),
+			strconv.FormatFloat(op.FinancedAreaHa, 'f', 4, 64),
+			strconv.Itoa(len(op.Glebas)),
+			strconv.FormatFloat(glebaArea, 'f', 4, 64),
+			strconv.FormatFloat(maxConflict, 'f', 2, 64),
+		})
+	}
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return "", err
+	}
+	return path, nil
 }
