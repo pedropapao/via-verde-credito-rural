@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func writeCreditFixture170(t *testing.T, name, header, row string) string {
@@ -79,4 +81,50 @@ func TestCreditIntelligenceCacheClear170(t *testing.T){
 	if err:=os.WriteFile(filepath.Join(p,"x"),[]byte("x"),0o644);err!=nil{t.Fatal(err)}
 	if err:=a.ClearCreditIntelligenceCache();err!=nil{t.Fatal(err)}
 	if _,err:=os.Stat(p);!os.IsNotExist(err){t.Fatalf("cache deveria ter sido removido: %v",err)}
+}
+
+
+func TestZARCSeasonAndCodes170(t *testing.T) {
+	d, err := time.Parse("2006-01-02","2026-10-15")
+	if err != nil { t.Fatal(err) }
+	a,b := zarcCropSeason(d)
+	if a!=2026 || b!=2027 { t.Fatalf("safra inesperada: %d/%d",a,b) }
+	if zarcDecendio(d)!=29 { t.Fatalf("decêndio inesperado: %d",zarcDecendio(d)) }
+	if zarcCycleCode("Grupo II","")!="21" { t.Fatal("Grupo II deveria mapear para 21") }
+	if zarcSoilCode("AD3","")!="13" { t.Fatal("AD3 deveria mapear para 13") }
+}
+
+func TestScanZARCForOperation170(t *testing.T) {
+	path:=filepath.Join(t.TempDir(),"zarc.csv")
+	header:="Nome_cultura,SafraIni,SafraFin,Cod_Cultura,Cod_Ciclo,Cod_Solo,geocodigo,UF,municipio,Cod_Outros_Manejos,Nome_Outros_Manejos,Cod_Clima,Nome_Clima,Cod_Munic,Portaria"
+	for i:=1;i<=36;i++ { header += fmt.Sprintf(",dec%d",i) }
+	vals:=make([]string,36)
+	vals[28]="20"
+	vals[29]="30"
+	row:="Soja,2026,2027,1,21,13,5209101,GO,Goiatuba,1,Sequeiro,0,Nao se aplica,1234,Portaria teste"
+	for _,v:=range vals { row += ","+v }
+	if err:=os.WriteFile(path,[]byte(header+"\n"+row+"\n"),0o644);err!=nil{t.Fatal(err)}
+	car:=CARResult{Municipality:"Goiatuba",UF:"GO",MunicipalityCode:"5209101"}
+	op:=CreditOperationIntelligence{
+		Product:"Soja em grao",CultivarCycle:"Grupo II",Soil:"AD3",Agriculture:"Sequeiro",
+		PlantingStart:"2026-10-15",PlantingEnd:"2026-10-25",
+	}
+	got,err:=scanZARCForOperation(path,zarcResource{Name:"Tábua Safra 2026/2027",URL:"https://example.invalid/zarc.csv"},car,op,2026,2027)
+	if err!=nil{t.Fatal(err)}
+	if !got.Matched || got.Status!="Indicação localizada" { t.Fatalf("ZARC inesperado: %+v",got) }
+	if len(got.Periods)!=2 || got.Periods[0].RiskPct!=20 || got.Periods[1].RiskPct!=30 {
+		t.Fatalf("decêndios inesperados: %+v",got.Periods)
+	}
+}
+
+func TestScanZARCDoesNotClaimOutsideWhenNoExactCombination170(t *testing.T) {
+	path:=filepath.Join(t.TempDir(),"zarc.csv")
+	header:="Nome_cultura,Cod_Ciclo,Cod_Solo,geocodigo,UF,municipio,Cod_Outros_Manejos,Nome_Outros_Manejos,Portaria,dec29"
+	row:="Milho,21,13,5209101,GO,Goiatuba,1,Sequeiro,Portaria teste,20"
+	if err:=os.WriteFile(path,[]byte(header+"\n"+row+"\n"),0o644);err!=nil{t.Fatal(err)}
+	car:=CARResult{Municipality:"Goiatuba",UF:"GO",MunicipalityCode:"5209101"}
+	op:=CreditOperationIntelligence{Product:"Soja",CultivarCycle:"Grupo II",Soil:"AD3",PlantingStart:"2026-10-15"}
+	got,err:=scanZARCForOperation(path,zarcResource{URL:"https://example.invalid"},car,op,2026,2027)
+	if err!=nil{t.Fatal(err)}
+	if got.Matched || got.Status!="Sem combinação exata" { t.Fatalf("não deveria declarar fora do ZARC: %+v",got) }
 }
