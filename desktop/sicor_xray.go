@@ -309,7 +309,6 @@ func (a *App) BuildSICORPropertyXRay(propertyID int64, force bool) (SICORXRayRes
 			"O CAR aparece no índice público de propriedades do SICOR, mas nenhuma operação compatível foi localizada nos arquivos anuais processados.")
 	}
 
-	result.Warnings = append(result.Warnings, a.enrichSICORFinancialIntelligence(ctx, sourceDir, &result)...)
 
 	if err := saveSICORXRayCache(cachePath, result); err != nil {
 		result.Warnings = append(result.Warnings, "Não foi possível gravar o cache local do Raio X: "+err.Error())
