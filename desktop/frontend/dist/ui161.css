@@ -1,0 +1,253 @@
+/* ViaVerdeCAR 1.6.1 — refinamento visual e hierarquia de informação */
+:root{
+  --vv161-bg:#f5f7f4;
+  --vv161-surface:#ffffff;
+  --vv161-surface-soft:#f8faf7;
+  --vv161-line:#dfe6df;
+  --vv161-line-strong:#ccd8ce;
+  --vv161-text:#233229;
+  --vv161-muted:#708078;
+  --vv161-green:#245c3d;
+  --vv161-green-soft:#edf5ef;
+  --vv161-shadow:0 6px 20px rgba(31,61,42,.055);
+  --vv161-radius:14px;
+}
+
+/* Estrutura geral mais leve */
+body.vv-ui161{background:var(--vv161-bg);color:var(--vv161-text)}
+body.vv-ui161 .app-shell{grid-template-columns:218px minmax(0,1fr)}
+body.vv-ui161 .sidebar{padding:20px 14px;background:#20362a}
+body.vv-ui161 .brand{padding:0 6px 20px}
+body.vv-ui161 .brand-mark{width:38px;height:38px;border-radius:11px}
+body.vv-ui161 .sidebar nav{gap:5px;margin-top:18px}
+body.vv-ui161 .nav-item{padding:11px 12px;border-radius:9px}
+body.vv-ui161 .nav-item.active{background:#385743;box-shadow:inset 3px 0 0 #7db087}
+body.vv-ui161 .main-area{padding:0 24px 34px}
+body.vv-ui161 .topbar{min-height:68px;padding:14px 0 11px}
+body.vv-ui161 .topbar h1{font-size:23px}
+body.vv-ui161 .view{padding-top:15px}
+body.vv-ui161 .panel{border-color:var(--vv161-line);border-radius:var(--vv161-radius);box-shadow:var(--vv161-shadow)}
+body.vv-ui161 .panel-title h3{font-size:16px;margin-bottom:4px}
+body.vv-ui161 .panel-title p{line-height:1.45}
+body.vv-ui161 .eyebrow{font-size:9px;letter-spacing:.1em}
+body.vv-ui161 .btn{border-radius:9px;padding:9px 13px}
+body.vv-ui161 .btn.primary{box-shadow:0 3px 9px rgba(36,92,61,.12)}
+body.vv-ui161 .status-badge{font-size:8px;padding:5px 8px}
+
+/* Dashboard: menos cartazes, mais painel de trabalho */
+body.vv-ui161 .hero-card{min-height:150px;padding:24px 28px;border-radius:16px}
+body.vv-ui161 .hero-card h2{font-size:24px;margin:7px 0}
+body.vv-ui161 .hero-card p{font-size:12px}
+body.vv-ui161 .stats-grid{gap:9px;margin:11px 0}
+body.vv-ui161 .stat-card{padding:13px 14px;border-radius:11px;box-shadow:none}
+body.vv-ui161 .stat-card strong{font-size:22px}
+body.vv-ui161 .dashboard-grid{gap:11px}
+
+/* Barra de consulta CAR */
+body.vv-ui161 #view-car{padding-top:10px}
+body.vv-ui161 #view-car .car-toolbar{
+  border-radius:13px;
+  padding:11px 12px;
+  background:rgba(255,255,255,.97);
+  border-color:var(--vv161-line-strong);
+  box-shadow:0 5px 18px rgba(31,61,42,.05)
+}
+body.vv-ui161 #view-car .car-toolbar input,
+body.vv-ui161 #view-car .car-toolbar select{
+  min-height:39px;
+  border-color:#d7e0d8;
+  background:#fbfcfb
+}
+body.vv-ui161 #view-car .car-toolbar input:focus,
+body.vv-ui161 #view-car .car-toolbar select:focus{
+  background:#fff;
+  border-color:#7fa089;
+  box-shadow:0 0 0 3px rgba(73,125,88,.08)
+}
+
+/* Abas: viram a navegação principal da análise */
+body.vv-ui161 .car-workspace131{margin-top:9px}
+body.vv-ui161 .car-tabs131{
+  top:68px;
+  gap:3px;
+  padding:4px;
+  border-radius:11px;
+  background:#eaf0ea;
+  border-color:#d6e0d7;
+  box-shadow:0 5px 14px rgba(31,61,42,.055);
+  overflow-x:auto;
+  scrollbar-width:thin
+}
+body.vv-ui161 .car-tab131{
+  flex:1 0 auto;
+  min-width:118px;
+  padding:9px 11px;
+  font-size:9.5px;
+  border-radius:7px;
+  transition:.15s ease
+}
+body.vv-ui161 .car-tab131.active{
+  color:#214f35;
+  box-shadow:0 2px 7px rgba(28,66,42,.08)
+}
+body.vv-ui161 .car-tab161-icon{font-size:11px;margin-right:5px;opacity:.76}
+body.vv-ui161 .car-tab-panel131{padding-top:9px}
+
+/* Resumo */
+body.vv-ui161 .professional-strip{gap:8px}
+body.vv-ui161 .professional-main,
+body.vv-ui161 .metric-card{box-shadow:none}
+body.vv-ui161 .professional-main{background:linear-gradient(135deg,#fff,#f8fbf8)}
+body.vv-ui161 .professional-main p{max-width:780px}
+body.vv-ui161 .metric-card{
+  border-color:#e2e8e2;
+  border-radius:11px;
+  padding:10px 11px;
+  min-height:64px
+}
+body.vv-ui161 .metric-card strong{font-size:16px}
+body.vv-ui161 .summary-grid131{gap:9px;margin-top:9px}
+body.vv-ui161 .summary-grid131 .panel{padding:14px}
+body.vv-ui161 .summary-grid131 .data-list{margin-top:5px}
+body.vv-ui161 .summary-grid131 .data-list>div{
+  padding:6px 0;
+  border-bottom:1px solid #edf1ed
+}
+body.vv-ui161 .summary-grid131 .data-list dt{font-size:9px}
+body.vv-ui161 .summary-grid131 .data-list dd{font-size:10px}
+
+/* Mapa: protagonista */
+body.vv-ui161 .map-tab-stack131{gap:9px}
+body.vv-ui161 .map-tab-stack131 .map-panel{border-radius:14px}
+body.vv-ui161 .map-tab-stack131 .map-head{padding:12px 15px 9px}
+body.vv-ui161 .map-tab-stack131 #map{
+  height:min(72vh,760px);
+  min-height:560px
+}
+body.vv-ui161 .map-footer{padding:8px 13px}
+
+/* Planejamento / ambiental / documentos */
+body.vv-ui161 #carTabPlanning131 .feature109-grid,
+body.vv-ui161 .environment-stack131,
+body.vv-ui161 .docs-grid131{gap:9px}
+body.vv-ui161 .environment-stack131 .environment-card,
+body.vv-ui161 .environment-stack131 .theme-card{
+  box-shadow:none;
+  border-color:#e3e9e3
+}
+body.vv-ui161 .environment-stack131 .environment-card>strong{font-size:14px}
+body.vv-ui161 .environment-stack131 .theme-card strong{font-size:15px}
+
+/* Raio X: resumo primeiro, detalhes depois */
+body.vv-ui161 .xray150{gap:9px}
+body.vv-ui161 .xray-hero150{
+  padding:16px;
+  background:linear-gradient(135deg,#f3f8f4,#fff);
+  border-color:#d3e1d6
+}
+body.vv-ui161 .xray-hero150 h3{font-size:16px}
+body.vv-ui161 .xray-hero150 p{font-size:9.5px;line-height:1.5}
+body.vv-ui161 .xray-metrics150{
+  grid-template-columns:repeat(auto-fit,minmax(145px,1fr));
+  gap:6px;
+  margin-top:9px
+}
+body.vv-ui161 .xray-metric150{
+  border-radius:9px;
+  padding:9px 10px;
+  border-color:#e2e9e3;
+  background:#fff
+}
+body.vv-ui161 .xray-metric150 strong{font-size:15px}
+body.vv-ui161 .xray-actions150{margin-top:8px}
+body.vv-ui161 .xray-actions150 .btn{padding:7px 10px;font-size:9px}
+body.vv-ui161 .xray-grid150{
+  grid-template-columns:minmax(0,1.55fr) minmax(310px,.45fr);
+  gap:9px
+}
+body.vv-ui161 .xray-stack150{gap:9px}
+body.vv-ui161 .xray-panel150{padding:13px}
+body.vv-ui161 .xray-operation-list150{gap:6px;margin-top:8px;max-height:680px}
+body.vv-ui161 .xray-operation150,
+body.vv-ui161 .sigef-card150{
+  padding:9px 10px;
+  border-radius:9px;
+  box-shadow:none
+}
+body.vv-ui161 .xray-operation-top150,
+body.vv-ui161 .sigef-top150{align-items:center}
+body.vv-ui161 .xray-value150{font-size:10px}
+body.vv-ui161 .xray-fields150{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:5px;
+  margin-top:7px
+}
+body.vv-ui161 .xray-field150{
+  padding:6px;
+  border-color:#edf0ed;
+  background:#fafbfa
+}
+body.vv-ui161 .xray-source150{
+  padding:7px 9px;
+  margin-top:7px;
+  border-radius:7px
+}
+
+/* Fundiário recebe destaque sem parecer outro aplicativo */
+body.vv-ui161 .sigef-panel150{
+  border-left:4px solid #75609b;
+  padding-left:13px
+}
+body.vv-ui161 .sigef-summary150{gap:6px;margin-top:8px}
+body.vv-ui161 .sigef-list150{gap:6px;margin-top:8px}
+
+/* Detalhes recolhíveis: reduz rolagem sem perder informação */
+body.vv-ui161 .ui161-detail-toggle{
+  border:1px solid #dce5dd;
+  background:#fff;
+  color:#496153;
+  border-radius:8px;
+  padding:5px 8px;
+  font-size:8px;
+  font-weight:800;
+  cursor:pointer;
+  white-space:nowrap
+}
+body.vv-ui161 .ui161-detail-toggle:hover{background:#f5f8f5}
+body.vv-ui161 .ui161-collapsed>.xray-fields150,
+body.vv-ui161 .ui161-collapsed>.xray-glebas150,
+body.vv-ui161 .ui161-collapsed>.xray-actions150,
+body.vv-ui161 .ui161-collapsed>.xray-source150{display:none}
+body.vv-ui161 .ui161-collapsed{padding-bottom:9px}
+body.vv-ui161 .ui161-card-heading{display:flex;align-items:center;gap:8px;min-width:0}
+body.vv-ui161 .ui161-card-heading>div{min-width:0}
+
+/* Textos longos deixam de estourar a tela */
+body.vv-ui161 .xray-warning150,
+body.vv-ui161 .themes-warnings,
+body.vv-ui161 .setting-value,
+body.vv-ui161 dd{overflow-wrap:anywhere}
+
+/* Melhor uso de notebook e telas menores */
+@media(max-width:1450px){
+  body.vv-ui161 .main-area{padding-left:18px;padding-right:18px}
+  body.vv-ui161 .xray-grid150{grid-template-columns:1fr}
+  body.vv-ui161 .xray-operation-list150{max-height:none}
+}
+@media(max-width:1100px){
+  body.vv-ui161 .app-shell{grid-template-columns:76px minmax(0,1fr)}
+  body.vv-ui161 .sidebar{padding:17px 9px}
+  body.vv-ui161 .car-tabs131{top:66px}
+  body.vv-ui161 .summary-grid131{grid-template-columns:1fr}
+  body.vv-ui161 .xray-fields150{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.vv-ui161 .sigef-summary150{grid-template-columns:1fr 1fr}
+}
+@media(max-width:760px){
+  body.vv-ui161 .main-area{padding:0 10px 24px}
+  body.vv-ui161 .topbar{position:relative}
+  body.vv-ui161 .car-tabs131{top:0}
+  body.vv-ui161 .xray-fields150,
+  body.vv-ui161 .sigef-summary150{grid-template-columns:1fr}
+  body.vv-ui161 .xray-metrics150{grid-template-columns:1fr 1fr}
+  body.vv-ui161 .map-tab-stack131 #map{min-height:430px;height:62vh}
+}
