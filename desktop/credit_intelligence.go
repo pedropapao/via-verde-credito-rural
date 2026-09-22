@@ -151,6 +151,7 @@ type CreditOperationIntelligence struct {
 	Declassification        CreditDeclassification `json:"declassification"`
 	Renegotiations          []CreditRenegotiation  `json:"renegotiations"`
 	Proagro                 CreditProagro           `json:"proagro"`
+	ZARC                    ZARCCheck               `json:"zarc"`
 }
 
 type CreditIntelligenceTotals struct {
@@ -290,6 +291,7 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 	if hasProagroCandidate(byKey) {
 		a.enrichCreditProagro(ctx, sourceDir, byKey, dom, &out)
 	}
+	a.enrichCreditZARC(ctx, sourceDir, car, byKey, &out)
 
 	for _, op := range byKey {
 		sort.SliceStable(op.Releases, func(i, j int) bool { return op.Releases[i].Date < op.Releases[j].Date })
