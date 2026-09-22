@@ -262,6 +262,8 @@ func (a *App) enrichSICORFinancialIntelligence(ctx context.Context, sourceDir, m
 	integrationDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "TipoIntegracao.csv", "CD_TIPO_INTGR_CONSOR", "DESCRICAO")
 	grainDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "GraoSemente.csv", "CD_TIPO_GRAO_SEMENTE", "DESCRICAO")
 	phaseDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "FaseCicloProducao.csv", "CD_FASE_CICLO_PRODUCAO", "DESCRICAO")
+	soilDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "TipoSolo.csv", "CD_TIPO_SOLO", "DESCRICAO")
+	cycleDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "CicloCultivar.csv", "CD_CICLO_CULTIVAR", "DESCRICAO_CICLO")
 	targets := make(map[string]bool, len(result.Operations))
 	refOnly := make(map[string]bool, len(result.Operations))
 	minYear := time.Now().Year()
@@ -280,6 +282,8 @@ func (a *App) enrichSICORFinancialIntelligence(ctx context.Context, sourceDir, m
 		op.IntegrationName = integrationDomain[normalizeDomainCode(op.IntegrationCode)]
 		op.GrainSeedName = grainDomain[normalizeDomainCode(op.GrainSeedCode)]
 		op.ProductionPhaseName = phaseDomain[normalizeDomainCode(op.ProductionPhaseCode)]
+		op.SoilName = soilDomain[normalizeDomainCode(op.SoilCode)]
+		op.CycleName = cycleDomain[normalizeDomainCode(op.CycleCode)]
 		op.Intelligence.MCR = SICORMCRContext{
 			SourceURL: mcrOfficialURL,
 			Program: op.ProgramName,
@@ -643,7 +647,8 @@ func (a *App) enrichZARCAutomaticChecks(ctx context.Context, sourceDir, municipa
 			op.Intelligence.ZARCCheck=check
 			continue
 		}
-		var soilCode,soilName,cycleCode,cycleName,start,end string
+		soilCode,soilName,cycleCode,cycleName:=op.SoilCode,op.SoilName,op.CycleCode,op.CycleName
+		var start,end string
 		if len(op.Intelligence.ProagroCOP)>0 {
 			cop:=op.Intelligence.ProagroCOP[0]
 			soilCode,soilName=cop.SoilCode,cop.SoilName
