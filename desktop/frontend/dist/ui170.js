@@ -73,6 +73,7 @@
     g('openMCR170b').onclick=()=>openExternal(r.mcr_source_url||'https://www3.bcb.gov.br/mcr/completo');
     g('openZARC170b').onclick=()=>openExternal(r.zarc_source_url||'https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico');
     body.querySelectorAll('[data-credit-op170]').forEach(b=>b.onclick=()=>toggleOp170(b.dataset.creditOp170));
+    body.querySelectorAll('[data-zarc-url170]').forEach(b=>b.onclick=()=>openExternal(b.dataset.zarcUrl170));
   }
 
   function releaseNote170(t){
@@ -144,9 +145,14 @@
       field170('Irrigação',op.irrigation||op.irrigation_code)+field170('Agricultura',op.agriculture||op.agriculture_code)+field170('Cultivo',op.crop_type||op.crop_type_code)+field170('Integração/consórcio',op.integration||op.integration_code)+field170('Grão/semente',op.seed_type||op.seed_type_code)+field170('Fase produtiva',op.production_phase||op.production_phase_code)+
       '</div></section>';
 
+    const z=op.zarc||{};
+    const zPeriods=(z.periods||[]).map(x=>'<span class="'+(x.indicated?'ok':'warn')+'"><b>D'+esc170(x.decendio)+'</b>'+(x.indicated?(x.risk_pct?esc170(x.risk_pct)+'%':esc170(x.raw||'indicado')):'sem indicação')+'</span>').join('');
     const zarc='<section><h4>ZARC / plantio</h4><div class="credit-fields170">'+
-      field170('Ciclo cultivar',op.cultivar_cycle||op.cultivar_cycle_code)+field170('Tipo de solo',op.soil||op.soil_code)+field170('Início plantio',dt170(op.planting_start))+field170('Fim plantio',dt170(op.planting_end))+field170('Início colheita',dt170(op.harvest_start))+field170('Fim colheita',dt170(op.harvest_end))+
-      '</div><div class="credit-op-note170">Estes são dados registrados na operação para conferência. O Via Verde não declara conformidade ZARC automaticamente sem cruzar a Portaria/Tábua de Risco vigente da cultura, município, solo e ciclo.</div></section>';
+      field170('Safra ZARC',z.safra)+field170('Resultado',z.status)+field170('Cultura cruzada',z.culture||op.product)+field170('Ciclo cultivar',z.cycle||op.cultivar_cycle||op.cultivar_cycle_code)+field170('Tipo de solo',z.soil||op.soil||op.soil_code)+field170('Manejo',z.management)+
+      field170('Início plantio',dt170(op.planting_start))+field170('Fim plantio',dt170(op.planting_end))+field170('Portaria',z.portaria)+field170('Linhas compatíveis',z.candidates?String(z.candidates):'')+
+      '</div>'+(zPeriods?'<div class="zarc-periods170">'+zPeriods+'</div>':'')+
+      '<div class="credit-op-note170">'+esc170(z.message||'Sem cruzamento automático disponível para esta operação.')+' O resultado é uma conferência da Tábua de Risco pública e não substitui a Portaria ZARC nem a validação técnica do enquadramento.</div>'+
+      (z.source_url?'<div class="credit-intel-actions170"><button class="btn ghost" data-zarc-url170="'+esc170(z.source_url)+'">Abrir fonte ZARC</button></div>':'')+'</section>';
 
     const proagro=proagro170(p,op.proagro_rate_pct);
     return financial+releases+situation+production+zarc+proagro+
