@@ -1,7 +1,7 @@
-/* ViaVerdeCAR 1.7.0 — inteligência de crédito rural */
+/* ViaVerdeCAR 1.7.1 — inteligência de crédito rural + progresso real */
 (function(){
   const g=id=>document.getElementById(id);
-  const s170={car:'',data:null,loading:false};
+  const s170={car:'',data:null,loading:false,timer:null,poll:null,startedAt:0,lastProgress:null};
 
   function api170(){return typeof api==='function'?api():window.go?.main?.App}
   function esc170(v){return typeof esc==='function'?esc(String(v??'')):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -11,6 +11,90 @@
   function has170(v){return v!==null&&v!==undefined&&String(v).trim()!==''&&Number(v)!==0}
   function dt170(v){if(!v)return '—';const s=String(v);const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+'/'+m[2]+'/'+m[1]:s}
   function statusClass170(v){const s=String(v||'').toUpperCase();if(/ATRAS|INADIM|PREJU|DESCLASS/.test(s))return 'warning';if(/LIQUID/.test(s))return 'ok';if(/RENEG|PRORROG/.test(s))return 'info';return 'neutral'}
+
+  const progressSteps170=[
+    {key:'operations',icon:'🧾',label:'Operações SICOR'},
+    {key:'domains',icon:'📚',label:'Tabelas e domínios'},
+    {key:'details',icon:'🔎',label:'Detalhes das operações'},
+    {key:'releases',icon:'💰',label:'Liberações de recursos'},
+    {key:'disbursements',icon:'📅',label:'Cronograma de desembolso'},
+    {key:'declassification',icon:'⚠️',label:'Desclassificações'},
+    {key:'renegotiation',icon:'🔁',label:'Renegociações'},
+    {key:'balances',icon:'📊',label:'Saldos e situação'},
+    {key:'proagro',icon:'🛡️',label:'Proagro'},
+    {key:'zarc',icon:'🌱',label:'ZARC'},
+    {key:'market',icon:'🗺️',label:'Contexto de mercado'}
+  ];
+
+  function elapsed170(){
+    if(!s170.startedAt)return 0;
+    return Math.max(0,Math.floor((Date.now()-s170.startedAt)/1000));
+  }
+  function formatElapsed170(sec){
+    const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
+    return h?String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'):String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }
+  function slowMessage170(sec){
+    if(sec>=1200)return 'A consulta está bastante demorada. O Via Verde continua tentando as fontes oficiais até o limite de segurança.';
+    if(sec>=600)return 'Está levando mais tempo que o normal. Alguns arquivos públicos do SICOR/BCB podem estar lentos nesta consulta.';
+    return 'Na primeira sincronização, alguns arquivos oficiais podem levar alguns minutos para baixar e processar.';
+  }
+  function renderProgressShell170(){
+    const body=g('creditIntelBody170');if(!body)return;
+    body.innerHTML='<div class="credit-progress171">'+
+      '<div class="credit-progress-head171"><div class="credit-progress-art171" id="creditProgressArt171">🧾</div><div><strong id="creditProgressTitle171">Preparando inteligência financeira</strong><span id="creditProgressDetail171">Localizando as operações públicas vinculadas ao CAR.</span></div></div>'+
+      '<div class="credit-progress-meta171"><div><span>Tempo decorrido</span><strong id="creditProgressTimer171">00:00</strong></div><div><span>Progresso</span><strong id="creditProgressCount171">Etapa 1 de 11</strong></div></div>'+
+      '<div class="credit-progress-track171"><div id="creditProgressBar171"></div></div>'+
+      '<div class="credit-progress-steps171" id="creditProgressSteps171">'+progressSteps170.map((x,i)=>'<div data-progress-key171="'+x.key+'" class="'+(i===0?'current':'waiting')+'"><span class="credit-progress-icon171">'+x.icon+'</span><div><b>'+esc170(x.label)+'</b><small>'+(i===0?'Em andamento':'Aguardando')+'</small></div><span class="credit-progress-state171">'+(i===0?'●':'○')+'</span></div>').join('')+'</div>'+
+      '<div class="credit-progress-note171" id="creditProgressNote171">'+esc170(slowMessage170(0))+'</div>'+
+      '</div>';
+  }
+  function renderCreditProgress170(p){
+    if(!g('creditProgressSteps171'))return;
+    s170.lastProgress=p||{};
+    const step=Math.min(progressSteps170.length,Math.max(1,Number(p?.step)||1));
+    const total=Number(p?.total)||progressSteps170.length;
+    const current=progressSteps170[step-1]||progressSteps170[0];
+    const title=g('creditProgressTitle171'),detail=g('creditProgressDetail171'),art=g('creditProgressArt171');
+    if(title)title.textContent=p?.label||current.label;
+    if(detail)detail.textContent=p?.detail||'Consultando dados oficiais.';
+    if(art)art.textContent=(p?.done?'✅':p?.failed?'⚠️':current.icon);
+    const count=g('creditProgressCount171');if(count)count.textContent=p?.done?'Concluído':('Etapa '+step+' de '+total);
+    const completed=p?.done?total:Math.max(0,step-1);
+    const bar=g('creditProgressBar171');if(bar)bar.style.width=Math.min(100,completed/Math.max(1,total)*100)+'%';
+    progressSteps170.forEach((x,i)=>{
+      const el=document.querySelector('[data-progress-key171="'+x.key+'"]');if(!el)return;
+      const done=!!p?.done||i<step-1,active=!p?.done&&i===step-1;
+      el.className=done?'done':active?'current':'waiting';
+      const small=el.querySelector('small'),stateEl=el.querySelector('.credit-progress-state171');
+      if(small)small.textContent=done?'Concluído':active?'Em andamento':'Aguardando';
+      if(stateEl)stateEl.textContent=done?'✓':active?'●':'○';
+    });
+  }
+  function updateTimer170(){
+    const sec=elapsed170(),timer=g('creditProgressTimer171'),note=g('creditProgressNote171');
+    if(timer)timer.textContent=formatElapsed170(sec);
+    if(note){note.textContent=slowMessage170(sec);note.classList.toggle('slow',sec>=600)}
+  }
+  function stopProgressTracking170(){
+    if(s170.timer){clearInterval(s170.timer);s170.timer=null}
+    if(s170.poll){clearInterval(s170.poll);s170.poll=null}
+  }
+  function startProgressTracking170(){
+    stopProgressTracking170();
+    s170.startedAt=Date.now();
+    updateTimer170();
+    s170.timer=setInterval(updateTimer170,1000);
+    const poll=async()=>{
+      if(!s170.loading)return;
+      try{
+        const p=await api170().GetCreditIntelligenceProgress();
+        if(p)renderCreditProgress170(p);
+      }catch(_){}
+    };
+    poll();
+    s170.poll=setInterval(poll,900);
+  }
 
   function attach170(){
     const box=g('xrayWorkspace150');if(!box)return;
@@ -36,16 +120,20 @@
     if(s170.loading||!state?.car?.car)return;
     const body=g('creditIntelBody170'),badge=g('creditIntelBadge170');if(!body)return;
     s170.loading=true;if(badge){badge.textContent='Consultando';badge.className='status-badge info'}
-    body.innerHTML='<div class="credit-intel-loading170"><strong>Sincronizando dados financeiros oficiais…</strong><span>Consultando saldos, liberações, desembolsos, desclassificações, renegociações e Proagro vinculados às operações deste CAR.</span></div>';
+    renderProgressShell170();
+    startProgressTracking170();
     try{
       const r=await api170().GetCreditIntelligence(state.selectedProperty?.id||0,!!force);
-      s170.data=r;s170.car=r.car||state.car.car;render170(r);
+      s170.data=r;s170.car=r.car||state.car.car;
+      stopProgressTracking170();
+      render170(r);
     }catch(e){
+      stopProgressTracking170();
       body.innerHTML='<div class="xray-warning150"><strong>Inteligência financeira não concluída.</strong><br>'+esc170(String(e))+'</div><div class="credit-intel-actions170"><button class="btn primary" id="retryCreditIntel170">Tentar novamente</button></div>';
       g('retryCreditIntel170').onclick=()=>load170(true);
       if(badge){badge.textContent='Falhou';badge.className='status-badge warning'}
       try{toast(String(e),true)}catch(_){}
-    }finally{s170.loading=false}
+    }finally{s170.loading=false;stopProgressTracking170()}
   }
 
   function render170(r){
@@ -198,7 +286,7 @@
   }
 
   function watch170(){
-    const install=()=>{try{attach170()}catch(e){try{console.error('ViaVerdeCAR 1.7.0 crédito:',e)}catch(_){}}};
+    const install=()=>{try{attach170()}catch(e){try{console.error('ViaVerdeCAR 1.7.1 crédito:',e)}catch(_){}}};
     install();
     const root=g('carTabXRay150')||document.body;
     new MutationObserver(()=>install()).observe(root,{childList:true,subtree:true});
