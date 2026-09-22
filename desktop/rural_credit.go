@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -15,7 +14,7 @@ import (
 
 const (
 	mapBiomasRuralCreditURL = "https://plataforma.creditorural.mapbiomas.org/"
-	bcbRuralDataURL          = "https://dadosabertos.bcb.gov.br/dataset/matrizdadoscreditorural"
+	bcbRuralDataURL          = "https://www.bcb.gov.br/estabilidadefinanceira/micrrural/"
 	bcbSicorODataBase        = "https://olinda.bcb.gov.br/olinda/servico/SICOR/versao/v2/odata/"
 )
 
