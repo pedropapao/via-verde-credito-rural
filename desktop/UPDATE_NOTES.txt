@@ -1,19 +1,44 @@
-CAR 1.4.6: corrige protocolo do PAMGIA e torna a consulta municipal MDCR automática antes do fallback oficial.
+CAR 1.5.0: Raio X completo público do imóvel rural a partir do CAR.
 
-IBAMA / PAMGIA
-• Corrige o erro “HTTP/1.x transport connection broken: malformed HTTP response” observado no Windows.
-• O Via Verde deixa o cliente HTTP negociar HTTP/2 ou HTTP/1.1 normalmente com o PAMGIA.
-• Se a primeira chamada nativa falhar, o aplicativo usa imediatamente o curl.exe do Windows como contingência, sem repetir duas conexões incompatíveis.
-• Continua sendo consultada primeiro a camada pública atual adm_embargos_ibama_a; a publicação SISCOM anterior permanece como fallback.
-• A consulta continua leve: primeiro pede apenas a contagem espacial e só baixa geometrias quando há ocorrência.
+RAIO X DO IMÓVEL
+• Nova aba “Raio X” logo após Resumo.
+• A análise parte do CAR já consultado e consolida em uma única tela: histórico público de crédito rural, glebas financiadas publicadas, áreas do projeto atual, alertas MapBiomas, triagem ambiental e disponibilidade dos Temas SICAR.
+• A análise é executada sob demanda para preservar a estabilidade do aplicativo.
 
-BANCO CENTRAL / SICOR / MDCR
-• O painel volta a tentar automaticamente a consulta municipal antes de oferecer o botão da fonte oficial.
-• O Via Verde consulta os dois anos mais recentes no recurso público agregado do SICOR/MDCR e valida localmente código IBGE, município, UF e ano antes de aceitar qualquer linha.
-• Se o deployment do Olinda ignorar o filtro e devolver registros de outros municípios, o aplicativo rejeita esses dados em vez de atribuí-los ao CAR.
-• Quando a consulta automática funciona, o painel mostra “Automático” e consolida Custeio/Investimento por atividade.
-• Quando a API pública não aceita ou não conclui o filtro municipal, o painel mostra “Contingência” e mantém “Abrir MDCR oficial” apenas como alternativa. O navegador não é aberto automaticamente.
-• Corrigida a leitura de valores decimais retornados como texto, aceitando tanto formato com ponto quanto formato brasileiro com vírgula.
-• O contexto de Crédito Rural continua sob demanda para preservar a estabilidade do aplicativo.
+HISTÓRICO INDIVIDUAL DO SICOR / BANCO CENTRAL
+• O Via Verde passa a consultar diretamente os microdados públicos oficiais do SICOR disponibilizados pelo Banco Central, em vez de depender apenas do contexto agregado do município.
+• O arquivo SICOR_PROPRIEDADES é filtrado pelo CD_CAR para localizar REF_BACEN + NU_ORDEM associados ao imóvel.
+• Depois, o aplicativo procura as referências localizadas nos arquivos anuais SICOR_OPERACAO_BASICA_ESTADO desde 2013.
+• REF_BACEN é tratado como operação e NU_ORDEM como destinação, evitando contar várias destinações do mesmo contrato como operações diferentes.
+• Para cada destinação pública localizada, o Via Verde tenta apresentar: referência BACEN, ordem, emissão, vencimento, instituição financeira, segmento da instituição, programa, subprograma, fonte de recursos, finalidade, atividade, modalidade, produto, valor do crédito, recursos próprios, área financiada, área informada, taxa e seguro, conforme os campos publicamente disponíveis.
 
-MapBiomas Alerta, Temas SICAR, FUNAI, ICMBio, MMA/MCR, CAR, mapa, Nova consulta, glebas A/B/C, roteiro, relevo, WorldCover, KML, histórico, relatórios, carteira, banco local, backup e atualização automática permanecem preservados.
+GLEBAS FINANCIADAS
+• Para os anos em que operações do CAR forem localizadas, o aplicativo procura a gleba correspondente nos arquivos públicos SICOR_GLEBAS_WKT.
+• POLYGON e MULTIPOLYGON são convertidos automaticamente para GeoJSON.
+• As glebas financiadas podem ser exibidas diretamente no mapa do Via Verde.
+• Cada gleba é comparada com o perímetro atual do CAR e com as áreas/glebas do projeto já criadas no Via Verde.
+• Quando uma gleba pública antiga cruza a área do novo projeto, o Raio X mostra o percentual de sobreposição e destaca a ocorrência.
+• O download aceita as grafias de arquivo SICOR_GLEBAS_WKT e sicor_glebas_wkt para compatibilidade com publicações/links históricos.
+
+DICIONÁRIOS DO SICOR
+• O Raio X também tenta baixar e manter em cache os dicionários oficiais de instituição financeira, programa, subprograma, fonte de recursos e empreendimento.
+• O código de empreendimento é convertido, quando possível, em finalidade, atividade, modalidade, produto e variedade legíveis.
+
+CACHE E DESEMPENHO
+• A primeira sincronização pode levar alguns minutos porque os microdados oficiais são arquivos nacionais.
+• Os downloads são feitos em streaming para arquivo, sem carregar o pacote nacional inteiro na memória.
+• Os arquivos-fonte recentes são mantidos temporariamente em cache para evitar baixar tudo novamente a cada CAR.
+• O resultado final de cada CAR fica em cache local por 14 dias e pode ser atualizado do zero pelo usuário.
+• Arquivos temporários do Raio X continuam fora do backup, pois podem ser reproduzidos novamente pelas fontes oficiais.
+
+EXPORTAÇÃO
+• Operações/destinações localizadas podem ser exportadas para CSV, contendo REF BACEN, ordem, datas, instituição, programa, fonte, empreendimento, valores, área, quantidade de glebas e maior conflito com a área atual do projeto.
+
+ESCOPO E LIMITAÇÕES
+• O Raio X é um levantamento de dados PÚBLICOS. A ausência de operação pública, gleba ou alerta não prova inexistência de financiamento, crédito privado, restrição ou ocorrência.
+• A seção pública complementar do SICOR representa operações do universo de crédito rural público definido pelo Banco Central, incluindo operações seguradas pelo Proagro ou com fontes públicas de recursos.
+• O histórico principal desta versão utiliza os arquivos anuais concedidos desde 2013. Operações contratadas ainda sem liberação, publicadas pelo Banco Central em conjunto separado e temporário, não são tratadas como equivalentes a crédito já concedido.
+• Alertas e cruzamentos ambientais permanecem evidências para conferência; o Via Verde não classifica automaticamente uma operação como regular ou irregular.
+
+PRESERVADO
+• Consulta CAR, Nova consulta, mapa, roteiro automático, alternativas A/B/C, relevo, WorldCover, MapBiomas Alerta, IBAMA, FUNAI, ICMBio, MMA/MCR, Temas SICAR, KML, histórico, relatórios, carteira, banco local, backup e atualização automática permanecem preservados.
