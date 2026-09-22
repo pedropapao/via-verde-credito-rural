@@ -47,3 +47,7 @@
   .credit-intel-metrics170,.credit-op-quick170,.credit-fields170{grid-template-columns:1fr}
   .credit-op-head170{flex-direction:column}
 }
+.zarc-periods170{display:flex;gap:7px;flex-wrap:wrap}
+.zarc-periods170 span{display:flex;gap:5px;align-items:center;padding:6px 9px;border-radius:999px;font-size:.78rem;background:rgba(155,101,24,.10)}
+.zarc-periods170 span.ok{background:rgba(42,111,77,.11)}
+.zarc-periods170 span.warn{background:rgba(155,101,24,.13)}
