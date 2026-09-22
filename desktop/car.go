@@ -209,7 +209,7 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 		}
 		if result.Environment.IBAMAChecked {
 			if result.Environment.IBAMAEmbargoCount == 0 {
-				result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "Embargos IBAMA", Detail: "Nenhuma área de embargo do SISCOM/IBAMA intersectou a geometria consultada nesta triagem."})
+				result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "Embargos IBAMA", Detail: "Nenhuma área de embargo da base pública atual do IBAMA/PAMGIA intersectou a geometria consultada nesta triagem."})
 			} else {
 				result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "Embargos IBAMA", Detail: fmt.Sprintf("%d registro(s) espacial(is) de embargo intersectam a área. Confira os detalhes e a situação oficial.", result.Environment.IBAMAEmbargoCount)})
 			}
