@@ -176,7 +176,7 @@ func (a *App) BuildSICORFinancialIntelligence(propertyID int64, force bool) (SIC
 		}
 	}
 
-	base, err := a.BuildSICORPropertyXRay(propertyID, false)
+	base, err := a.BuildSICORPropertyXRay(propertyID, true)
 	if err != nil {
 		return SICORFinancialIntelligenceResult{}, err
 	}
