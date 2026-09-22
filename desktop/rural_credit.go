@@ -143,7 +143,7 @@ func queryBCBRuralMunicipality(ctx context.Context, municipality, uf, municipali
 		UF:           uf,
 		SourceURL:    "https://dadosabertos.bcb.gov.br/dataset/matrizdadoscreditorural",
 	}
-	years := []int{time.Now().Year(), time.Now().Year() - 1}
+	years := []int{time.Now().Year(), time.Now().Year() - 1, time.Now().Year() - 2, time.Now().Year() - 3, time.Now().Year() - 4}
 	var raw []map[string]any
 	var failures []string
 	successfulYears := 0
@@ -174,14 +174,14 @@ func queryBCBRuralMunicipality(ctx context.Context, municipality, uf, municipali
 		}
 		out.Available = true
 		out.ExternalOnly = false
-		out.Message = "Consulta automática ao SICOR/MDCR concluída para o município do CAR, usando os dois anos mais recentes disponíveis na API pública."
+		out.Message = "Consulta automática ao SICOR/MDCR concluída para o município do CAR, usando até cinco anos recentes disponíveis na API pública."
 		return out, nil
 	}
 
 	if successfulYears > 0 && len(failures) == 0 {
 		out.Available = true
 		out.ExternalOnly = false
-		out.Message = "A consulta automática ao SICOR/MDCR foi concluída, mas não retornou registros para este município nos dois anos consultados."
+		out.Message = "A consulta automática ao SICOR/MDCR foi concluída, mas não retornou registros para este município nos cinco anos consultados."
 		return out, nil
 	}
 
@@ -310,6 +310,8 @@ func aggregateBCBMunicipalityRows(rows []map[string]any) []BCBRuralCreditRow {
 		}{
 			{"Custeio", "QtdCusteio", "VlCusteio"},
 			{"Investimento", "QtdInvestimento", "VlInvestimento"},
+			{"Comercialização", "QtdComercializacao", "VlComercializacao"},
+			{"Industrialização", "QtdIndustrializacao", "VlIndustrializacao"},
 		} {
 			qty := numberMapValue(r, spec.qty)
 			value := numberMapValue(r, spec.value)
