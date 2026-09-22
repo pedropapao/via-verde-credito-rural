@@ -56,6 +56,43 @@ var sicarThemeDefinitions = []struct {
 	{"SERVIDAO_ADMINISTRATIVA", "Servidão Administrativa"},
 }
 
+func (a *App) RetrySICARThemes(propertyID int64) (SICARThemesSummary, error) {
+	var car CARResult
+	var err error
+	if propertyID > 0 {
+		car, err = a.GetLatestCAR(propertyID)
+	} else {
+		var cache CARSessionCache
+		cache, err = a.GetLastCARSession()
+		if err == nil {
+			car = cache.Result
+		}
+	}
+	if err != nil || !car.Found || strings.TrimSpace(car.GeoJSON) == "" {
+		return SICARThemesSummary{}, errors.New("consulte um CAR com geometria antes de tentar novamente os temas SICAR")
+	}
+
+	// A consulta inicial permanece curta para não travar o fluxo principal.
+	// A tentativa manual pode esperar mais, pois os pacotes municipais do SICAR
+	// — especialmente em MG — podem demorar significativamente.
+	timeout := 4 * time.Minute
+	if strings.EqualFold(strings.TrimSpace(car.UF), "MG") {
+		timeout = 5 * time.Minute
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	themes := a.analyzeSICARThemes(ctx, car.CAR, car.UF, car.MunicipalityCode, car.GeoJSON, car.AreaHa)
+	car.Themes = themes
+
+	// Atualiza somente o resultado da sessão existente para não perder gleba
+	// temporária, mapa ou outras informações da consulta avulsa.
+	if cache, cacheErr := a.GetLastCARSession(); cacheErr == nil && strings.EqualFold(cache.Result.CAR, car.CAR) {
+		_ = a.updateLastCARSessionResult(car)
+	}
+	return themes, nil
+}
+
 func (a *App) analyzeSICARThemes(ctx context.Context, car, uf, municipalityCode, carGeoJSON string, carAreaHa float64) SICARThemesSummary {
 	out := SICARThemesSummary{
 		CheckedAt: time.Now().Format(time.RFC3339),
@@ -160,24 +197,32 @@ func (a *App) ensureSICARThemeZipResilient(ctx context.Context, uf, municipality
 	}
 
 	var downloadErr error
-	for attempt := 1; attempt <= 2; attempt++ {
-		err := a.downloadSICARThemeZip(ctx, uf, municipalityCode, theme, path)
-		if err == nil {
-			st, _ := os.Stat(path)
-			_ = os.Remove(manualMarker)
-			age := 0.0
-			if st != nil {
-				age = time.Since(st.ModTime()).Hours()
+	remoteThemes := sicarThemeRemoteCandidates(theme)
+	for _, remoteTheme := range remoteThemes {
+		for attempt := 1; attempt <= 2; attempt++ {
+			err := a.downloadSICARThemeZipAs(ctx, uf, municipalityCode, remoteTheme, path)
+			if err == nil {
+				st, _ := os.Stat(path)
+				_ = os.Remove(manualMarker)
+				age := 0.0
+				if st != nil {
+					age = time.Since(st.ModTime()).Hours()
+				}
+				return path, "online", age, nil
 			}
-			return path, "online", age, nil
-		}
-		downloadErr = err
-		if attempt < 2 {
-			select {
-			case <-ctx.Done():
+			downloadErr = err
+			if ctx.Err() != nil {
 				break
-			case <-time.After(1200 * time.Millisecond):
 			}
+			if attempt < 2 {
+				select {
+				case <-ctx.Done():
+				case <-time.After(1200 * time.Millisecond):
+				}
+			}
+		}
+		if ctx.Err() != nil {
+			break
 		}
 	}
 
@@ -199,10 +244,26 @@ func (a *App) ensureSICARThemeZipResilient(ctx context.Context, uf, municipality
 	return "", "", 0, downloadErr
 }
 
+func sicarThemeRemoteCandidates(theme string) []string {
+	switch strings.ToUpper(strings.TrimSpace(theme)) {
+	case "APP":
+		// As interfaces públicas do SICAR já expuseram as duas grafias.
+		// Mantemos ambas para compatibilidade sem alterar o código canônico usado
+		// pelo restante do Via Verde.
+		return []string{"APP", "APPS"}
+	default:
+		return []string{strings.ToUpper(strings.TrimSpace(theme))}
+	}
+}
+
 func (a *App) downloadSICARThemeZip(ctx context.Context, uf, municipalityCode, theme, path string) error {
+	return a.downloadSICARThemeZipAs(ctx, uf, municipalityCode, theme, path)
+}
+
+func (a *App) downloadSICARThemeZipAs(ctx context.Context, uf, municipalityCode, remoteTheme, path string) error {
 	params := url.Values{}
 	params.Set("municipio", municipalityCode)
-	params.Set("tema", theme)
+	params.Set("tema", remoteTheme)
 	params.Set("servico", "SHP")
 	target := sicarGeoServicesBase + "/" + url.PathEscape(uf) + "?" + params.Encode()
 
@@ -211,9 +272,13 @@ func (a *App) downloadSICARThemeZip(ctx context.Context, uf, municipalityCode, t
 		return err
 	}
 	req.Header.Set("Accept", "application/zip, application/octet-stream, */*")
+	req.Header.Set("Accept-Language", "pt-BR,pt;q=0.9,en;q=0.7")
 	req.Header.Set("Cache-Control", "no-cache")
-	req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion)
-	resp, err := (&http.Client{Timeout: 75 * time.Second}).Do(req)
+	req.Header.Set("Referer", "https://consulta.car.gov.br/")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ViaVerdeCAR/"+AppVersion)
+	// O contexto da consulta inicial continua limitando a espera a ~75 s.
+	// Em uma tentativa manual o cliente pode aguardar mais pelo pacote municipal.
+	resp, err := (&http.Client{Timeout: 210 * time.Second}).Do(req)
 	if err != nil {
 		return err
 	}
