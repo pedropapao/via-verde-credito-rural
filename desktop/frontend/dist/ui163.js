@@ -13,7 +13,7 @@
       actions.insertBefore(b,actions.firstChild);
       b.onclick=()=>load163(false);
     }
-    if(fin.result&&fin.car===state?.car?.car) render163(fin.result);
+    if(fin.result&&fin.car===state?.car?.car&&!g('creditIntelligence163')) render163(fin.result);
   }
 
   async function load163(force){
