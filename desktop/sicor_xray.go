@@ -366,6 +366,10 @@ func (a *App) ensureSICORSourceFile(ctx context.Context, targetURL, path string,
 		_ = os.Remove(tmp)
 		return "", errors.New("arquivo baixado vazio")
 	}
+	// No Windows, os.Rename não substitui com segurança um destino existente.
+	// O arquivo novo já está completo em .part, então removemos apenas a cópia
+	// antiga imediatamente antes da troca.
+	_ = os.Remove(path)
 	if err := os.Rename(tmp, path); err != nil {
 		_ = os.Remove(tmp)
 		return "", err
