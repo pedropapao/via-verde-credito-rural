@@ -290,12 +290,10 @@ func cloneURLValues(in url.Values) url.Values {
 }
 
 func fetchEnvironmentalBody(ctx context.Context, target, accept string) ([]byte, error) {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	// O PAMGIA já apresentou conexões lentas/instáveis em HTTP/2 no Windows.
-	// Forçar HTTP/1.1 nesta triagem evita que um problema de sessão HTTP/2
-	// derrube uma consulta que o mesmo servidor aceita normalmente.
-	transport.ForceAttemptHTTP2 = false
-	client := &http.Client{Timeout: 32 * time.Second, Transport: transport}
+	// Deixe o Go negociar HTTP/2/HTTP/1.1 normalmente. O PAMGIA pode responder
+	// com frames HTTP/2 mesmo quando a conexão é forçada para HTTP/1.1; isso
+	// resulta em "malformed HTTP response" no Windows.
+	client := &http.Client{Timeout: 30 * time.Second}
 	var lastErr error
 	for attempt := 1; attempt <= 2; attempt++ {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
@@ -303,6 +301,7 @@ func fetchEnvironmentalBody(ctx context.Context, target, accept string) ([]byte,
 			return nil, err
 		}
 		req.Header.Set("Accept", accept)
+		req.Header.Set("Cache-Control", "no-cache")
 		req.Header.Set("User-Agent", "Mozilla/5.0 ViaVerdeCAR/"+AppVersion)
 		resp, err := client.Do(req)
 		if err == nil {
@@ -323,14 +322,20 @@ func fetchEnvironmentalBody(ctx context.Context, target, accept string) ([]byte,
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
-			case <-time.After(900 * time.Millisecond):
+			case <-time.After(700 * time.Millisecond):
 			}
 		}
 	}
-	if lastErr == nil {
-		lastErr = errors.New("fonte não respondeu")
+
+	// O curl.exe do Windows usa a pilha TLS/HTTP disponível no sistema e já é
+	// usado com sucesso como contingência na consulta principal do CAR.
+	if body, curlErr := fetchCARWithCurl(ctx, target); curlErr == nil {
+		return body, nil
+	} else if lastErr != nil {
+		return nil, fmt.Errorf("cliente nativo falhou (%v); fallback do Windows falhou (%v)", lastErr, curlErr)
+	} else {
+		return nil, fmt.Errorf("fallback do Windows falhou: %v", curlErr)
 	}
-	return nil, lastErr
 }
 
 func queryFUNAITerritories(ctx context.Context, carRaw string) ([]TerritoryFinding, error) {
