@@ -53,9 +53,37 @@ type SICORPublicOperation struct {
 	OwnResources      float64      `json:"own_resources"`
 	FinancedAreaHa    float64      `json:"financed_area_ha"`
 	InformedAreaHa    float64      `json:"informed_area_ha"`
-	InterestRatePct   float64      `json:"interest_rate_pct"`
-	InsuranceCode     string       `json:"insurance_code"`
-	Glebas            []SICORGleba `json:"glebas"`
+	InterestRatePct       float64      `json:"interest_rate_pct"`
+	PostFixedInterestPct  float64      `json:"post_fixed_interest_pct"`
+	EffectiveCostPct      float64      `json:"effective_cost_pct"`
+	InvestmentInstallment float64      `json:"investment_installment"`
+	ExpectedProduction    float64      `json:"expected_production"`
+	Quantity              float64      `json:"quantity"`
+	ExpectedGrossRevenue  float64      `json:"expected_gross_revenue"`
+	ObtainedProductivity  float64      `json:"obtained_productivity"`
+	ProagroRatePct        float64      `json:"proagro_rate_pct"`
+	InsuranceCode         string       `json:"insurance_code"`
+	InsuranceName         string       `json:"insurance_name"`
+	InstrumentCode        string       `json:"instrument_code"`
+	InstrumentName        string       `json:"instrument_name"`
+	IrrigationCode        string       `json:"irrigation_code"`
+	IrrigationName        string       `json:"irrigation_name"`
+	AgricultureCode       string       `json:"agriculture_code"`
+	AgricultureName       string       `json:"agriculture_name"`
+	CultivationCode       string       `json:"cultivation_code"`
+	CultivationName       string       `json:"cultivation_name"`
+	IntegrationCode       string       `json:"integration_code"`
+	IntegrationName       string       `json:"integration_name"`
+	GrainSeedCode         string       `json:"grain_seed_code"`
+	GrainSeedName         string       `json:"grain_seed_name"`
+	ProductionPhaseCode   string       `json:"production_phase_code"`
+	ProductionPhaseName   string       `json:"production_phase_name"`
+	PlantingStart         string       `json:"planting_start"`
+	PlantingEnd           string       `json:"planting_end"`
+	HarvestStart          string       `json:"harvest_start"`
+	HarvestEnd            string       `json:"harvest_end"`
+	Intelligence          SICOROperationIntelligence `json:"intelligence"`
+	Glebas                []SICORGleba `json:"glebas"`
 }
 
 type SICORGleba struct {
@@ -83,6 +111,10 @@ type SICORXRayResult struct {
 	TotalCreditValue       float64                `json:"total_credit_value"`
 	TotalFinancedAreaHa    float64                `json:"total_financed_area_ha"`
 	TotalGlebaAreaHa       float64                `json:"total_gleba_area_ha"`
+	LatestBalanceTotal      float64                `json:"latest_balance_total"`
+	ReleasedTotal           float64                `json:"released_total"`
+	ProagroPaidTotal        float64                `json:"proagro_paid_total"`
+	RenegotiatedOperations  int                    `json:"renegotiated_operations"`
 	Operations             []SICORPublicOperation `json:"operations"`
 	Warnings               []string               `json:"warnings"`
 	SourceURL              string                 `json:"source_url"`
@@ -166,7 +198,7 @@ func (a *App) BuildSICORPropertyXRay(propertyID int64, force bool) (SICORXRayRes
 		CacheUntil: time.Now().Add(14*24*time.Hour).Format(time.RFC3339),
 		PropertyReferences: len(refs),
 		SourceURL: "https://www.bcb.gov.br/estabilidadefinanceira/tabelas-credito-rural-proagro",
-		Scope: "Microdados públicos do SICOR vinculados ao CAR declarado. Operações concedidas desde 2013; glebas somente quando publicadas pelo Banco Central. REF BACEN é contado como operação e NU_ORDEM como destinação.",
+		Scope: "Microdados públicos do SICOR vinculados ao CAR declarado. Operações registradas/contratadas no SICOR desde 2013; glebas somente quando publicadas pelo Banco Central. REF BACEN é contado como operação e NU_ORDEM como destinação.",
 	}
 	if len(refs) == 0 {
 		result.Warnings = append(result.Warnings,
@@ -276,6 +308,8 @@ func (a *App) BuildSICORPropertyXRay(propertyID int64, force bool) (SICORXRayRes
 		result.Warnings = append(result.Warnings,
 			"O CAR aparece no índice público de propriedades do SICOR, mas nenhuma operação compatível foi localizada nos arquivos anuais processados.")
 	}
+
+	result.Warnings = append(result.Warnings, a.enrichSICORFinancialIntelligence(ctx, sourceDir, &result)...)
 
 	if err := saveSICORXRayCache(cachePath, result); err != nil {
 		result.Warnings = append(result.Warnings, "Não foi possível gravar o cache local do Raio X: "+err.Error())
@@ -485,7 +519,26 @@ func scanSICOROperations(path string, targets map[string]sicorRef, year int) ([]
 			FinancedAreaHa: parseSICORNumber(fieldCSV(headers, row, "VL_AREA_FINANC")),
 			InformedAreaHa: parseSICORNumber(fieldCSV(headers, row, "VL_AREA_INFORMADA")),
 			InterestRatePct: parseSICORNumber(fieldCSV(headers, row, "VL_JUROS")),
+			PostFixedInterestPct: parseSICORNumber(fieldCSV(headers, row, "VL_JUROS_ENC_FINAN_POSFIX")),
+			EffectiveCostPct: parseSICORNumber(fieldCSV(headers, row, "VL_PERC_CUSTO_EFET_TOTAL")),
+			InvestmentInstallment: parseSICORNumber(fieldCSV(headers, row, "VL_PRESTACAO_INVESTIMENTO")),
+			ExpectedProduction: parseSICORNumber(fieldCSV(headers, row, "VL_PREV_PROD")),
+			Quantity: parseSICORNumber(fieldCSV(headers, row, "VL_QUANTIDADE")),
+			ExpectedGrossRevenue: parseSICORNumber(fieldCSV(headers, row, "VL_RECEITA_BRUTA_ESPERADA")),
+			ObtainedProductivity: parseSICORNumber(fieldCSV(headers, row, "VL_PRODUTIV_OBTIDA")),
+			ProagroRatePct: parseSICORNumber(fieldCSV(headers, row, "VL_ALIQ_PROAGRO")),
 			InsuranceCode: strings.TrimSpace(fieldCSV(headers, row, "CD_TIPO_SEGURO")),
+			InstrumentCode: strings.TrimSpace(fieldCSV(headers, row, "CD_INST_CREDITO")),
+			IrrigationCode: strings.TrimSpace(fieldCSV(headers, row, "CD_TIPO_IRRIGACAO")),
+			AgricultureCode: strings.TrimSpace(fieldCSV(headers, row, "CD_TIPO_AGRICULTURA")),
+			CultivationCode: strings.TrimSpace(fieldCSV(headers, row, "CD_TIPO_CULTIVO")),
+			IntegrationCode: strings.TrimSpace(fieldCSV(headers, row, "CD_TIPO_INTGR_CONSOR")),
+			GrainSeedCode: strings.TrimSpace(fieldCSV(headers, row, "CD_TIPO_GRAO_SEMENTE")),
+			ProductionPhaseCode: strings.TrimSpace(fieldCSV(headers, row, "CD_FASE_CICLO_PRODUCAO")),
+			PlantingStart: strings.TrimSpace(fieldCSV(headers, row, "DT_INIC_PLANTIO")),
+			PlantingEnd: strings.TrimSpace(fieldCSV(headers, row, "DT_FIM_PLANTIO")),
+			HarvestStart: strings.TrimSpace(fieldCSV(headers, row, "DT_INIC_COLHEITA")),
+			HarvestEnd: strings.TrimSpace(fieldCSV(headers, row, "DT_FIM_COLHEITA")),
 		})
 		return nil
 	})
