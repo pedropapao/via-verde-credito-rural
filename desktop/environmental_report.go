@@ -110,18 +110,14 @@ func environmentalCoverPage(p Property,car CARResult,intel EnvironmentalIntellig
 
 	envSection(&c,&y,"CONCLUSÃO DA TRIAGEM")
 	conclusion:=environmentalConclusionText(intel,alerts)
-	c.b.WriteString("0.10 0.18 0.14 rg
-")
+	c.b.WriteString("0.10 0.18 0.14 rg\n")
 	y=c.wrapped(42,y,9,false,conclusion,104,13)
 	y-=9
-	c.b.WriteString("0.94 0.97 0.95 rg
-")
+	c.b.WriteString("0.94 0.97 0.95 rg\n")
 	c.rect(40,y-72,515,70,true)
-	c.b.WriteString("0.08 0.30 0.21 rg
-")
+	c.b.WriteString("0.08 0.30 0.21 rg\n")
 	c.text(50,y-18,8,true,"NATUREZA DO DOCUMENTO")
-	c.b.WriteString("0.20 0.27 0.23 rg
-")
+	c.b.WriteString("0.20 0.27 0.23 rg\n")
 	note:="Laudo técnico auxiliar de triagem e organização de evidências públicas. Não substitui laudo oficial do MapBiomas, licença, autorização, certidão, vistoria de campo, parecer do órgão ambiental, perícia, ART/TRT ou manifestação de profissional habilitado quando exigidos."
 	c.wrapped(50,y-34,7.8,false,note,100,10)
 	envReportFooter(&c,1)
@@ -131,12 +127,10 @@ func environmentalCoverPage(p Property,car CARResult,intel EnvironmentalIntellig
 func environmentalMapPage(p Property,car CARResult,intel EnvironmentalIntelligenceResult,title string,alerts []EnvironmentalAlertDetail)string{
 	var c pdfCanvas
 	envReportHeader(&c,title,"Mapa técnico e matriz de fontes",2)
-	c.b.WriteString("0.10 0.18 0.14 rg
-")
+	c.b.WriteString("0.10 0.18 0.14 rg\n")
 	c.text(40,720,10,true,"MAPA ESQUEMÁTICO DE EVIDÊNCIAS")
 	c.text(40,704,7.5,false,"Perímetro do CAR, alertas MapBiomas e camadas públicas disponíveis. Sem base cartográfica; uso para conferência espacial.")
-	c.b.WriteString("0.80 0.86 0.82 RG 0.8 w
-")
+	c.b.WriteString("0.80 0.86 0.82 RG 0.8 w\n")
 	c.rect(40,378,515,306,false)
 	drawEnvironmentalEvidenceMap(&c,car,alerts,52,400,491,260)
 
@@ -189,12 +183,10 @@ func environmentalAlertPage(p Property,car CARResult,a EnvironmentalAlertDetail,
 
 	y-=4
 	envSection(&c,&y,"PRIORIDADE DE CONFERÊNCIA")
-	c.b.WriteString("0.08 0.30 0.21 rg
-")
+	c.b.WriteString("0.08 0.30 0.21 rg\n")
 	c.text(42,y,9,true,firstNonEmptyText(a.AttentionLevel,"Conferir"))
 	y-=15
-	c.b.WriteString("0.20 0.27 0.23 rg
-")
+	c.b.WriteString("0.20 0.27 0.23 rg\n")
 	if len(a.AttentionReasons)==0{
 		y=c.wrapped(42,y,7.7,false,"O alerta deve ser confrontado com imagens, documentos e autorizações aplicáveis. A existência do alerta não é declaração de ilegalidade.",104,10)
 	}else{
@@ -212,8 +204,7 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 	y:=718.0
 	envSection(&c,&y,"METODOLOGIA")
 	method:="1) identificação do imóvel pelo CAR e geometria pública do SICAR; 2) consulta autenticada à API V2 do MapBiomas Alerta para alertas vinculados ao CAR; 3) leitura das geometrias e atributos retornados; 4) cruzamento espacial local do alerta com APP, Reserva Legal, vegetação nativa e área consolidada declaradas no SICAR, quando disponíveis; 5) cruzamento com embargos IBAMA/PAMGIA, Terras Indígenas FUNAI e UCs federais ICMBio já obtidos para o imóvel; 6) organização dos achados em relatório rastreável, sem inferir autoria ou regularidade jurídica."
-	c.b.WriteString("0.15 0.23 0.19 rg
-")
+	c.b.WriteString("0.15 0.23 0.19 rg\n")
 	y=c.wrapped(42,y,8,false,method,104,11)
 	y-=10
 
@@ -227,10 +218,8 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 		{"ICMBio — dados geoespaciais",icmbioGeoURL},
 		{"MMA — atendimento ao Manual de Crédito Rural",environmentMCRURL},
 	}{
-		c.b.WriteString("0.08 0.30 0.21 rg
-");c.text(42,y,7.6,true,row.n)
-		c.b.WriteString("0.30 0.38 0.34 rg
-");y=c.wrapped(178,y,6.6,false,row.u,66,9);y-=6
+		c.b.WriteString("0.08 0.30 0.21 rg\n");c.text(42,y,7.6,true,row.n)
+		c.b.WriteString("0.30 0.38 0.34 rg\n");y=c.wrapped(178,y,6.6,false,row.u,66,9);y-=6
 	}
 	y-=4
 
@@ -278,69 +267,49 @@ func environmentalConclusionText(intel EnvironmentalIntelligenceResult,alerts []
 }
 
 func envReportHeader(c *pdfCanvas,title,subtitle string,page int){
-	c.b.WriteString("0.055 0.42 0.29 rg
-");c.rect(0,760,595,82,true)
-	c.b.WriteString("1 1 1 rg
-");c.text(38,808,15,true,"VIA VERDE CAR")
+	c.b.WriteString("0.055 0.42 0.29 rg\n");c.rect(0,760,595,82,true)
+	c.b.WriteString("1 1 1 rg\n");c.text(38,808,15,true,"VIA VERDE CAR")
 	c.text(38,788,9,true,title);c.text(38,774,7,false,subtitle)
-	c.b.WriteString("0.10 0.18 0.14 rg
-")
+	c.b.WriteString("0.10 0.18 0.14 rg\n")
 	c.text(520,744,6.5,false,fmt.Sprintf("p. %d",page))
 }
 
 func envReportFooter(c *pdfCanvas,page int){
-	c.b.WriteString("0.82 0.87 0.84 RG 0.5 w
-");c.line(40,45,555,45)
-	c.b.WriteString("0.35 0.42 0.39 rg
-")
+	c.b.WriteString("0.82 0.87 0.84 RG 0.5 w\n");c.line(40,45,555,45)
+	c.b.WriteString("0.35 0.42 0.39 rg\n")
 	c.text(40,30,6.3,false,"Gerado em "+time.Now().Format("02/01/2006 15:04")+" • Via Verde CAR v"+AppVersion+" • relatório técnico auxiliar")
 	c.text(520,30,6.3,false,fmt.Sprintf("%d",page))
 }
 
 func envSection(c *pdfCanvas,y *float64,title string){
-	c.b.WriteString("0.08 0.30 0.21 rg
-");c.text(40,*y,8,true,title)
-	c.b.WriteString("0.82 0.87 0.84 RG 0.5 w
-");c.line(40,*y-5,555,*y-5);*y-=20
+	c.b.WriteString("0.08 0.30 0.21 rg\n");c.text(40,*y,8,true,title)
+	c.b.WriteString("0.82 0.87 0.84 RG 0.5 w\n");c.line(40,*y-5,555,*y-5);*y-=20
 }
 
 func envRow(c *pdfCanvas,y *float64,label,value string){
 	value=strings.TrimSpace(value);if value==""{value="Não informado"}
-	c.b.WriteString("0.35 0.42 0.39 rg
-");c.text(42,*y,7.2,true,label)
-	c.b.WriteString("0.08 0.15 0.12 rg
-");ny:=c.wrapped(174,*y,8,false,value,66,10);*y=ny-5
+	c.b.WriteString("0.35 0.42 0.39 rg\n");c.text(42,*y,7.2,true,label)
+	c.b.WriteString("0.08 0.15 0.12 rg\n");ny:=c.wrapped(174,*y,8,false,value,66,10);*y=ny-5
 }
 
 func envMetricBox(c *pdfCanvas,x,y,w,h float64,label,value,detail string){
-	c.b.WriteString("0.96 0.98 0.97 rg
-");c.rect(x,y,w,h,true)
-	c.b.WriteString("0.80 0.86 0.82 RG 0.6 w
-");c.rect(x,y,w,h,false)
-	c.b.WriteString("0.35 0.42 0.39 rg
-");c.text(x+8,y+h-14,6.2,true,label)
-	c.b.WriteString("0.08 0.30 0.21 rg
-");c.text(x+8,y+h-31,10,true,value)
-	c.b.WriteString("0.35 0.42 0.39 rg
-");c.text(x+8,y+8,5.7,false,detail)
+	c.b.WriteString("0.96 0.98 0.97 rg\n");c.rect(x,y,w,h,true)
+	c.b.WriteString("0.80 0.86 0.82 RG 0.6 w\n");c.rect(x,y,w,h,false)
+	c.b.WriteString("0.35 0.42 0.39 rg\n");c.text(x+8,y+h-14,6.2,true,label)
+	c.b.WriteString("0.08 0.30 0.21 rg\n");c.text(x+8,y+h-31,10,true,value)
+	c.b.WriteString("0.35 0.42 0.39 rg\n");c.text(x+8,y+8,5.7,false,detail)
 }
 
 func envCompactMetric(c *pdfCanvas,y *float64,label string,value float64,source string){
-	c.b.WriteString("0.35 0.42 0.39 rg
-");c.text(42,*y,7.1,true,label)
-	c.b.WriteString("0.08 0.15 0.12 rg
-");c.text(230,*y,7.4,false,fmtBR(value,4)+" ha")
-	c.b.WriteString("0.40 0.46 0.42 rg
-");c.text(334,*y,6.2,false,source);*y-=13
+	c.b.WriteString("0.35 0.42 0.39 rg\n");c.text(42,*y,7.1,true,label)
+	c.b.WriteString("0.08 0.15 0.12 rg\n");c.text(230,*y,7.4,false,fmtBR(value,4)+" ha")
+	c.b.WriteString("0.40 0.46 0.42 rg\n");c.text(334,*y,6.2,false,source);*y-=13
 }
 
 func envSourceRow(c *pdfCanvas,y *float64,name,status,detail string){
-	c.b.WriteString("0.08 0.30 0.21 rg
-");c.text(42,*y,7.2,true,name)
-	c.b.WriteString("0.15 0.23 0.19 rg
-");c.text(210,*y,7,false,status)
-	c.b.WriteString("0.35 0.42 0.39 rg
-");ny:=c.wrapped(328,*y,6.5,false,detail,40,8.5);*y=ny-5
+	c.b.WriteString("0.08 0.30 0.21 rg\n");c.text(42,*y,7.2,true,name)
+	c.b.WriteString("0.15 0.23 0.19 rg\n");c.text(210,*y,7,false,status)
+	c.b.WriteString("0.35 0.42 0.39 rg\n");ny:=c.wrapped(328,*y,6.5,false,detail,40,8.5);*y=ny-5
 }
 
 func sourceState(checked bool,count int)string{
@@ -391,34 +360,23 @@ func drawEnvironmentalEvidenceMap(c *pdfCanvas,car CARResult,alerts []Environmen
 	if math.IsInf(minX,1)||maxX<=minX||maxY<=minY{for _,l:=range parsed{addBounds(l.polys)}}
 	if math.IsInf(minX,1)||maxX<=minX||maxY<=minY{return}
 	scale:=math.Min(w/(maxX-minX),h/(maxY-minY));offX:=x+(w-(maxX-minX)*scale)/2;offY:=y+(h-(maxY-minY)*scale)/2
-	c.b.WriteString("q
-");fmt.Fprintf(&c.b,"%.2f %.2f %.2f %.2f re W n
-",x,y,w,h)
+	c.b.WriteString("q\n");fmt.Fprintf(&c.b,"%.2f %.2f %.2f %.2f re W n\n",x,y,w,h)
 	for _,l:=range parsed{
-		c.b.WriteString(l.rgb+" RG
-");fmt.Fprintf(&c.b,"%.1f w
-",l.width)
+		c.b.WriteString(l.rgb+" RG\n");fmt.Fprintf(&c.b,"%.1f w\n",l.width)
 		for _,poly:=range l.polys{for _,ring:=range poly{
 			if len(ring)<2{continue};step:=1;if len(ring)>600{step=int(math.Ceil(float64(len(ring))/600))}
 			started:=false
-			for i:=0;i<len(ring);i+=step{p:=ring[i];if len(p)<2{continue};px:=offX+(p[0]-minX)*scale;py:=offY+(p[1]-minY)*scale;if !started{fmt.Fprintf(&c.b,"%.2f %.2f m
-",px,py);started=true}else{fmt.Fprintf(&c.b,"%.2f %.2f l
-",px,py)}}
-			if started{c.b.WriteString("h S
-")}
+			for i:=0;i<len(ring);i+=step{p:=ring[i];if len(p)<2{continue};px:=offX+(p[0]-minX)*scale;py:=offY+(p[1]-minY)*scale;if !started{fmt.Fprintf(&c.b,"%.2f %.2f m\n",px,py);started=true}else{fmt.Fprintf(&c.b,"%.2f %.2f l\n",px,py)}}
+			if started{c.b.WriteString("h S\n")}
 		}}
 	}
-	c.b.WriteString("Q
-")
-	c.b.WriteString("0.08 0.18 0.14 rg
-");c.text(x+w-18,y+h-14,8,true,"N");c.line(x+w-14,y+h-32,x+w-14,y+h-17)
+	c.b.WriteString("Q\n")
+	c.b.WriteString("0.08 0.18 0.14 rg\n");c.text(x+w-18,y+h-14,8,true,"N");c.line(x+w-14,y+h-32,x+w-14,y+h-17)
 	seen:=map[string]bool{};lx,ly:=x+4,y-13;col:=0
 	for _,l:=range parsed{
 		if seen[l.label]{continue};seen[l.label]=true
-		c.b.WriteString(l.rgb+" rg
-");c.rect(lx+float64(col)*96,ly+3,8,3,true)
-		c.b.WriteString("0.20 0.27 0.23 rg
-");c.text(lx+11+float64(col)*96,ly,5.2,false,l.label)
+		c.b.WriteString(l.rgb+" rg\n");c.rect(lx+float64(col)*96,ly+3,8,3,true)
+		c.b.WriteString("0.20 0.27 0.23 rg\n");c.text(lx+11+float64(col)*96,ly,5.2,false,l.label)
 		col++;if col>=5{break}
 	}
 }
@@ -426,16 +384,11 @@ func drawEnvironmentalEvidenceMap(c *pdfCanvas,car CARResult,alerts []Environmen
 func assembleMultiPagePDF(contents []string)[]byte{
 	if len(contents)==0{return assembleSimplePDF("")}
 	var out bytes.Buffer
-	out.WriteString("%PDF-1.4
-%âãÏÓ
-")
+	out.WriteString("%PDF-1.4\n%âãÏÓ\n")
 	pageCount:=len(contents)
 	totalObjects:=4+pageCount*2
 	offsets:=make([]int,totalObjects+1)
-	writeObj:=func(n int,body string){offsets[n]=out.Len();fmt.Fprintf(&out,"%d 0 obj
-%s
-endobj
-",n,body)}
+	writeObj:=func(n int,body string){offsets[n]=out.Len();fmt.Fprintf(&out,"%d 0 obj\n%s\nendobj\n",n,body)}
 	writeObj(1,"<< /Type /Catalog /Pages 2 0 R >>")
 	var kids strings.Builder
 	for i:=0;i<pageCount;i++{fmt.Fprintf(&kids,"%d 0 R ",5+i*2)}
@@ -445,22 +398,10 @@ endobj
 	for i,content:=range contents{
 		pageObj:=5+i*2;streamObj:=pageObj+1
 		writeObj(pageObj,fmt.Sprintf("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents %d 0 R >>",streamObj))
-		writeObj(streamObj,fmt.Sprintf("<< /Length %d >>
-stream
-%s
-endstream",len(content),content))
+		writeObj(streamObj,fmt.Sprintf("<< /Length %d >>\nstream\n%s\nendstream",len(content),content))
 	}
-	xref:=out.Len();fmt.Fprintf(&out,"xref
-0 %d
-0000000000 65535 f 
-",totalObjects+1)
-	for i:=1;i<=totalObjects;i++{fmt.Fprintf(&out,"%010d 00000 n 
-",offsets[i])}
-	fmt.Fprintf(&out,"trailer
-<< /Size %d /Root 1 0 R >>
-startxref
-%d
-%%%%EOF
-",totalObjects+1,xref)
+	xref:=out.Len();fmt.Fprintf(&out,"xref\n0 %d\n0000000000 65535 f \n",totalObjects+1)
+	for i:=1;i<=totalObjects;i++{fmt.Fprintf(&out,"%010d 00000 n \n",offsets[i])}
+	fmt.Fprintf(&out,"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n",totalObjects+1,xref)
 	return out.Bytes()
 }
