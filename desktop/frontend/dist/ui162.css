@@ -1,0 +1,147 @@
+/* ViaVerdeCAR 1.6.2 — interface essencial primeiro */
+body.vv-ui162 .car-tab131[data-car-tab131="environment"],
+body.vv-ui162 .car-tab131[data-car-tab131="credit"]{display:none!important}
+
+body.vv-ui162 .car-tabs131{justify-content:flex-start}
+body.vv-ui162 .car-tab131{flex:1 1 0;min-width:120px}
+body.vv-ui162 .car-tab131[data-car-tab131="summary"]{order:1}
+body.vv-ui162 .car-tab131[data-car-tab131="xray"]{order:2}
+body.vv-ui162 .car-tab131[data-car-tab131="map"]{order:3}
+body.vv-ui162 .car-tab131[data-car-tab131="planning"]{order:4}
+body.vv-ui162 .car-tab131[data-car-tab131="docs"]{order:5}
+
+body.vv-ui162 #carTabSummary131 .summary-grid131{grid-template-columns:1fr}
+body.vv-ui162 #carTabSummary131 .conference-panel{margin:0}
+body.vv-ui162 #carTabSummary131 .professional-strip{margin:0!important}
+body.vv-ui162 #carTabSummary131 .car-empty-tip131{display:none!important}
+
+.essential162{
+  display:grid;
+  grid-template-columns:minmax(0,1.5fr) repeat(3,minmax(145px,.5fr));
+  gap:8px;
+  margin-bottom:9px
+}
+.essential-main162,
+.essential-card162{
+  background:#fff;
+  border:1px solid #dfe6df;
+  border-radius:12px;
+  box-shadow:0 4px 14px rgba(31,61,42,.045)
+}
+.essential-main162{padding:15px 16px;display:flex;justify-content:space-between;gap:16px;align-items:center}
+.essential-main162 h3{margin:3px 0 4px;font-size:17px}
+.essential-main162 p{margin:0;color:#6f7c74;font-size:10px;line-height:1.45}
+.essential-main162 .essential-actions162{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.essential-card162{padding:11px 12px}
+.essential-card162 span,.essential-card162 small{display:block}
+.essential-card162 span{font-size:8px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#758179}
+.essential-card162 strong{display:block;font-size:17px;color:#254b35;margin:4px 0 2px}
+.essential-card162 small{font-size:8.5px;color:#7a857e;line-height:1.35}
+
+.technical-details162,
+.dashboard-help162{
+  border:1px solid #dfe6df;
+  border-radius:11px;
+  background:#fafcf9;
+  margin-top:9px
+}
+.technical-details162>summary,
+.dashboard-help162>summary{
+  list-style:none;
+  cursor:pointer;
+  padding:10px 12px;
+  font-size:9px;
+  font-weight:900;
+  color:#52665a;
+  display:flex;
+  align-items:center;
+  justify-content:space-between
+}
+.technical-details162>summary::-webkit-details-marker,
+.dashboard-help162>summary::-webkit-details-marker{display:none}
+.technical-details162>summary:after,
+.dashboard-help162>summary:after{content:"＋";font-size:13px;color:#76847b}
+.technical-details162[open]>summary:after,
+.dashboard-help162[open]>summary:after{content:"−"}
+.technical-content162{padding:0 9px 9px;display:grid;gap:8px}
+.dashboard-help162 .dashboard-grid{margin:0;padding:0 9px 9px}
+
+body.vv-ui162 .summary-grid131 .car-data-card131{
+  border-left:4px solid #527e60;
+  padding-left:13px
+}
+body.vv-ui162 .summary-grid131 .car-data-card131 .data-list{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  column-gap:16px
+}
+body.vv-ui162 .summary-grid131 .car-data-card131 .action-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr))
+}
+
+/* Raio X vira painel de decisão; detalhes ficam recolhidos */
+.xray-attention162{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  border:1px solid #dce6dd;
+  background:#f8fbf8;
+  border-radius:11px;
+  padding:10px 12px;
+  margin:8px 0
+}
+.xray-attention162.warning{background:#fff9ec;border-color:#eedeb8}
+.xray-attention162.ok{background:#f3faf4;border-color:#d5e6d8}
+.xray-attention162 strong{display:block;font-size:11px}
+.xray-attention162 span{display:block;font-size:9px;color:#6f7c74;margin-top:2px}
+.xray-attention162 .essential-actions162{display:flex;gap:6px;flex-wrap:wrap}
+
+.section-card162>.panel-title{align-items:center}
+.section-card162.ui162-section-collapsed>*:not(.panel-title){display:none!important}
+.ui162-section-toggle{
+  border:1px solid #dce4dd;background:#fff;color:#486052;border-radius:8px;
+  padding:5px 8px;font-size:8px;font-weight:900;cursor:pointer;white-space:nowrap
+}
+.ui162-section-toggle:hover{background:#f5f8f5}
+.section-card162.ui162-section-collapsed{padding-bottom:10px}
+.section-card162.ui162-section-collapsed .panel-title{margin:0}
+
+body.vv-ui162 .xray-hero150 .xray-source150{display:none}
+body.vv-ui162 .xray-metrics150{grid-template-columns:repeat(6,minmax(125px,1fr))}
+body.vv-ui162 .xray-metrics150 .xray-metric150:nth-child(3){display:none}
+body.vv-ui162 .xray-grid150{grid-template-columns:1fr}
+body.vv-ui162 .xray-grid150>aside{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+body.vv-ui162 .xray-grid150>aside .xray-panel150{min-width:0}
+body.vv-ui162 .xray-operation-list150{max-height:none}
+
+.secondary-head162{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-bottom:8px;padding:9px 11px;border:1px solid #dfe6df;border-radius:10px;background:#f9fbf9
+}
+.secondary-head162 strong{font-size:11px}
+.secondary-head162 span{font-size:9px;color:#758078}
+.secondary-head162 .btn{padding:6px 9px;font-size:9px}
+
+/* Menos informação fixa nas telas avançadas */
+body.vv-ui162 #carTabEnvironment131 .environment-panel,
+body.vv-ui162 #carTabEnvironment131 .themes-panel,
+body.vv-ui162 #carTabCredit140 .panel{box-shadow:none}
+body.vv-ui162 #carTabEnvironment131 .environment-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+body.vv-ui162 #carTabEnvironment131 .themes-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+body.vv-ui162 #carTabDocs131 .docs-grid131{grid-template-columns:1.2fr .8fr}
+
+@media(max-width:1350px){
+  .essential162{grid-template-columns:1fr 1fr 1fr}
+  .essential-main162{grid-column:1/-1}
+  body.vv-ui162 .xray-metrics150{grid-template-columns:repeat(3,minmax(125px,1fr))}
+  body.vv-ui162 .xray-grid150>aside{grid-template-columns:1fr}
+  body.vv-ui162 .summary-grid131 .car-data-card131 .data-list{grid-template-columns:1fr 1fr}
+}
+@media(max-width:900px){
+  .essential162{grid-template-columns:1fr}
+  .essential-main162{grid-column:auto;align-items:flex-start;flex-direction:column}
+  .essential-main162 .essential-actions162{justify-content:flex-start}
+  body.vv-ui162 .xray-metrics150{grid-template-columns:1fr 1fr}
+  body.vv-ui162 .summary-grid131 .car-data-card131 .data-list,
+  body.vv-ui162 .summary-grid131 .car-data-card131 .action-grid{grid-template-columns:1fr}
+}
