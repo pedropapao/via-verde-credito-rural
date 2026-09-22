@@ -35,3 +35,9 @@ Para gerar instalador, instale NSIS e use `wails build -nsis`.
 ## Observação jurídica/técnica
 
 O demonstrativo gerado pelo aplicativo é técnico e auxiliar. Não substitui o Demonstrativo oficial do SICAR, certidões, análise ambiental, georreferenciamento ou documentos emitidos pelo órgão competente.
+
+## ViaVerdeCAR 1.7.0 — Inteligência de Crédito Rural
+
+O Raio X passa a oferecer, sob demanda, uma camada financeira complementar baseada em microdados públicos do SICOR/BCB: situação e saldos, liberações, cronograma de desembolso, desclassificações, vínculos de renegociação, Proagro e detalhes produtivos/financeiros das operações vinculadas ao CAR.
+
+A leitura é deliberadamente conservadora: valores localizados são apresentados como **identificados nas bases públicas** e não como dívida total do produtor. Programa, taxa e dados de plantio auxiliam a conferência, mas não substituem o MCR vigente nem a Tábua/Portaria ZARC aplicável.
