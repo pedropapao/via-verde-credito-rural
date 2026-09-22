@@ -42,6 +42,19 @@ func TestSICORWKTPolygonToGeoJSON(t *testing.T) {
 	}
 }
 
+
+
+func TestSICORWKTPolygonZToGeoJSON(t *testing.T) {
+	raw := "POLYGON Z ((-46.6100 -20.9100 0,-46.6000 -20.9100 0,-46.6000 -20.9000 0,-46.6100 -20.9000 0,-46.6100 -20.9100 0))"
+	geo, err := sicorWKTToGeoJSON(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := projectAreaMetrics(geo); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSICORWKTMultiPolygonToGeoJSON(t *testing.T) {
 	raw := "MULTIPOLYGON (((-46.61 -20.91 0,-46.60 -20.91 0,-46.60 -20.90 0,-46.61 -20.90 0,-46.61 -20.91 0)),((-46.59 -20.91 0,-46.58 -20.91 0,-46.58 -20.90 0,-46.59 -20.90 0,-46.59 -20.91 0)))"
 	geo, err := sicorWKTToGeoJSON(raw)
