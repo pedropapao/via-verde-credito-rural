@@ -87,8 +87,9 @@ func querySIGEFPublic(ctx context.Context, carGeoJSON string) (SIGEFPublicResult
 		return out, errors.New("não foi possível calcular os limites do CAR")
 	}
 
-	var body []byte
+	var parcels []SIGEFParcel
 	var sourceErrs []string
+	succeeded := false
 	for _, endpoint := range []string{sigefPublicPrimaryQueryURL, sigefPublicFallbackQueryURL} {
 		params := url.Values{}
 		params.Set("where", "1=1")
@@ -110,19 +111,20 @@ func querySIGEFPublic(ctx context.Context, carGeoJSON string) (SIGEFPublicResult
 			}
 			continue
 		}
-		body = raw
+		parsed, parseErr := parseSIGEFPublicGeoJSON(raw, carGeoJSON)
+		if parseErr != nil {
+			sourceErrs = append(sourceErrs, parseErr.Error())
+			continue
+		}
+		parcels = parsed
+		succeeded = true
 		break
 	}
-	if len(body) == 0 {
+	if !succeeded {
 		if len(sourceErrs) == 0 {
 			return out, errors.New("fonte pública do SIGEF não respondeu")
 		}
 		return out, errors.New("SIGEF público: " + strings.Join(sourceErrs, " | "))
-	}
-
-	parcels, err := parseSIGEFPublicGeoJSON(body, carGeoJSON)
-	if err != nil {
-		return out, err
 	}
 	out.Available = true
 	out.Parcels = parcels
@@ -155,17 +157,21 @@ func querySIGEFPublic(ctx context.Context, carGeoJSON string) (SIGEFPublicResult
 }
 
 func parseSIGEFPublicGeoJSON(body []byte, carGeoJSON string) ([]SIGEFParcel, error) {
+	var arcErr struct {
+		Error *struct {
+			Message string   `json:"message"`
+			Details []string `json:"details"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(body, &arcErr) == nil && arcErr.Error != nil {
+		msg := strings.TrimSpace(arcErr.Error.Message)
+		if len(arcErr.Error.Details) > 0 {
+			msg += ": " + strings.Join(arcErr.Error.Details, " | ")
+		}
+		return nil, fmt.Errorf("SIGEF público: %s", msg)
+	}
 	var fc carGeoJSON
 	if err := json.Unmarshal(body, &fc); err != nil {
-		var arcErr struct {
-			Error *struct {
-				Message string   `json:"message"`
-				Details []string `json:"details"`
-			} `json:"error"`
-		}
-		if json.Unmarshal(body, &arcErr) == nil && arcErr.Error != nil {
-			return nil, fmt.Errorf("SIGEF público: %s", strings.TrimSpace(arcErr.Error.Message))
-		}
 		return nil, fmt.Errorf("SIGEF público retornou GeoJSON inválido: %w", err)
 	}
 
