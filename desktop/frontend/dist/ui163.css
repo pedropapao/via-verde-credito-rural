@@ -1,0 +1,24 @@
+/* ViaVerdeCAR 1.6.3 — financeiro completo */
+.credit163{margin-top:16px}
+.credit163-loading{display:flex;flex-direction:column;gap:6px;padding:22px}
+.credit163-metrics,.credit163-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}
+.credit163-metric{border:1px solid var(--border,#dfe5df);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:4px;background:rgba(255,255,255,.55)}
+.credit163-metric span,.credit163-field span{font-size:12px;opacity:.72}.credit163-metric strong{font-size:18px}.credit163-metric small{font-size:11px;opacity:.68}
+.credit163-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+.credit163-list{display:flex;flex-direction:column;gap:12px}
+.credit163-operation{border:1px solid var(--border,#dfe5df);border-radius:14px;padding:14px;background:var(--panel,#fff)}
+.credit163-ophead{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:10px}.credit163-ophead>div{display:flex;flex-direction:column;gap:3px}.credit163-ophead>div:last-child{text-align:right}.credit163-ophead b{font-size:18px}.credit163-ophead span,.credit163-ophead small{font-size:12px;opacity:.72}
+.credit163-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.credit163-field{border:1px solid var(--border,#e2e7e2);border-radius:10px;padding:9px;display:flex;flex-direction:column;gap:3px}.credit163-field b{font-size:13px;word-break:break-word}
+.credit163-operation details{border-top:1px solid var(--border,#e2e7e2);padding-top:9px;margin-top:9px}.credit163-operation summary{cursor:pointer;font-weight:700}.credit163-operation h5{margin:12px 0 6px}
+.credit163-table{display:flex;flex-direction:column;gap:5px}.credit163-table>div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dashed var(--border,#e2e7e2);padding:6px 0}
+.credit163-event{display:flex;flex-direction:column;gap:3px;border-left:3px solid #7d9280;padding:8px 10px;margin:6px 0;background:rgba(0,0,0,.02)}.credit163-event.warning{border-left-color:#b07a2b}.credit163-event span{font-size:12px;line-height:1.45}
+.credit163-empty{font-size:12px;opacity:.72;padding:8px 0}.credit163-warnings{margin-top:12px}
+@media(max-width:1050px){.credit163-metrics,.credit163-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.credit163-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.credit163-metrics,.credit163-summary,.credit163-fields{grid-template-columns:1fr}.credit163-ophead{flex-direction:column}.credit163-ophead>div:last-child{text-align:left}}
+.credit163-event.ok{border-left-color:#4b8d5b;background:rgba(63,133,78,.055)}
+.credit163-market{margin-top:16px;border-top:1px solid var(--border,#dfe5df);padding-top:14px}
+.credit163-market-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.credit163-market-grid>details{border:1px solid var(--border,#dfe5df);border-radius:12px;padding:10px;background:rgba(255,255,255,.5)}
+.credit163-market-grid>details>summary{cursor:pointer;font-weight:700;margin-bottom:8px}
+@media(max-width:900px){.credit163-market-grid{grid-template-columns:1fr}}
