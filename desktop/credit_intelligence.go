@@ -203,12 +203,15 @@ type creditDomains struct {
 }
 
 func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelligenceResult, error) {
+	startCreditIntelligenceProgress()
 	car, err := a.carForRuralCredit(propertyID)
 	if err != nil {
+		failCreditIntelligenceProgress(err)
 		return CreditIntelligenceResult{}, err
 	}
 	xray, err := a.BuildSICORPropertyXRay(propertyID, force)
 	if err != nil {
+		failCreditIntelligenceProgress(err)
 		return CreditIntelligenceResult{}, err
 	}
 	out := CreditIntelligenceResult{
@@ -221,10 +224,12 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 	}
 	if len(xray.Operations) == 0 {
 		out.Warnings = append(out.Warnings, "Nenhuma operação pública vinculada ao CAR foi localizada para enriquecer.")
+		completeCreditIntelligenceProgress("Nenhuma operação pública vinculada ao CAR foi localizada para detalhamento financeiro.")
 		return out, nil
 	}
 	sourceDir := filepath.Join(a.dataDir, "cache", "sicor_credit_intelligence")
 	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
+		failCreditIntelligenceProgress(err)
 		return out, err
 	}
 	baseCtx := context.Background()
@@ -234,6 +239,7 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 	ctx, cancel := context.WithTimeout(baseCtx, 25*time.Minute)
 	defer cancel()
 
+	updateCreditIntelligenceProgress(2, "domains", "Tabelas e domínios", "Carregando instituições, programas, fontes, situações e demais códigos oficiais do SICOR.")
 	dom, domainWarnings := a.loadCreditDomains(ctx, sourceDir)
 	out.Warnings = append(out.Warnings, domainWarnings...)
 
@@ -258,6 +264,7 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 		byKey[key] = op
 	}
 
+	updateCreditIntelligenceProgress(3, "details", "Detalhes das operações", "Lendo taxas, recursos próprios, áreas, produção, seguro e enquadramento das operações localizadas.")
 	for year := range years {
 		name := fmt.Sprintf("SICOR_OPERACAO_BASICA_ESTADO_%d.gz", year)
 		path, e := a.ensureSICORSourceFile(ctx, sicorRawBaseURL+name, filepath.Join(sourceDir, name), 36*time.Hour)
@@ -270,14 +277,19 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 		}
 	}
 
-	type dataset struct{ file, label string; scan func(string) error }
+	type dataset struct {
+		step int
+		key, file, label, detail string
+		scan func(string) error
+	}
 	datasets := []dataset{
-		{"SICOR_LIBERACAO_RECURSOS.gz", "liberações", func(p string) error { return scanCreditReleases(p, byKey) }},
-		{"SICOR_PARCELAS_DESEMBOLSO.gz", "cronograma de desembolso", func(p string) error { return scanCreditDisbursements(p, byKey) }},
-		{"SICOR_DESCLASSIFICACAO.gz", "desclassificações", func(p string) error { return scanCreditDeclassification(p, byKey, dom) }},
-		{"SICOR_LISTA_RENEGOCIACAO.gz", "renegociações", func(p string) error { return scanCreditRenegotiations(p, byKey, dom) }},
+		{4, "releases", "SICOR_LIBERACAO_RECURSOS.gz", "Liberações de recursos", "Consultando datas e valores efetivamente liberados nas operações.", func(p string) error { return scanCreditReleases(p, byKey) }},
+		{5, "disbursements", "SICOR_PARCELAS_DESEMBOLSO.gz", "Cronograma de desembolso", "Consultando parcelas e datas previstas de desembolso publicadas.", func(p string) error { return scanCreditDisbursements(p, byKey) }},
+		{6, "declassification", "SICOR_DESCLASSIFICACAO.gz", "Desclassificações", "Verificando registros de desclassificação, motivo e valor.", func(p string) error { return scanCreditDeclassification(p, byKey, dom) }},
+		{7, "renegotiation", "SICOR_LISTA_RENEGOCIACAO.gz", "Renegociações", "Procurando vínculos públicos de renegociação e prorrogação.", func(p string) error { return scanCreditRenegotiations(p, byKey, dom) }},
 	}
 	for _, ds := range datasets {
+		updateCreditIntelligenceProgress(ds.step, ds.key, ds.label, ds.detail)
 		path, e := a.ensureSICORSourceFile(ctx, sicorRawBaseURL+ds.file, filepath.Join(sourceDir, ds.file), 36*time.Hour)
 		if e != nil {
 			out.Warnings = append(out.Warnings, ds.label+": "+e.Error())
@@ -288,11 +300,18 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 		}
 	}
 
+	updateCreditIntelligenceProgress(8, "balances", "Saldos e situação", "Consultando o último saldo publicado e a situação de cada operação.")
 	a.enrichCreditBalances(ctx, sourceDir, byKey, dom, &out)
+
+	updateCreditIntelligenceProgress(9, "proagro", "Proagro", "Verificando comunicação de perdas, RCP, julgamento e pagamentos quando aplicáveis.")
 	if hasProagroCandidate(byKey) {
 		a.enrichCreditProagro(ctx, sourceDir, byKey, dom, &out)
 	}
+
+	updateCreditIntelligenceProgress(10, "zarc", "ZARC", "Cruzando plantio, cultura, solo e ciclo com a Tábua de Risco oficial disponível.")
 	a.enrichCreditZARC(ctx, sourceDir, car, byKey, &out)
+
+	updateCreditIntelligenceProgress(11, "market", "Contexto de mercado", "Consultando o contexto agregado do crédito rural no município e na UF.")
 	if market, marketErr := queryCreditMarketContext(ctx, car.Municipality, car.UF, car.MunicipalityCode); marketErr == nil {
 		out.Market = market
 	} else {
@@ -328,6 +347,7 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 		}
 		return out.Operations[i].IssueDate > out.Operations[j].IssueDate
 	})
+	completeCreditIntelligenceProgress("Inteligência financeira concluída. Os dados disponíveis foram organizados para conferência.")
 	return out, nil
 }
 
