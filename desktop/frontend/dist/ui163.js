@@ -21,7 +21,7 @@
     fin.loading=true;
     const b=g('creditFull163');
     if(b){b.disabled=true;b.textContent='Carregando financeiro…'}
-    ensurePanel163('<div class="credit163-loading"><strong>Montando histórico financeiro completo…</strong><span>Saldo, liberações, cronograma, renegociação, desclassificação e Proagro usam arquivos nacionais do Banco Central. A primeira sincronização pode demorar.</span></div>');
+    ensurePanel163('<div class="credit163-loading"><strong>Montando histórico financeiro completo…</strong><span>Saldo, liberações, cronograma, renegociação, desclassificação, Proagro e conferência ZARC usam bases oficiais. A primeira sincronização pode demorar.</span></div>');
     try{
       const r=await api().BuildSICORFinancialIntelligence(state.selectedProperty?.id||0,!!force);
       fin.result=r; fin.car=r.car||state.car.car; render163(r);
@@ -69,7 +69,7 @@
   }
 
   function operation163(op){
-    const x=op.intelligence||{},bal=x.latest_balance||{};
+    const x=op.intelligence||{},bal=x.latest_balance||{},zc=x.zarc_check||{};
     const base=(bal.base_year&&bal.base_month)?String(bal.base_month).padStart(2,'0')+'/'+bal.base_year:'—';
     const status=bal.situation_name||bal.situation_code||'Sem saldo público localizado';
     const financial=[
@@ -142,8 +142,24 @@
         field163('Produto ZARC',x.zarc?.product||op.product||'—')+
         field163('Plantio informado',dateRange163(x.zarc?.planting_start,x.zarc?.planting_end))+
         field163('Manejo / irrigação',x.zarc?.irrigation||'—')+
-      '</div><div class="credit163-actions"><button class="btn ghost" data-mcr163="'+escAttr163(x.mcr?.source_url||'https://www3.bcb.gov.br/mcr/completo')+'">MCR oficial</button><button class="btn ghost" data-zarc163="'+escAttr163(x.zarc?.source_url||'https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico')+'">ZARC oficial</button></div><div class="xray-source150">'+esc(x.zarc?.message||'Confirme o enquadramento e a janela nas fontes oficiais vigentes.')+'</div></details>'+
+        field163('Safra ZARC',zc.safra||'—')+
+        field163('Solo ZARC/SICOR',zc.soil_name||zc.soil_code||'—')+
+        field163('Ciclo/grupo',zc.cycle_name||zc.cycle_code||'—')+
+        field163('Decêndios do plantio',(zc.planting_decendios||[]).join(', ')||'—')+
+        field163('Riscos localizados',(zc.risk_levels||[]).length?(zc.risk_levels||[]).map(v=>v+'%').join(', '):'—')+
+      '</div>'+zarcCheck163(zc)+'<div class="credit163-actions"><button class="btn ghost" data-mcr163="'+escAttr163(x.mcr?.source_url||'https://www3.bcb.gov.br/mcr/completo')+'">MCR oficial</button><button class="btn ghost" data-zarc163="'+escAttr163(zc.dataset_url||x.zarc?.source_url||'https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico')+'">Fonte ZARC</button></div><div class="xray-source150">'+esc(x.mcr?.message||'Confirme as regras vigentes no MCR oficial.')+'</div></details>'+
     '</article>';
+  }
+
+  function zarcCheck163(z){
+    if(!z||!z.attempted)return '<div class="credit163-event"><strong>ZARC automático</strong><span>Sem dados suficientes ou análise não aplicável a esta destinação.</span></div>';
+    const cls=z.matched?' ok':(z.available?' warning':'');
+    const label=z.matched?'Correspondência ZARC localizada':(z.available?'Conferir ZARC':'ZARC automático sem conclusão');
+    const extra=[
+      (z.portarias||[]).length?'Portaria(s): '+(z.portarias||[]).join(' | '):'',
+      (z.manejos||[]).length?'Manejo(s): '+(z.manejos||[]).join(' | '):''
+    ].filter(Boolean).join(' • ');
+    return '<div class="credit163-event'+cls+'"><strong>'+esc(label)+'</strong><span>'+esc(z.message||'')+(extra?'<br>'+esc(extra):'')+'</span></div>';
   }
 
   function generic163(rec){
