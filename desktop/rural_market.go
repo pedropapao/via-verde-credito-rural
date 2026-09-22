@@ -261,9 +261,9 @@ func filterBCBUFYearRows(rows []map[string]any, abbr, full, year string)[]map[st
 	var out []map[string]any
 	for _,r:=range rows{
 		y:=strings.TrimSpace(firstNonEmptyStringMapValue(r,"AnoEmissao","ano","Ano"))
-		if year!=""&&y!=""&&y!=year{continue}
+		if year!=""&&(y==""||y!=year){continue}
 		rowUF:=strings.ToUpper(strings.TrimSpace(firstNonEmptyStringMapValue(r,"nomeUF","UF","uf","NomeUF")))
-		if rowUF!=""&&rowUF!=abbr&&rowUF!=full{continue}
+		if rowUF==""|| (rowUF!=abbr&&rowUF!=full){continue}
 		out=append(out,r)
 	}
 	return out
@@ -314,10 +314,10 @@ func findStringFieldByTokens(m map[string]any,tokens []string)string{
 
 func brazilUFName(uf string)string{
 	return map[string]string{
-		"AC":"ACRE","AL":"ALAGOAS","AP":"AMAPA","AM":"AMAZONAS","BA":"BAHIA","CE":"CEARA","DF":"DISTRITO FEDERAL",
-		"ES":"ESPIRITO SANTO","GO":"GOIAS","MA":"MARANHAO","MT":"MATO GROSSO","MS":"MATO GROSSO DO SUL",
-		"MG":"MINAS GERAIS","PA":"PARA","PB":"PARAIBA","PR":"PARANA","PE":"PERNAMBUCO","PI":"PIAUI",
-		"RJ":"RIO DE JANEIRO","RN":"RIO GRANDE DO NORTE","RS":"RIO GRANDE DO SUL","RO":"RONDONIA",
-		"RR":"RORAIMA","SC":"SANTA CATARINA","SP":"SAO PAULO","SE":"SERGIPE","TO":"TOCANTINS",
+		"AC":"ACRE","AL":"ALAGOAS","AP":"AMAPÁ","AM":"AMAZONAS","BA":"BAHIA","CE":"CEARÁ","DF":"DISTRITO FEDERAL",
+		"ES":"ESPÍRITO SANTO","GO":"GOIÁS","MA":"MARANHÃO","MT":"MATO GROSSO","MS":"MATO GROSSO DO SUL",
+		"MG":"MINAS GERAIS","PA":"PARÁ","PB":"PARAÍBA","PR":"PARANÁ","PE":"PERNAMBUCO","PI":"PIAUÍ",
+		"RJ":"RIO DE JANEIRO","RN":"RIO GRANDE DO NORTE","RS":"RIO GRANDE DO SUL","RO":"RONDÔNIA",
+		"RR":"RORAIMA","SC":"SANTA CATARINA","SP":"SÃO PAULO","SE":"SERGIPE","TO":"TOCANTINS",
 	}[strings.ToUpper(strings.TrimSpace(uf))]
 }
