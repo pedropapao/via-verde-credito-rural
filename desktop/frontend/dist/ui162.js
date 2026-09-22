@@ -11,7 +11,8 @@
     const labels={summary:'Visão geral',xray:'Raio X',map:'Mapa',planning:'Projeto',docs:'Documentos'};
     Object.entries(labels).forEach(([key,label])=>{
       const b=document.querySelector('[data-car-tab131="'+key+'"]');
-      if(!b)return;
+      if(!b||b.dataset.ui162Label==='1')return;
+      b.dataset.ui162Label='1';
       const icon=b.querySelector('.car-tab161-icon');
       const count=b.querySelector('.tab-count131');
       [...b.childNodes].forEach(n=>{if(n.nodeType===3)n.remove()});
@@ -62,6 +63,7 @@
   }
 
   function textOf(id){return (g(id)?.textContent||'').trim()}
+  function setText162(id,value){const el=g(id);if(el&&el.textContent!==String(value))el.textContent=String(value)}
   function updateEssential162(){
     if(!g('essential162'))return;
     const has=!!state?.car?.found;
@@ -72,18 +74,18 @@
     const environmentalHits=(Number(env.ibama_embargo_count)||0)+(Number(env.indigenous_count)||0)+(Number(env.federal_uc_count)||0)+(env.mcr_listed?1:0);
     const total=qualityWarnings+environmentalHits;
 
-    g('essentialStatus162').textContent=has?status:'—';
-    g('essentialStatusNote162').textContent=has?(textOf('rMunicipality')||'CAR consultado'):'Aguardando CAR';
-    g('essentialArea162').textContent=has?(area||'—'):'—';
-    g('essentialAreaNote162').textContent=has?'Área geométrica / declarada':'Área geométrica / SICAR';
-    g('essentialAttention162').textContent=has?String(total):'—';
-    g('essentialAttentionNote162').textContent=has?(total?'itens para revisar':'nenhum alerta direto nesta tela'):'Alertas e conferências';
-    g('essentialTitle162').textContent=has?(state.car.property_name||state.car.car||'Imóvel consultado'):'Consulte um CAR para começar';
-    g('essentialMessage162').textContent=!has
+    setText162('essentialStatus162',has?status:'—');
+    setText162('essentialStatusNote162',has?(textOf('rMunicipality')||'CAR consultado'):'Aguardando CAR');
+    setText162('essentialArea162',has?(area||'—'):'—');
+    setText162('essentialAreaNote162',has?'Área geométrica / declarada':'Área geométrica / SICAR');
+    setText162('essentialAttention162',has?String(total):'—');
+    setText162('essentialAttentionNote162',has?(total?'itens para revisar':'nenhum alerta direto nesta tela'):'Alertas e conferências');
+    setText162('essentialTitle162',has?(state.car.property_name||state.car.car||'Imóvel consultado'):'Consulte um CAR para começar');
+    setText162('essentialMessage162',!has
       ?'O Via Verde vai destacar somente situação, área, pendências e os próximos passos.'
       :total
         ?'Há '+total+' ponto(s) que merecem conferência. Abra o Raio X para ver apenas o que exige atenção.'
-        :'Consulta carregada. Use o Raio X para crédito, SIGEF e ambiental; mapa e projeto ficam separados.';
+        :'Consulta carregada. Use o Raio X para crédito, SIGEF e ambiental; mapa e projeto ficam separados.');
   }
 
   function addSecondaryEntry162(){
@@ -179,12 +181,11 @@
     updateEssential162();
     simplifyXRay162();
 
-    const summary=g('carTabSummary131');
-    if(summary)new MutationObserver(()=>updateEssential162()).observe(summary,{childList:true,subtree:true,characterData:true});
+    ['carStatusBadge','rMunicipality','rGeoArea','rArea','qualityChecks'].forEach(id=>{
+      const el=g(id);if(el)new MutationObserver(()=>updateEssential162()).observe(el,{childList:true,subtree:true,characterData:true});
+    });
     const xray=g('xrayWorkspace150');
     if(xray)new MutationObserver(()=>simplifyXRay162()).observe(xray,{childList:true,subtree:true});
-    const tabs=document.querySelector('.car-tabs131');
-    if(tabs)new MutationObserver(()=>renamePrimaryTabs162()).observe(tabs,{childList:true,subtree:true});
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',prepare162);
