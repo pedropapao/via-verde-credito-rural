@@ -156,7 +156,7 @@ func querySIGEFPublic(ctx context.Context, carGeoJSON string) (SIGEFPublicResult
 	return out, nil
 }
 
-func parseSIGEFPublicGeoJSON(body []byte, carGeoJSON string) ([]SIGEFParcel, error) {
+func parseSIGEFPublicGeoJSON(body []byte, carRaw string) ([]SIGEFParcel, error) {
 	var arcErr struct {
 		Error *struct {
 			Message string   `json:"message"`
@@ -175,7 +175,7 @@ func parseSIGEFPublicGeoJSON(body []byte, carGeoJSON string) ([]SIGEFParcel, err
 		return nil, fmt.Errorf("SIGEF público retornou GeoJSON inválido: %w", err)
 	}
 
-	carMetric, metricErr := projectAreaMetrics(carGeoJSON)
+	carMetric, metricErr := projectAreaMetrics(carRaw)
 	carAreaHa := 0.0
 	if metricErr == nil {
 		carAreaHa = carMetric.AreaHa
@@ -194,7 +194,7 @@ func parseSIGEFPublicGeoJSON(body []byte, carGeoJSON string) ([]SIGEFParcel, err
 		if err != nil || metric.AreaHa <= 0 {
 			continue
 		}
-		intersection, parcelInside, carInside, err := estimateGeometryOverlap(metric.GeoJSON, carGeoJSON)
+		intersection, parcelInside, carInside, err := estimateGeometryOverlap(metric.GeoJSON, carRaw)
 		if err != nil || intersection <= 0.0001 {
 			continue
 		}
