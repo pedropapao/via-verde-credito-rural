@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -17,6 +21,7 @@ const (
 	mcrOfficialURL = "https://www3.bcb.gov.br/mcr/completo"
 	zarcOfficialURL = "https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico"
 	zarcDatasetURL  = "https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico"
+	zarcCKANPackageURL = "https://dados.agricultura.gov.br/api/3/action/package_show?id=6d3d141c-885e-41a4-ab7f-dc8ff323b96f"
 )
 
 type SICORBalanceSnapshot struct {
@@ -53,7 +58,9 @@ type SICORProagroCOP struct {
 	EventCode         string  `json:"event_code"`
 	EventName         string  `json:"event_name"`
 	SoilCode          string  `json:"soil_code"`
+	SoilName          string  `json:"soil_name"`
 	CycleCode         string  `json:"cycle_code"`
+	CycleName         string  `json:"cycle_name"`
 	CommunicationDate string  `json:"communication_date"`
 	PlantingStart     string  `json:"planting_start"`
 	PlantingEnd       string  `json:"planting_end"`
@@ -118,6 +125,29 @@ type SICORZARCContext struct {
 	Message        string `json:"message"`
 }
 
+type SICORZARCAutomaticCheck struct {
+	Attempted         bool     `json:"attempted"`
+	Available         bool     `json:"available"`
+	Matched           bool     `json:"matched"`
+	Safra             string   `json:"safra"`
+	Culture           string   `json:"culture"`
+	Municipality      string   `json:"municipality"`
+	UF                string   `json:"uf"`
+	SoilCode          string   `json:"soil_code"`
+	SoilName          string   `json:"soil_name"`
+	CycleCode         string   `json:"cycle_code"`
+	CycleName         string   `json:"cycle_name"`
+	PlantingStart     string   `json:"planting_start"`
+	PlantingEnd       string   `json:"planting_end"`
+	PlantingDecendios []int    `json:"planting_decendios"`
+	RiskLevels        []int    `json:"risk_levels"`
+	Portarias         []string `json:"portarias"`
+	Manejos           []string `json:"manejos"`
+	Message           string   `json:"message"`
+	SourceURL         string   `json:"source_url"`
+	DatasetURL        string   `json:"dataset_url"`
+}
+
 type SICOROperationIntelligence struct {
 	LatestBalance         *SICORBalanceSnapshot   `json:"latest_balance,omitempty"`
 	Releases              []SICORRelease           `json:"releases"`
@@ -134,6 +164,7 @@ type SICOROperationIntelligence struct {
 	SourceChanges         []SICORGenericRecord     `json:"source_changes"`
 	MCR                   SICORMCRContext          `json:"mcr"`
 	ZARC                  SICORZARCContext         `json:"zarc"`
+	ZARCCheck             SICORZARCAutomaticCheck  `json:"zarc_check"`
 }
 
 type SICORFinancialIntelligenceResult struct {
@@ -198,7 +229,7 @@ func (a *App) BuildSICORFinancialIntelligence(propertyID int64, force bool) (SIC
 	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
 		return SICORFinancialIntelligenceResult{}, err
 	}
-	base.Warnings = append(base.Warnings, a.enrichSICORFinancialIntelligence(ctx, sourceDir, &base)...)
+	base.Warnings = append(base.Warnings, a.enrichSICORFinancialIntelligence(ctx, sourceDir, car.MunicipalityCode, car.Municipality, car.UF, &base)...)
 	out := SICORFinancialIntelligenceResult{
 		CAR: car.CAR,
 		GeneratedAt: time.Now().Format(time.RFC3339),
@@ -218,7 +249,7 @@ func (a *App) BuildSICORFinancialIntelligence(propertyID int64, force bool) (SIC
 	return out, nil
 }
 
-func (a *App) enrichSICORFinancialIntelligence(ctx context.Context, sourceDir string, result *SICORXRayResult) []string {
+func (a *App) enrichSICORFinancialIntelligence(ctx context.Context, sourceDir, municipalityCode, municipality, uf string, result *SICORXRayResult) []string {
 	if result == nil || len(result.Operations) == 0 {
 		return nil
 	}
@@ -274,7 +305,9 @@ func (a *App) enrichSICORFinancialIntelligence(ctx context.Context, sourceDir st
 	situationDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "SituacaoOperacao.csv", "CD_SITUACAO_OPERACAO", "DESCRICAO")
 	reasonDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "motivoDesclassificacao.csv", "CD_MOTIVO_DESC", "DESCRICAO")
 	statusCOP, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "StatusCOPProagro.csv", "CD_STATUS", "DESCRICAO")
-	eventDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "EventoProagro.csv", "CD_EVENTO", "DESCRICAO")
+	eventDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "EventoProagro.csv", "CD_EVENTO", "NOME_EVENTO")
+	cycleCOPDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "CicloCultivarProagro.csv", "CD_CICLO_CULTIVAR", "DESCRICAO_CICLO")
+	soilCOPDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "TipoSoloProagro.csv", "CD_TIPO_SOLO", "DESCRICAO_TIPO_SOLO")
 
 	balances := map[string]SICORBalanceSnapshot{}
 	pending := make(map[string]bool, len(targets))
@@ -308,7 +341,7 @@ func (a *App) enrichSICORFinancialIntelligence(ctx context.Context, sourceDir st
 		{"SICOR_LIBERACAO_RECURSOS.gz", 36*time.Hour, func(path string) error { return scanSICORReleases(path, targets, result) }},
 		{"SICOR_PARCELAS_DESEMBOLSO.gz", 36*time.Hour, func(path string) error { return scanSICORDisbursements(path, targets, result) }},
 		{"SICOR_DESCLASSIFICACAO.gz", 72*time.Hour, func(path string) error { return scanSICORDisqualifications(path, targets, result, reasonDomain) }},
-		{"SICOR_COP_BASICO.gz", 72*time.Hour, func(path string) error { return scanSICORCOP(path, targets, result, statusCOP, eventDomain) }},
+		{"SICOR_COP_BASICO.gz", 72*time.Hour, func(path string) error { return scanSICORCOP(path, targets, result, statusCOP, eventDomain, soilCOPDomain, cycleCOPDomain) }},
 		{"SICOR_RCP_BASICO.gz", 72*time.Hour, func(path string) error { return scanSICORRCP(path, targets, result) }},
 		{"SICOR_SUMULA_JULGAMENTO.gz", 72*time.Hour, func(path string) error { return scanSICORJudgments(path, targets, result) }},
 		{"SICOR_PARCELAS_PROAGRO.gz", 72*time.Hour, func(path string) error { return scanSICORProagroPayments(path, targets, result) }},
@@ -366,6 +399,9 @@ func (a *App) enrichSICORFinancialIntelligence(ctx context.Context, sourceDir st
 	result.RenegotiatedOperations = 0
 	for i := range result.Operations {
 		if len(result.Operations[i].Intelligence.Renegotiations) > 0 { result.RenegotiatedOperations++ }
+	}
+	if zarcWarnings := a.enrichZARCAutomaticChecks(ctx, sourceDir, municipalityCode, municipality, uf, result); len(zarcWarnings) > 0 {
+		warnings = append(warnings, zarcWarnings...)
 	}
 	return warnings
 }
@@ -452,14 +488,15 @@ func scanSICORDisqualifications(path string, targets map[string]bool, result *SI
 	})
 }
 
-func scanSICORCOP(path string, targets map[string]bool, result *SICORXRayResult, statuses,eventNames map[string]string) error {
+func scanSICORCOP(path string, targets map[string]bool, result *SICORXRayResult, statuses,eventNames,soilNames,cycleNames map[string]string) error {
 	idx:=opIndex(result)
 	return readGzipCSV(path,';',func(headers map[string]int,row []string) error{
 		key:=sicorOperationKey(fieldCSV(headers,row,"REF_BACEN"),fieldCSV(headers,row,"NU_ORDEM")); if !targets[key]{return nil}
 		i,ok:=idx[key]; if !ok{return nil}; sc:=strings.TrimSpace(fieldCSV(headers,row,"CD_STATUS")); ec:=strings.TrimSpace(fieldCSV(headers,row,"CD_EVENTO"))
 		result.Operations[i].Intelligence.ProagroCOP=append(result.Operations[i].Intelligence.ProagroCOP,SICORProagroCOP{
 			StatusCode:sc,StatusName:statuses[normalizeDomainCode(sc)],EventCode:ec,EventName:eventNames[normalizeDomainCode(ec)],
-			SoilCode:strings.TrimSpace(fieldCSV(headers,row,"CD_TIPO_SOLO")),CycleCode:strings.TrimSpace(fieldCSV(headers,row,"CD_CICLO_CULTIVAR")),
+			SoilCode:strings.TrimSpace(fieldCSV(headers,row,"CD_TIPO_SOLO")),SoilName:soilNames[normalizeDomainCode(fieldCSV(headers,row,"CD_TIPO_SOLO"))],
+			CycleCode:strings.TrimSpace(fieldCSV(headers,row,"CD_CICLO_CULTIVAR")),CycleName:cycleNames[normalizeDomainCode(fieldCSV(headers,row,"CD_CICLO_CULTIVAR"))],
 			CommunicationDate:strings.TrimSpace(fieldCSV(headers,row,"DT_COMUNICACAO")),PlantingStart:strings.TrimSpace(fieldCSV(headers,row,"DT_INICIO_PLANTIO")),
 			PlantingEnd:strings.TrimSpace(fieldCSV(headers,row,"DT_FIM_PLANTIO")),HarvestStart:strings.TrimSpace(fieldCSV(headers,row,"DT_INICIO_COLHEITA")),HarvestEnd:strings.TrimSpace(fieldCSV(headers,row,"DT_FIM_COLHEITA")),
 		}); return nil
@@ -531,5 +568,306 @@ func genericRecordMentionsRef(rec SICORGenericRecord, ref string) bool {
 	for k,v:=range rec.Fields { if strings.Contains(k,"REF_BACEN")&&strings.TrimSpace(v)==strings.TrimSpace(ref){return true} }
 	return false
 }
+
+
+type zarcResource struct {
+	Name   string
+	URL    string
+	Format string
+}
+
+func (a *App) fetchZARCResources(ctx context.Context) ([]zarcResource, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, zarcCKANPackageURL, nil)
+	if err != nil { return nil, err }
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion)
+	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	if err != nil { return nil, err }
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("MAPA/ZARC respondeu HTTP %d", resp.StatusCode)
+	}
+	var payload struct {
+		Success bool \`json:"success"\`
+		Result struct {
+			Resources []struct {
+				Name string \`json:"name"\`
+				URL string \`json:"url"\`
+				Format string \`json:"format"\`
+			} \`json:"resources"\`
+		} \`json:"result"\`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil { return nil, err }
+	if !payload.Success { return nil, errors.New("catálogo ZARC não retornou sucesso") }
+	var out []zarcResource
+	for _, r := range payload.Result.Resources {
+		if strings.TrimSpace(r.URL)=="" { continue }
+		if !strings.EqualFold(strings.TrimSpace(r.Format),"CSV") && !strings.Contains(strings.ToLower(r.URL),".csv") { continue }
+		out=append(out,zarcResource{Name:strings.TrimSpace(r.Name),URL:strings.TrimSpace(r.URL),Format:r.Format})
+	}
+	if len(out)==0 { return nil, errors.New("catálogo ZARC sem recursos CSV") }
+	return out,nil
+}
+
+func (a *App) enrichZARCAutomaticChecks(ctx context.Context, sourceDir, municipalityCode, municipality, uf string, result *SICORXRayResult) []string {
+	if result==nil || len(result.Operations)==0 { return nil }
+	needs:=false
+	for i:=range result.Operations {
+		op:=&result.Operations[i]
+		if !strings.Contains(normalizeZARCText(op.Purpose),"custeio") || !strings.Contains(normalizeZARCText(op.Activity),"agric") { continue }
+		if strings.TrimSpace(op.Product)=="" { continue }
+		if len(op.Intelligence.ProagroCOP)>0 || strings.TrimSpace(op.PlantingStart)!="" || strings.TrimSpace(op.PlantingEnd)!="" {
+			needs=true
+			break
+		}
+	}
+	if !needs { return nil }
+	resources,err:=a.fetchZARCResources(ctx)
+	if err!=nil {
+		for i:=range result.Operations {
+			result.Operations[i].Intelligence.ZARCCheck.Message="Conferência automática ZARC indisponível nesta tentativa: "+err.Error()
+			result.Operations[i].Intelligence.ZARCCheck.SourceURL=zarcOfficialURL
+			result.Operations[i].Intelligence.ZARCCheck.DatasetURL=zarcDatasetURL
+		}
+		return []string{"ZARC automático: "+err.Error()}
+	}
+	zarcDir:=filepath.Join(sourceDir,"zarc")
+	_ = os.MkdirAll(zarcDir,0o755)
+	cache:=map[string]string{}
+	var warnings []string
+	for i:=range result.Operations {
+		op:=&result.Operations[i]
+		check:=SICORZARCAutomaticCheck{SourceURL:zarcOfficialURL,DatasetURL:zarcDatasetURL,Municipality:municipality,UF:uf,Culture:op.Product}
+		if !strings.Contains(normalizeZARCText(op.Purpose),"custeio") || !strings.Contains(normalizeZARCText(op.Activity),"agric") {
+			check.Message="Conferência ZARC automática não se aplica a esta destinação porque ela não foi identificada como custeio agrícola."
+			op.Intelligence.ZARCCheck=check
+			continue
+		}
+		var soilCode,soilName,cycleCode,cycleName,start,end string
+		if len(op.Intelligence.ProagroCOP)>0 {
+			cop:=op.Intelligence.ProagroCOP[0]
+			soilCode,soilName=cop.SoilCode,cop.SoilName
+			cycleCode,cycleName=cop.CycleCode,cop.CycleName
+			start,end=cop.PlantingStart,cop.PlantingEnd
+		}
+		if start=="" { start=op.PlantingStart }
+		if end=="" { end=op.PlantingEnd }
+		check.SoilCode,check.SoilName=soilCode,soilName
+		check.CycleCode,check.CycleName=cycleCode,cycleName
+		check.PlantingStart,check.PlantingEnd=start,end
+		check.Attempted=true
+		if strings.TrimSpace(municipalityCode)=="" || strings.TrimSpace(op.Product)=="" {
+			check.Message="ZARC automático sem dados suficientes: falta geocódigo do município ou cultura/produto."
+			op.Intelligence.ZARCCheck=check
+			continue
+		}
+		seasonCandidates:=zarcSeasonCandidates(start,end,op.IssueDate)
+		check.PlantingDecendios=plantingDecendios(start,end)
+		if len(seasonCandidates)==0 {
+			check.Message="ZARC automático sem data suficiente para determinar a safra. A fonte oficial continua disponível."
+			op.Intelligence.ZARCCheck=check
+			continue
+		}
+		var best SICORZARCAutomaticCheck
+		best=check
+		var attemptErrs []string
+		for _,season:=range seasonCandidates {
+			resource,ok:=findZARCResource(resources,season)
+			if !ok { continue }
+			path:=cache[resource.URL]
+			if path=="" {
+				name:="zarc_"+strings.ReplaceAll(season,"/","_")+".csv"
+				path=filepath.Join(zarcDir,name)
+				if st,statErr:=os.Stat(path); statErr!=nil || st.Size()==0 || time.Since(st.ModTime())>7*24*time.Hour {
+					tmp:=path+".part"; _=os.Remove(tmp)
+					if dlErr:=downloadLargeFile(ctx,resource.URL,tmp); dlErr!=nil {
+						_ = os.Remove(tmp); attemptErrs=append(attemptErrs,season+": "+dlErr.Error()); continue
+					}
+					_ = os.Remove(path)
+					if rnErr:=os.Rename(tmp,path); rnErr!=nil { _=os.Remove(tmp); attemptErrs=append(attemptErrs,season+": "+rnErr.Error()); continue }
+				}
+				cache[resource.URL]=path
+			}
+			got,scanErr:=scanZARCForOperation(path,season,municipalityCode,municipality,uf,op.Product,soilCode,soilName,cycleCode,cycleName,start,end)
+			if scanErr!=nil { attemptErrs=append(attemptErrs,season+": "+scanErr.Error()); continue }
+			got.SourceURL=zarcOfficialURL; got.DatasetURL=resource.URL
+			if got.Available {
+				best=got
+				if got.Matched { break }
+			}
+		}
+		if !best.Available && len(attemptErrs)>0 {
+			best.Message="A base ZARC foi localizada, mas a conferência automática não pôde ser concluída nesta tentativa."
+			warnings=append(warnings,"ZARC "+op.RefBacen+"/"+op.Order+": "+strings.Join(attemptErrs," | "))
+		}
+		op.Intelligence.ZARCCheck=best
+	}
+	return warnings
+}
+
+func zarcSeasonCandidates(start,end,issue string) []string {
+	raw:=start
+	if raw=="" { raw=end }
+	if raw=="" { raw=issue }
+	t,err:=time.Parse("2006-01-02",strings.TrimSpace(raw))
+	if err!=nil { return nil }
+	var first,second string
+	if int(t.Month())>=7 {
+		first=fmt.Sprintf("%d/%d",t.Year(),t.Year()+1)
+		second=fmt.Sprintf("%d/%d",t.Year()-1,t.Year())
+	} else {
+		first=fmt.Sprintf("%d/%d",t.Year()-1,t.Year())
+		second=fmt.Sprintf("%d/%d",t.Year(),t.Year()+1)
+	}
+	return []string{first,second}
+}
+
+func findZARCResource(resources []zarcResource, season string) (zarcResource,bool) {
+	want:=strings.ReplaceAll(strings.ToLower(season)," ","")
+	for _,r:=range resources {
+		n:=strings.ReplaceAll(strings.ToLower(r.Name)," ","")
+		if strings.Contains(n,want) { return r,true }
+	}
+	return zarcResource{},false
+}
+
+func scanZARCForOperation(path,season,municipalityCode,municipality,uf,culture,soilCode,soilName,cycleCode,cycleName,start,end string) (SICORZARCAutomaticCheck,error) {
+	out:=SICORZARCAutomaticCheck{
+		Attempted:true,Safra:season,Culture:culture,Municipality:municipality,UF:uf,
+		SoilCode:soilCode,SoilName:soilName,CycleCode:cycleCode,CycleName:cycleName,
+		PlantingStart:start,PlantingEnd:end,PlantingDecendios:plantingDecendios(start,end),
+		SourceURL:zarcOfficialURL,DatasetURL:zarcDatasetURL,
+	}
+	f,err:=os.Open(path); if err!=nil{return out,err}; defer f.Close()
+	br:=bufio.NewReader(f)
+	first,err:=br.ReadString('\n'); if err!=nil && err!=io.EOF{return out,err}
+	delim:=','
+	if strings.Count(first,";")>strings.Count(first,","){delim=';'}
+	reader:=csv.NewReader(io.MultiReader(strings.NewReader(first),br))
+	reader.Comma=delim; reader.LazyQuotes=true; reader.FieldsPerRecord=-1
+	header,err:=reader.Read(); if err!=nil{return out,err}
+	headers:=map[string]int{}
+	for i,h:=range header{headers[normalizeCSVHeader(h)]=i}
+	wantCode:=normalizeDigits(municipalityCode)
+	wantUF:=strings.ToUpper(strings.TrimSpace(uf))
+	wantCulture:=normalizeZARCText(culture)
+	riskSet:=map[int]bool{}; portSet:=map[string]bool{}; manejoSet:=map[string]bool{}
+	baseRows:=0; exactRows:=0
+	for{
+		row,e:=reader.Read(); if e==io.EOF{break}; if e!=nil{continue}
+		code:=normalizeDigits(zarcField(headers,row,"GEOCODIGO","COD_IBGE","COD_MUNIC"))
+		rowUF:=strings.ToUpper(strings.TrimSpace(zarcField(headers,row,"UF")))
+		if wantCode!=""&&code!=wantCode{continue}
+		if wantUF!=""&&rowUF!=""&&rowUF!=wantUF{continue}
+		rowCulture:=normalizeZARCText(zarcField(headers,row,"NOME_CULTURA","CULTURA"))
+		if !zarcCultureMatch(wantCulture,rowCulture){continue}
+		baseRows++
+		rowSoil:=strings.TrimSpace(zarcField(headers,row,"COD_SOLO"))
+		if strings.TrimSpace(soilCode)!="" && normalizeDomainCode(rowSoil)!=normalizeDomainCode(soilCode){continue}
+		rowCycle:=strings.TrimSpace(zarcField(headers,row,"COD_CICLO","GRUPO"))
+		if strings.TrimSpace(cycleCode)!="" || strings.TrimSpace(cycleName)!="" {
+			if !zarcCycleMatch(rowCycle,cycleCode,cycleName){continue}
+		}
+		exactRows++
+		if p:=strings.TrimSpace(zarcField(headers,row,"PORTARIA"));p!=""{portSet[p]=true}
+		if m:=strings.TrimSpace(zarcField(headers,row,"NOME_OUTROS_MANEJOS","OUTROS_MANEJOS"));m!=""{manejoSet[m]=true}
+		for _,d:=range out.PlantingDecendios {
+			v:=strings.TrimSpace(zarcField(headers,row,fmt.Sprintf("DEC%d",d),fmt.Sprintf("DECENDIO_%d",d)))
+			if v==""{continue}
+			n,_:=strconv.Atoi(strings.TrimSpace(strings.TrimSuffix(v,"%")))
+			if n>0{riskSet[n]=true}
+		}
+	}
+	out.Available=baseRows>0
+	for n:=range riskSet{out.RiskLevels=append(out.RiskLevels,n)}
+	sort.Ints(out.RiskLevels)
+	for p:=range portSet{out.Portarias=append(out.Portarias,p)}; sort.Strings(out.Portarias)
+	for m:=range manejoSet{out.Manejos=append(out.Manejos,m)}; sort.Strings(out.Manejos)
+	if baseRows==0 {
+		out.Message="Nenhum registro ZARC foi localizado para município e cultura na safra selecionada."
+		return out,nil
+	}
+	if exactRows==0 {
+		out.Message="ZARC localizado para município e cultura, mas não houve correspondência segura de solo/ciclo com os dados públicos da operação."
+		return out,nil
+	}
+	if len(out.PlantingDecendios)==0 {
+		out.Message="ZARC localizado para município, cultura, solo/ciclo, mas faltam datas de plantio para conferir os decêndios."
+		return out,nil
+	}
+	out.Matched=len(out.RiskLevels)>0
+	if out.Matched {
+		out.Message="Há indicação ZARC publicada para os dados e decêndios localizados. Confira a portaria e o manejo antes de usar como conclusão de enquadramento."
+	} else {
+		out.Message="Não foi localizada indicação ZARC nos decêndios informados para a combinação encontrada. Confira a portaria oficial antes de concluir impedimento."
+	}
+	return out,nil
+}
+
+func zarcField(headers map[string]int,row []string,names ...string) string{
+	for _,name:=range names{
+		i,ok:=headers[normalizeCSVHeader(name)]
+		if ok&&i>=0&&i<len(row){if v:=strings.TrimSpace(row[i]);v!=""{return v}}
+	}
+	return ""
+}
+
+func plantingDecendios(start,end string) []int {
+	s,e:=parseZARCDate(start),parseZARCDate(end)
+	if s.IsZero()&&e.IsZero(){return nil}
+	if s.IsZero(){s=e}; if e.IsZero(){e=s}
+	if e.Before(s){s,e=e,s}
+	if e.Sub(s)>45*24*time.Hour{e=s}
+	set:=map[int]bool{}
+	for d:=s; !d.After(e); d=d.AddDate(0,0,1){
+		part:=1; if d.Day()>20{part=3}else if d.Day()>10{part=2}
+		set[(int(d.Month())-1)*3+part]=true
+	}
+	var out []int; for d:=range set{out=append(out,d)}; sort.Ints(out); return out
+}
+
+func parseZARCDate(v string) time.Time {
+	v=strings.TrimSpace(v)
+	for _,layout:=range []string{"2006-01-02","02/01/2006","2006/01/02"}{
+		if t,err:=time.Parse(layout,v);err==nil{return t}
+	}
+	return time.Time{}
+}
+
+func normalizeDigits(v string) string {
+	var b strings.Builder
+	for _,r:=range strings.TrimSpace(v){if r>='0'&&r<='9'{b.WriteRune(r)}}
+	s:=strings.TrimLeft(b.String(),"0"); if s==""&&b.Len()>0{return "0"}; return s
+}
+
+func normalizeZARCText(v string) string {
+	r:=strings.NewReplacer("á","a","à","a","ã","a","â","a","ä","a","é","e","ê","e","è","e","ë","e","í","i","ì","i","î","i","ï","i","ó","o","ô","o","õ","o","ò","o","ö","o","ú","u","ù","u","û","u","ü","u","ç","c",
+		"Á","a","À","a","Ã","a","Â","a","Ä","a","É","e","Ê","e","È","e","Ë","e","Í","i","Ì","i","Î","i","Ï","i","Ó","o","Ô","o","Õ","o","Ò","o","Ö","o","Ú","u","Ù","u","Û","u","Ü","u","Ç","c")
+	v=strings.ToLower(r.Replace(v))
+	var b strings.Builder
+	lastSpace:=false
+	for _,ch:=range v{
+		if (ch>='a'&&ch<='z')||(ch>='0'&&ch<='9'){b.WriteRune(ch);lastSpace=false}else if !lastSpace{b.WriteByte(' ');lastSpace=true}
+	}
+	return strings.TrimSpace(b.String())
+}
+
+func zarcCultureMatch(want,got string) bool {
+	if want==""||got==""{return false}
+	if want==got{return true}
+	return (len(want)>=4&&strings.Contains(got,want))||(len(got)>=4&&strings.Contains(want,got))
+}
+
+func zarcCycleMatch(rowCycle,code,name string) bool {
+	r:=normalizeZARCText(rowCycle); c:=normalizeZARCText(code); n:=normalizeZARCText(name)
+	if c!=""&&(r==c||strings.Contains(r,c)){return true}
+	if n!=""&&(r==n||strings.Contains(r,n)||strings.Contains(n,r)){return true}
+	roman:=map[string]string{"i":"1","ii":"2","iii":"3","iv":"4","v":"5","vi":"6"}
+	for k,v:=range roman{
+		if strings.Contains(n,"grupo "+k)&&normalizeDomainCode(r)==v{return true}
+	}
+	return c==""&&n==""
+}
+
 
 func parseIntLoose(v string) int { n,_:=strconv.Atoi(strings.TrimSpace(v)); return n }
