@@ -65,6 +65,7 @@
     body.innerHTML=metrics+
       '<div class="credit-intel-actions170"><button class="btn ghost" id="refreshCreditIntel170">Atualizar dados</button><button class="btn ghost" id="clearCreditIntel170">Limpar cache financeiro</button><button class="btn ghost" id="openBCB170">Microdados BCB</button><button class="btn ghost" id="openMCR170b">MCR</button><button class="btn ghost" id="openZARC170b">ZARC</button></div>'+
       '<div class="credit-intel-note170"><strong>Leitura correta:</strong> “identificado nas bases públicas”. Ausência de registro não prova ausência de financiamento, saldo, renegociação ou seguro.</div>'+
+      market170(r.market||{})+
       opsHtml+warningHtml+
       '<div class="xray-source150">'+esc170(r.scope||'')+'</div>';
     g('refreshCreditIntel170').onclick=()=>load170(true);
@@ -74,6 +75,18 @@
     g('openZARC170b').onclick=()=>openExternal(r.zarc_source_url||'https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico');
     body.querySelectorAll('[data-credit-op170]').forEach(b=>b.onclick=()=>toggleOp170(b.dataset.creditOp170));
     body.querySelectorAll('[data-zarc-url170]').forEach(b=>b.onclick=()=>openExternal(b.dataset.zarcUrl170));
+  }
+
+  function market170(m){
+    if(!m?.available&&!m?.message)return '';
+    const products=m.municipal_products||[],institutions=m.state_institutions||[],programs=m.state_programs||[];
+    const block=(title,subtitle,items)=>'<div class="market-col170"><div><strong>'+esc170(title)+'</strong><small>'+esc170(subtitle)+'</small></div>'+
+      (items.length?'<div class="market-list170">'+items.map(x=>'<div><div><b>'+esc170(x.label||'—')+'</b><small>'+esc170((x.detail?x.detail+' • ':'')+(x.year||''))+'</small></div><span>'+money170(x.value||0)+'<small>'+num170(x.contracts||0,0)+' contrato(s)</small></span></div>').join('')+'</div>':'<div class="market-empty170">Sem dados retornados nesta visão.</div>')+'</div>';
+    return '<details class="market-context170"><summary>Mercado de crédito rural — contexto agregado</summary><div class="market-note170">'+esc170(m.message||'Contexto agregado MDCR.')+'</div><div class="market-grid170">'+
+      block('Produtos no município',(m.municipality||'')+(m.uf?' / '+m.uf:''),products)+
+      block('Instituições na UF','Visão agregada estadual',institutions)+
+      block('Programas na UF','Visão agregada estadual',programs)+
+      '</div>'+(m.warnings?.length?'<div class="market-warnings170">'+m.warnings.map(esc170).join('<br>')+'</div>':'')+'</details>';
   }
 
   function releaseNote170(t){
