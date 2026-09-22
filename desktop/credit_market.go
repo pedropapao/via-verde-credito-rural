@@ -85,7 +85,7 @@ func queryCreditMarketContext(ctx context.Context, municipality, uf, municipalit
 	}
 	out.Message = "As visões complementares da MDCR não puderam ser consultadas nesta tentativa."
 	if len(out.Warnings)>0 {
-		return out, fmt.Errorf(strings.Join(out.Warnings, " | "))
+		return out, fmt.Errorf("%s", strings.Join(out.Warnings, " | "))
 	}
 	return out, nil
 }
@@ -111,6 +111,7 @@ func marketMunicipalityFilters(municipality, uf, code string, year int) []string
 	if name != "" {
 		filters = append(filters,fmt.Sprintf("Municipio eq '%s' and AnoEmissao eq '%s'",odataEscape(name),y))
 	}
+	filters = append(filters, "")
 	return filters
 }
 
@@ -122,6 +123,7 @@ func marketUFFilters(uf string, year int) []string {
 		fmt.Sprintf("nomeUF eq '%s' and AnoEmissao eq '%s'",odataEscape(uf),y),
 		fmt.Sprintf("UF eq '%s' and AnoEmissao eq '%s'",odataEscape(uf),y),
 		fmt.Sprintf("AnoEmissao eq '%s'",y),
+		"",
 	}
 }
 
