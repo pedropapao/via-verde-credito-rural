@@ -310,6 +310,8 @@ func aggregateBCBMunicipalityRows(rows []map[string]any) []BCBRuralCreditRow {
 		}{
 			{"Custeio", "QtdCusteio", "VlCusteio"},
 			{"Investimento", "QtdInvestimento", "VlInvestimento"},
+			{"Comercialização", "QtdComercializacao", "VlComercializacao"},
+			{"Industrialização", "QtdIndustrializacao", "VlIndustrializacao"},
 		} {
 			qty := numberMapValue(r, spec.qty)
 			value := numberMapValue(r, spec.value)
