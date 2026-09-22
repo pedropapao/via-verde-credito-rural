@@ -71,3 +71,41 @@ PRESERVADO
 • Banco local, clientes, imóveis, CAR, histórico e backups.
 • SIGEF/INCRA, glebas SICOR, MapBiomas, ambiental, mapa, KML, relevo, WorldCover, áreas de projeto e relatórios.
 • Nenhuma migração destrutiva ou exclusão de dados.
+
+
+ZARC AUTOMÁTICO
+• A conferência ZARC deixa de ser apenas um atalho para a fonte oficial.
+• Para custeio agrícola, quando os dados públicos permitirem, o ViaVerdeCAR cruza:
+  - município/geocódigo;
+  - cultura/produto;
+  - solo;
+  - ciclo/grupo;
+  - período de plantio transformado em decêndios;
+  - Tábua oficial do ZARC da safra correspondente.
+• Exibe safra, decêndios, níveis de risco encontrados, portarias e manejos publicados.
+• O sistema só indica correspondência quando consegue fechar os elementos necessários.
+• Se faltar solo, ciclo, data ou correspondência segura, registra a limitação e não inventa aptidão ou impedimento.
+
+MAIS CAMPOS DO SICOR
+• O Financeiro Completo passa a aproveitar também, quando publicados:
+  - percentual de risco STN;
+  - percentual de risco de fundo constitucional;
+  - recursos próprios de serviços;
+  - percentual de bônus CAR;
+  - contrato STN;
+  - CNPJ cadastrante;
+  - tipo de solo;
+  - ciclo/cultivar;
+  - quantidade financiada.
+
+INTELIGÊNCIA DE MERCADO
+• Novo bloco “Inteligência de mercado” dentro do Financeiro Completo.
+• Evolução do crédito do município em até cinco anos, separando Custeio, Investimento, Comercialização e Industrialização quando publicados.
+• Principais produtos de Custeio e Investimento no município, conforme recortes oficiais disponíveis no MDCR.
+• Instituições financeiras e programas são apresentados apenas como contexto da UF quando a API oficial usa esse nível territorial.
+• O ViaVerdeCAR não atribui instituição, programa estadual ou volume agregado ao CAR individual.
+• Consultas sem escopo territorial confirmável são descartadas em vez de exibidas como verdadeiras.
+
+MCR
+• O painel mostra programa, subprograma e taxa efetivamente registrados na operação pública e mantém acesso ao MCR oficial.
+• O sistema não declara automaticamente que uma operação histórica está enquadrada nas regras vigentes atuais sem uma fonte estruturada que permita essa conclusão segura.
