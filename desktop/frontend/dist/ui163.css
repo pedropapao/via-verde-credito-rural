@@ -16,3 +16,9 @@
 .credit163-empty{font-size:12px;opacity:.72;padding:8px 0}.credit163-warnings{margin-top:12px}
 @media(max-width:1050px){.credit163-metrics,.credit163-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.credit163-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:680px){.credit163-metrics,.credit163-summary,.credit163-fields{grid-template-columns:1fr}.credit163-ophead{flex-direction:column}.credit163-ophead>div:last-child{text-align:left}}
+.credit163-event.ok{border-left-color:#4b8d5b;background:rgba(63,133,78,.055)}
+.credit163-market{margin-top:16px;border-top:1px solid var(--border,#dfe5df);padding-top:14px}
+.credit163-market-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.credit163-market-grid>details{border:1px solid var(--border,#dfe5df);border-radius:12px;padding:10px;background:rgba(255,255,255,.5)}
+.credit163-market-grid>details>summary{cursor:pointer;font-weight:700;margin-bottom:8px}
+@media(max-width:900px){.credit163-market-grid{grid-template-columns:1fr}}
