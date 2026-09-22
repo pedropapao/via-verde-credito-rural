@@ -226,9 +226,7 @@ func (a *App) BuildSICORPropertyXRay(propertyID int64, force bool) (SICORXRayRes
 	}
 
 	for year, keys := range yearKeys {
-		name := fmt.Sprintf("sicor_glebas_wkt_%d.gz", year)
-		path := filepath.Join(sourceDir, name)
-		path, dlErr := a.ensureSICORSourceFile(ctx, sicorRawBaseURL+name, path, 36*time.Hour)
+		path, dlErr := a.ensureSICORGlebaYearFile(ctx, sourceDir, year)
 		if dlErr != nil {
 			result.Warnings = append(result.Warnings, fmt.Sprintf("%d: glebas públicas não puderam ser obtidas (%v)", year, dlErr))
 			continue
@@ -283,6 +281,28 @@ func (a *App) BuildSICORPropertyXRay(propertyID int64, force bool) (SICORXRayRes
 		result.Warnings = append(result.Warnings, "Não foi possível gravar o cache local do Raio X: "+err.Error())
 	}
 	return result, nil
+}
+
+
+func (a *App) ensureSICORGlebaYearFile(ctx context.Context, sourceDir string, year int) (string, error) {
+	localName := fmt.Sprintf("SICOR_GLEBAS_WKT_%d.gz", year)
+	path := filepath.Join(sourceDir, localName)
+	if st, err := os.Stat(path); err == nil && st.Size() > 0 && time.Since(st.ModTime()) <= 36*time.Hour {
+		return path, nil
+	}
+	var errs []string
+	for _, remoteName := range []string{
+		fmt.Sprintf("SICOR_GLEBAS_WKT_%d.gz", year),
+		fmt.Sprintf("sicor_glebas_wkt_%d.gz", year),
+	} {
+		got, err := a.ensureSICORSourceFile(ctx, sicorRawBaseURL+remoteName, path, 36*time.Hour)
+		if err == nil {
+			return got, nil
+		}
+		errs = append(errs, remoteName+": "+err.Error())
+		_ = os.Remove(path)
+	}
+	return "", errors.New(strings.Join(errs, " | "))
 }
 
 func (a *App) ClearSICORXRayCache(car string) error {
