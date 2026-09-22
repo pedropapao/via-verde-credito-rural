@@ -721,8 +721,8 @@ func (a *App) loadSICORDomains(ctx context.Context, sourceDir string) (sicorDoma
 			}
 		case "subprogramas":
 			for _, r := range rows {
-				code := normalizeDomainCode(firstMapValue(r, "CODIGO", "#CODIGO", "CD_SUBPROGRAMA"))
-				if code != "" { out.Subprograms[code] = firstMapValue(r, "DESCRICAO", "SUBPROGRAMA") }
+				code := normalizeDomainCode(firstMapValue(r, "CODIGO_SUBPROGRAMA", "#CODIGO_SUBPROGRAMA", "CODIGO", "#CODIGO", "CD_SUBPROGRAMA"))
+				if code != "" { out.Subprograms[code] = firstMapValue(r, "DESCRICAO_SUBPROGRAMA", "DESCRICAO", "SUBPROGRAMA") }
 			}
 		case "fontes":
 			for _, r := range rows {
