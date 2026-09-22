@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 1.7.0 — inteligência de crédito rural */
+/* ViaVerdeCAR 1.7.1 — inteligência de crédito rural + progresso */
 .credit-intel170{display:grid;gap:16px}
 .credit-intel-intro170{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:16px;border:1px solid var(--line,#dbe4df);border-radius:16px;background:rgba(250,252,251,.8)}
 .credit-intel-intro170>div:first-child{display:grid;gap:4px;max-width:760px}
@@ -67,3 +67,36 @@
 .market-empty170,.market-warnings170{font-size:.8rem;color:var(--muted,#607168)}
 .market-warnings170{margin-top:9px}
 @media(max-width:980px){.market-grid170{grid-template-columns:1fr}}
+
+
+/* 1.7.1 — progresso visual da sincronização financeira */
+.credit-progress171{display:grid;gap:14px;padding:18px;border:1px solid var(--line,#dbe4df);border-radius:16px;background:linear-gradient(180deg,rgba(250,252,251,.96),rgba(247,250,248,.9))}
+.credit-progress-head171{display:flex;gap:13px;align-items:center}
+.credit-progress-head171>div:last-child{display:grid;gap:4px}
+.credit-progress-head171 strong{font-size:1rem}
+.credit-progress-head171 span{font-size:.86rem;color:var(--muted,#607168)}
+.credit-progress-art171{width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:rgba(42,111,77,.10);font-size:1.45rem;flex:0 0 auto;animation:creditPulse171 1.5s ease-in-out infinite}
+.credit-progress-meta171{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.credit-progress-meta171>div{padding:10px 12px;border-radius:12px;background:var(--panel,#fff);border:1px solid var(--line,#dbe4df);display:grid;gap:2px}
+.credit-progress-meta171 span{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted,#607168)}
+.credit-progress-meta171 strong{font-size:1rem}
+.credit-progress-track171{height:9px;border-radius:999px;background:rgba(42,111,77,.10);overflow:hidden}
+.credit-progress-track171>div{height:100%;width:0;border-radius:999px;background:currentColor;color:var(--accent,#2a6f4d);transition:width .35s ease}
+.credit-progress-steps171{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.credit-progress-steps171>div{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;padding:9px 10px;border:1px solid var(--line,#dbe4df);border-radius:12px;background:var(--panel,#fff);min-width:0}
+.credit-progress-steps171>div>div{display:grid;gap:1px;min-width:0}
+.credit-progress-steps171 b{font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.credit-progress-steps171 small{font-size:.7rem;color:var(--muted,#607168)}
+.credit-progress-icon171{font-size:1.05rem}
+.credit-progress-state171{font-weight:800;color:var(--muted,#607168)}
+.credit-progress-steps171>div.done{background:rgba(42,111,77,.07);border-color:rgba(42,111,77,.22)}
+.credit-progress-steps171>div.done .credit-progress-state171{color:#2a6f4d}
+.credit-progress-steps171>div.current{background:rgba(52,107,154,.08);border-color:rgba(52,107,154,.28);box-shadow:0 0 0 2px rgba(52,107,154,.06) inset}
+.credit-progress-steps171>div.current .credit-progress-state171{color:#346b9a;animation:creditDot171 1s ease-in-out infinite}
+.credit-progress-steps171>div.waiting{opacity:.68}
+.credit-progress-note171{padding:10px 12px;border-radius:11px;background:rgba(52,107,154,.06);font-size:.8rem;color:var(--muted,#607168)}
+.credit-progress-note171.slow{background:rgba(155,101,24,.10);color:var(--text,#203129)}
+@keyframes creditPulse171{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes creditDot171{0%,100%{opacity:.35}50%{opacity:1}}
+@media(max-width:980px){.credit-progress-steps171{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.credit-progress-meta171,.credit-progress-steps171{grid-template-columns:1fr}.credit-progress-head171{align-items:flex-start}}
