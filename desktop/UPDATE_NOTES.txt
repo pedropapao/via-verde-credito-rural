@@ -1,3 +1,41 @@
+CAR 1.7.0: Raio X de Crédito Rural ampliado com inteligência financeira pública.
+
+CRÉDITO RURAL
+• Corrigida a inteligência municipal do MDCR para considerar as quatro finalidades: Custeio, Investimento, Comercialização e Industrialização.
+• Novo painel “Inteligência Financeira” dentro do Raio X, carregado sob demanda para não prejudicar a inicialização.
+• Para cada REF BACEN + ordem, o aplicativo passa a procurar e organizar:
+  - valor contratado e recursos próprios;
+  - liberações efetivamente publicadas e data da última liberação;
+  - cronograma público de desembolso;
+  - último saldo publicado e data-base;
+  - situação da operação no SICOR;
+  - renegociação/prorrogação quando houver vínculo público identificável;
+  - desclassificação, motivo e valor;
+  - taxa de juros, encargo pós-fixado e custo efetivo total quando publicados;
+  - prestação de investimento;
+  - área financiada e área informada;
+  - previsão de produção, quantidade, receita esperada e produtividade obtida;
+  - instrumento de crédito, categoria do emitente e seguro/garantia;
+  - irrigação, agricultura, cultivo, integração/consórcio, grão/semente e fase produtiva;
+  - datas de plantio/colheita, ciclo do cultivar e tipo de solo para conferência ZARC;
+  - dados públicos de Proagro: COP, RCP, julgamento, coberturas e parcelas pagas, quando disponíveis.
+
+SEGURANÇA DA INTERPRETAÇÃO
+• O Via Verde usa a expressão “identificado nas bases públicas” e não trata o valor encontrado como dívida total do produtor.
+• Ausência de operação, saldo, renegociação, Proagro ou gleba pública não é apresentada como prova de inexistência.
+• Dados de ZARC são exibidos para conferência; a versão 1.7.0 não declara conformidade automaticamente sem cruzamento completo com a Tábua de Risco/Portaria vigente.
+• Programa, subprograma, fonte e taxa observada não substituem a conferência do MCR vigente.
+• Monitor do Crédito Rural/MapBiomas passa a ser descrito como monitor externo baseado em dados públicos, sem rotulá-lo como fonte governamental oficial.
+
+FONTES E RESILIÊNCIA
+• Integra arquivos oficiais adicionais do BCB/SICOR: saldos, liberações, parcelas de desembolso, desclassificação, lista de renegociação e dados Proagro.
+• Falha em uma fonte complementar gera aviso isolado e não derruba o restante do Raio X.
+• Cache financeiro separado pode ser limpo e atualizado sem apagar banco, clientes, imóveis ou histórico CAR.
+
+TESTES
+• Novos testes para leitura de liberações, desembolso, desclassificação, detalhes financeiros, Proagro, percentual liberado e limpeza de cache.
+• Mantidos todos os testes e funcionalidades anteriores da 1.6.2.
+
 CAR 1.6.2: interface reorganizada para mostrar primeiro apenas o que importa.
 
 PRINCÍPIO DA INTERFACE
