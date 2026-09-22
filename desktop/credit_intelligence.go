@@ -179,6 +179,7 @@ type CreditIntelligenceResult struct {
 	BCBSourceURL string                        `json:"bcb_source_url"`
 	MCRSourceURL string                        `json:"mcr_source_url"`
 	ZARCSourceURL string                       `json:"zarc_source_url"`
+	Market       CreditMarketContext          `json:"market"`
 	Scope        string                        `json:"scope"`
 }
 
@@ -292,6 +293,12 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 		a.enrichCreditProagro(ctx, sourceDir, byKey, dom, &out)
 	}
 	a.enrichCreditZARC(ctx, sourceDir, car, byKey, &out)
+	if market, marketErr := queryCreditMarketContext(ctx, car.Municipality, car.UF, car.MunicipalityCode); marketErr == nil {
+		out.Market = market
+	} else {
+		out.Market = market
+		out.Warnings = append(out.Warnings, "Contexto de mercado MDCR: "+marketErr.Error())
+	}
 
 	for _, op := range byKey {
 		sort.SliceStable(op.Releases, func(i, j int) bool { return op.Releases[i].Date < op.Releases[j].Date })
