@@ -1,41 +1,41 @@
-CAR 1.6.0: Raio X Fundiário público do imóvel com SIGEF/INCRA.
+CAR 1.6.1: reorganização visual e melhoria da experiência de uso.
 
-OBJETIVO
-• A partir do CAR já consultado, o Via Verde procura automaticamente parcelas públicas certificadas do SIGEF que intersectem a geometria do imóvel.
-• A consulta é pública, gratuita e sem login. Não exige Gov.br, conta do cliente, certificado digital ou API privada.
-• O vínculo apresentado é espacial. O aplicativo não presume que uma parcela SIGEF seja juridicamente a mesma matrícula do CAR sem conferência documental.
+INTERFACE
+• Refinamento visual geral sem alterar regras de negócio, banco local ou integrações.
+• Sidebar mais compacta e com melhor indicação da seção ativa.
+• Topo da aplicação mais baixo para liberar espaço útil.
+• Painéis com sombra e bordas mais leves, reduzindo a sensação de excesso de cartões.
+• Botões, campos, badges, textos e espaçamentos foram padronizados.
 
-SIGEF / INCRA PÚBLICO
-• Nova integração com a camada pública nacional SIGEF/INCRA disponibilizada no PAMGIA/IBAMA.
-• A consulta usa envelope do CAR e retorna somente parcelas que cruzam espacialmente a área consultada.
-• Fonte principal: BasesSincronizadas/lim_sigef_publico_incra_p.
-• Fallback automático: publicação pública lim_imovel_sigef_publico_a.
-• São lidos, quando publicados: código da parcela, código do imóvel, situação, status, nome da área, registro/matrícula, datas de submissão/aprovação/registro, ART, RT publicado, município, UF e geometria.
-• A ausência de parcela SIGEF pública nunca é interpretada como ausência de matrícula, registro imobiliário ou imóvel rural.
-
-CAR × SIGEF
-• Para cada parcela encontrada, o Via Verde calcula automaticamente:
-  - área geométrica SIGEF em hectares;
-  - área de interseção CAR × SIGEF;
-  - percentual da parcela SIGEF dentro do CAR;
-  - percentual do CAR dentro da parcela SIGEF;
-  - diferença absoluta e percentual de área.
-• As parcelas são ordenadas pela maior cobertura do CAR.
-• O resultado diferencia alta coincidência espacial, coincidência parcial e simples interseção. Essa classificação é geométrica e não é conclusão dominial ou registral.
-• Quando mais de uma parcela SIGEF cruza o CAR, o Raio X informa a situação para conferência de parcelas distintas, cessões ou divergências de limites.
+CAR
+• Barra de consulta ficou mais limpa e com melhor destaque para o número do CAR.
+• As abas passam a funcionar visualmente como a navegação principal da análise.
+• Abas recebem ícones discretos e comportamento melhor em telas menores.
+• Resumo técnico ganhou densidade melhor: menos espaço desperdiçado e leitura mais rápida.
 
 MAPA
-• Novo botão “Mostrar SIGEF no mapa”.
-• Todas as parcelas públicas encontradas podem ser desenhadas sobre o CAR.
-• Cada parcela também possui “Ver parcela no mapa”.
-• O popup informa nome/código da parcela, registro publicado quando houver, área e percentual do CAR coberto.
+• O mapa ganhou mais altura e passa a ocupar mais espaço útil da tela.
+• Cabeçalho e rodapé do mapa foram compactados.
+• O comportamento e as camadas existentes permanecem intactos.
 
 RAIO X
-• Nova seção “Fundiário • SIGEF/INCRA” dentro do Raio X completo.
-• O resumo passa a mostrar quantidade de parcelas SIGEF e quantidade de registros/matrículas publicados na fonte.
-• O Raio X fundiário roda em paralelo com SICOR e MapBiomas para evitar transformar uma fonte lenta em bloqueio das demais.
-• Falha no SIGEF fica isolada como fonte indisponível; SICOR, ambiental, MapBiomas e demais módulos continuam válidos.
+• O Raio X foi reorganizado para apresentar primeiro os indicadores principais e depois os detalhes.
+• Métricas passam a usar grade automática, aproveitando melhor monitores grandes e notebooks.
+• Histórico SICOR e painel SIGEF ficaram visualmente mais compactos.
+• Operações SICOR e parcelas SIGEF agora podem ser recolhidas/expandidas.
+• O primeiro registro fica aberto; os demais começam recolhidos para reduzir rolagem.
+• Os botões “Detalhes/Recolher” alteram apenas a apresentação e não interferem nos dados nem nas ações do mapa.
+• O painel Fundiário SIGEF ganhou destaque visual próprio, mantendo o mesmo padrão do restante do aplicativo.
+
+RESPONSIVIDADE
+• Melhor comportamento em notebook, monitor grande e janela estreita.
+• O Raio X passa para uma coluna quando não há largura suficiente.
+• Campos detalhados reduzem para duas/uma coluna conforme o tamanho da janela.
+• Abas podem rolar horizontalmente em telas menores sem desaparecer.
 
 PRESERVADO
-• Histórico individual SICOR por CAR, REF BACEN, bancos, programas, fontes, finalidade, produto e glebas financiadas.
-• CAR, Nova consulta, mapa, roteiro, áreas A/B/C, relevo, WorldCover, MapBiomas Alerta, IBAMA, FUNAI, ICMBio, MMA/MCR, Temas SICAR, KML, histórico, relatórios, carteira, banco local, backup e atualização automática.
+• CAR, Nova consulta, mapa, KML, clientes, imóveis, banco SQLite, histórico, backup e atualizações.
+• Raio X SICOR, REF BACEN, bancos, programas, fontes, glebas financiadas e exportação CSV.
+• Raio X Fundiário SIGEF/INCRA e parcelas no mapa.
+• MapBiomas Alerta, IBAMA, FUNAI, ICMBio, MMA/MCR, Temas SICAR, relevo, WorldCover, roteiro e áreas A/B/C.
+• Nenhuma migração de banco ou alteração destrutiva foi realizada.
