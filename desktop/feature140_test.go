@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"testing"
 )
 
@@ -85,5 +86,31 @@ func TestGraphQLScalarStringAcceptsStringAndNumber(t *testing.T) {
 	}
 	if got := graphQLScalarString(float64(12345)); got != "12345" {
 		t.Fatalf("número inesperado: %s", got)
+	}
+}
+
+
+func TestBCB2026UsesOfficialStructuredDistribution(t *testing.T) {
+	ctx := context.Background()
+	got, err := queryBCBRuralMunicipality(ctx, "Bom Jesus do Amparo", "MG", "3107703")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.ExternalOnly || got.Available {
+		t.Fatalf("esperava modo de fonte oficial estruturada, obteve %+v", got)
+	}
+	if got.SourceURL == "" || got.Message == "" {
+		t.Fatalf("fonte/mensagem não informadas: %+v", got)
+	}
+}
+
+func TestSICARThemeRemoteCandidatesAPP(t *testing.T) {
+	got := sicarThemeRemoteCandidates("APP")
+	if len(got) != 2 || got[0] != "APP" || got[1] != "APPS" {
+		t.Fatalf("aliases APP inesperados: %#v", got)
+	}
+	got = sicarThemeRemoteCandidates("RESERVA_LEGAL")
+	if len(got) != 1 || got[0] != "RESERVA_LEGAL" {
+		t.Fatalf("tema sem alias alterado indevidamente: %#v", got)
 	}
 }
