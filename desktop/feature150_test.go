@@ -137,3 +137,53 @@ func TestParseSICORNumber(t *testing.T) {
 		}
 	}
 }
+
+
+func TestCreditIntelligenceBalanceChoosesLatestMonth(t *testing.T) {
+	path := writeGzipFixture150(t, "saldos.gz",
+		"#REF_BACEN;NU_ORDEM;ANO_BASE;MES_BASE;VL_MEDIO_DIARIO;VL_MEDIO_DIARIO_VINCENDO;VL_ULTIMO_DIA;CD_SITUACAO_OPERACAO\n"+
+			"517256416;1;2026;7;110;90;100;1\n"+
+			"517256416;1;2026;8;105;80;95;2\n")
+	targets := map[string]bool{sicorOperationKey("517256416","1"):true}
+	got := map[string]SICORBalanceSnapshot{}
+	err := scanSICORBalances(path, targets, got, map[string]string{"1":"Curso normal","2":"Em atraso"})
+	if err != nil { t.Fatal(err) }
+	b, ok := got[sicorOperationKey("517256416","1")]
+	if !ok { t.Fatal("saldo não localizado") }
+	if b.BaseMonth != 8 || b.LastDayBalance != 95 || b.SituationName != "Em atraso" {
+		t.Fatalf("saldo mais recente incorreto: %+v", b)
+	}
+}
+
+func TestCreditIntelligenceReleasesAndSchedule(t *testing.T) {
+	result := SICORXRayResult{Operations: []SICORPublicOperation{{RefBacen:"517256416",Order:"1"}}}
+	targets := map[string]bool{sicorOperationKey("517256416","1"):true}
+	releases := writeGzipFixture150(t, "lib.gz",
+		"#REF_BACEN;NU_ORDEM;DT_LIBERACAO;VL_LIBERADO\n"+
+			"517256416;1;2026-07-01;100000.00\n"+
+			"517256416;1;2026-08-01;50000.00\n")
+	if err := scanSICORReleases(releases, targets, &result); err != nil { t.Fatal(err) }
+	if result.Operations[0].Intelligence.ReleasedTotal != 150000 || len(result.Operations[0].Intelligence.Releases) != 2 {
+		t.Fatalf("liberações incorretas: %+v", result.Operations[0].Intelligence)
+	}
+	schedule := writeGzipFixture150(t, "parcelas.gz",
+		"#REF_BACEN;NU_ORDEM;DT_PREV_PAGAMENTO;VALOR_PARCELA\n"+
+			"517256416;1;2026-09-01;25000.00\n"+
+			"517256416;1;2026-10-01;25000.00\n")
+	if err := scanSICORDisbursements(schedule, targets, &result); err != nil { t.Fatal(err) }
+	if result.Operations[0].Intelligence.ScheduledTotal != 50000 || len(result.Operations[0].Intelligence.Disbursements) != 2 {
+		t.Fatalf("cronograma incorreto: %+v", result.Operations[0].Intelligence)
+	}
+}
+
+func TestCreditIntelligenceGenericRenegotiationMatchesAnyRefColumn(t *testing.T) {
+	path := writeGzipFixture150(t, "reneg.gz",
+		"#REF_BACEN_ORIGEM;REF_BACEN_RENEGOCIADA;DT_RENEGOCIACAO;VL_RENEGOCIADO;CD_BASE_LEGAL\n"+
+			"517256416;888888888;2026-08-20;200000.00;12\n"+
+			"999999999;777777777;2026-08-20;1.00;13\n")
+	records, err := scanSICORGenericByRef(path, map[string]bool{"517256416":true})
+	if err != nil { t.Fatal(err) }
+	if len(records) != 1 || !genericRecordMentionsRef(records[0], "517256416") {
+		t.Fatalf("renegociação não vinculada corretamente: %#v", records)
+	}
+}
