@@ -161,3 +161,24 @@ func TestMarketTopItemsPrefersNewestAndLargest170(t *testing.T) {
 	got:=topMarketItems(items,2)
 	if len(got)!=2 || got[0].Label!="C" || got[1].Label!="B" { t.Fatalf("ordenação inesperada: %#v",got) }
 }
+
+
+func TestCreditIntelligenceProgress171(t *testing.T) {
+	startCreditIntelligenceProgress()
+	p := (&App{}).GetCreditIntelligenceProgress()
+	if !p.Running || p.Step != 1 || p.Total != creditIntelligenceProgressTotal || p.Key != "operations" {
+		t.Fatalf("progresso inicial inesperado: %+v", p)
+	}
+
+	updateCreditIntelligenceProgress(8, "balances", "Saldos e situação", "Consultando saldos")
+	p = (&App{}).GetCreditIntelligenceProgress()
+	if !p.Running || p.Step != 8 || p.Key != "balances" || p.Label != "Saldos e situação" {
+		t.Fatalf("progresso intermediário inesperado: %+v", p)
+	}
+
+	completeCreditIntelligenceProgress("Concluído")
+	p = (&App{}).GetCreditIntelligenceProgress()
+	if p.Running || !p.Done || p.Failed || p.Step != creditIntelligenceProgressTotal || p.Key != "done" {
+		t.Fatalf("progresso final inesperado: %+v", p)
+	}
+}
