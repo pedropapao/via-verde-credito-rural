@@ -30,6 +30,7 @@ type BCBRuralCreditRow struct {
 
 type BCBRuralCreditContext struct {
 	Available    bool                `json:"available"`
+	ExternalOnly bool                `json:"external_only"`
 	Municipality string              `json:"municipality"`
 	UF           string              `json:"uf"`
 	Rows         []BCBRuralCreditRow `json:"rows"`
@@ -131,46 +132,18 @@ func (a *App) carForRuralCredit(propertyID int64) (CARResult, error) {
 
 func queryBCBRuralMunicipality(ctx context.Context, municipality, uf, municipalityCode string) (BCBRuralCreditContext, error) {
 	out := BCBRuralCreditContext{
-		Municipality: municipality, UF: uf, SourceURL: bcbRuralDataURL,
+		Municipality: municipality,
+		UF:           uf,
+		SourceURL:    "https://www.bcb.gov.br/estabilidadefinanceira/micrrural/",
+		ExternalOnly: true,
+		Message: "O Banco Central alterou em 2026 a distribuição da MDCR para arquivos estruturados anuais. A consulta automática municipal por filtro OData não é mais tratada como confiável pelo Via Verde; use o botão para abrir a fonte oficial.",
 	}
-	years := []int{time.Now().Year(), time.Now().Year() - 1}
-	var all []map[string]any
-	var failures []string
-	for _, year := range years {
-		rows, err := queryBCBMunicipalityAggregate(ctx, municipality, uf, municipalityCode, year)
-		if err != nil {
-			failures = append(failures, fmt.Sprintf("%d: %v", year, err))
-			continue
-		}
-		all = append(all, rows...)
-	}
-	if len(all) == 0 {
-		if len(failures) > 0 {
-			return out, errors.New("consulta municipal do BCB/SICOR não respondeu de forma compatível: " + strings.Join(failures, " | "))
-		}
-		out.Message = "O BCB/SICOR não retornou registros agregados para este município nos dois anos mais recentes."
-		return out, nil
-	}
-
-	out.Rows = aggregateBCBMunicipalityRows(all)
-	for _, row := range out.Rows {
-		out.Contracts += row.Contracts
-		out.Value += row.Value
-	}
-	sort.SliceStable(out.Rows, func(i, j int) bool {
-		if out.Rows[i].Year == out.Rows[j].Year {
-			if out.Rows[i].Kind == out.Rows[j].Kind {
-				return out.Rows[i].Value > out.Rows[j].Value
-			}
-			return out.Rows[i].Kind < out.Rows[j].Kind
-		}
-		return out.Rows[i].Year > out.Rows[j].Year
-	})
-	if len(out.Rows) > 20 {
-		out.Rows = out.Rows[:20]
-	}
-	out.Available = true
-	out.Message = "Contexto agregado municipal do SICOR/BCB para os dois anos mais recentes. Não representa operações específicas deste CAR."
+	// Mantemos a assinatura e o contexto para compatibilidade. A integração
+	// automática será retomada quando o leitor dos novos arquivos estruturados
+	// estiver implementado e validado. Não fazemos uma chamada OData sabidamente
+	// instável só para produzir um falso status de erro.
+	_ = ctx
+	_ = municipalityCode
 	return out, nil
 }
 
