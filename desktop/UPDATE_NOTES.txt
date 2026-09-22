@@ -1,3 +1,31 @@
+CAR 1.7.1: progresso visual e timer na Inteligência Financeira.
+
+EXPERIÊNCIA DA CONSULTA
+• A sincronização de Crédito Rural agora mostra tempo decorrido em tempo real.
+• O painel exibe progresso por 11 etapas reais da consulta, em vez de apenas uma mensagem genérica de “Consultando”.
+• Cada etapa possui ícone visual e estado: aguardando, em andamento ou concluído.
+• A barra de progresso avança conforme o backend efetivamente entra na etapa seguinte.
+• Após 10 minutos, o aplicativo informa que a consulta está mais lenta que o normal sem indicar falsamente que travou.
+• Após 20 minutos, a mensagem reforça que a consulta segue tentando as fontes oficiais até o limite de segurança.
+
+ETAPAS EXIBIDAS
+• Operações SICOR.
+• Tabelas e domínios.
+• Detalhes das operações.
+• Liberações de recursos.
+• Cronograma de desembolso.
+• Desclassificações.
+• Renegociações.
+• Saldos e situação.
+• Proagro.
+• ZARC.
+• Contexto de mercado.
+
+IMPLEMENTAÇÃO
+• O progresso exibido corresponde ao estágio real informado pelo backend.
+• O acompanhamento é feito sem bloquear o cronômetro da interface.
+• A lógica financeira e as interpretações conservadoras da 1.7.0 foram preservadas.
+
 CAR 1.7.0: Raio X de Crédito Rural ampliado com inteligência financeira pública.
 
 CRÉDITO RURAL
