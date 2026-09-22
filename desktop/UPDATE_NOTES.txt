@@ -1,3 +1,53 @@
+CAR 1.8.0: Inteligência Ambiental e laudos técnicos profissionais.
+
+INTELIGÊNCIA AMBIENTAL
+• Novo painel ambiental aprofundado dentro do Raio X.
+• Integra os alertas vinculados ao CAR retornados pela API V2 do MapBiomas Alerta com as demais camadas públicas já consultadas pelo Via Verde.
+• Para cada alerta, organiza código, área, datas de detecção/publicação, fontes, status, biomas, municípios, classes de desmatamento, velocidade e datas das imagens antes/depois quando publicadas.
+• Quando a API fornece a geometria do alerta, o Via Verde a converte e cruza localmente com a geometria do CAR.
+
+CRUZAMENTOS TÉCNICOS
+• Alerta MapBiomas × CAR.
+• Alerta × APP declarada no SICAR.
+• Alerta × Reserva Legal declarada no SICAR.
+• Alerta × remanescente de vegetação nativa declarado.
+• Alerta × área consolidada declarada.
+• Alerta × embargos IBAMA/PAMGIA.
+• Alerta × Terras Indígenas FUNAI.
+• Alerta × Unidades de Conservação federais ICMBio.
+• Mantém também os cruzamentos informados pela própria API MapBiomas, como UCs, Terras Indígenas, autorizações de supressão, manejo florestal, embargos, RL, APP e nascentes, quando disponíveis.
+
+PRIORIDADE DE CONFERÊNCIA
+• O sistema classifica objetivamente a prioridade de conferência, sem declarar legalidade/ilegalidade.
+• Interseções com APP, Reserva Legal, embargo IBAMA, Terra Indígena, UC federal ou presença na lista pública MMA/MCR elevam o alerta para “Alta prioridade de conferência”.
+• Autorizações de supressão e manejo florestal são exibidas como elementos que precisam de conferência documental, não como regularização automática.
+• Alerta MapBiomas não é tratado como prova automática de autoria, infração, responsabilidade ambiental ou impedimento de crédito.
+
+LAUDOS PROFISSIONAIS
+• Novo “Laudo Técnico de Triagem Ambiental” em PDF multipágina para o imóvel.
+• Novo laudo individual por alerta MapBiomas.
+• Capa com identificação do imóvel e síntese executiva.
+• Mapa vetorial esquemático com CAR, alertas, APP, Reserva Legal e embargo IBAMA quando as geometrias estão disponíveis.
+• Matriz de fontes consultadas e disponibilidade.
+• Página individual por alerta com evidências, cruzamentos e motivos de prioridade.
+• Página final com metodologia, fontes, limitações e salvaguardas.
+• Exportação das evidências ambientais em JSON para rastreabilidade e auditoria.
+
+INTERPRETAÇÃO E SEGURANÇA TÉCNICA
+• O relatório é explicitamente identificado como triagem técnica auxiliar.
+• Não substitui laudo oficial do MapBiomas, licença, autorização, certidão, vistoria de campo, parecer do órgão ambiental, perícia, ART/TRT ou manifestação profissional quando exigidos.
+• Ausência de alerta não é apresentada como certificado de regularidade.
+• Áreas somadas de alertas não são automaticamente tratadas como área única desmatada, pois eventos podem ter sobreposição espacial ou temporal.
+• APP, Reserva Legal e demais temas do SICAR são descritos como dados declarados/publicados e sujeitos à situação do cadastro.
+
+DESEMPENHO
+• A inteligência ambiental é carregada sob demanda.
+• Resultado fica em cache local por 24 horas e pode ser atualizado manualmente.
+• Consulta avulsa pode visualizar a análise; a emissão dos laudos exige imóvel salvo para preservar identificação e rastreabilidade.
+
+TESTES
+• Testes para prioridade de conferência, consolidação de evidências, tratamento de WKT/SRID, cache e geração do PDF multipágina.
+
 CAR 1.7.1: progresso visual e timer na Inteligência Financeira.
 
 EXPERIÊNCIA DA CONSULTA
