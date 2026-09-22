@@ -84,7 +84,13 @@
       field163('Produção prevista',num163(op.expected_production)),
       field163('Produtividade obtida',num163(op.obtained_productivity)),
       field163('Receita bruta esperada',op.expected_gross_revenue?'R$ '+money163(op.expected_gross_revenue):'—'),
-      field163('Alíquota Proagro',op.proagro_rate_pct?fmt(op.proagro_rate_pct,4)+'%':'—')
+      field163('Alíquota Proagro',op.proagro_rate_pct?fmt(op.proagro_rate_pct,4)+'%':'—'),
+      field163('Risco STN',op.stn_risk_pct?fmt(op.stn_risk_pct,4)+'%':'—'),
+      field163('Risco fundo constitucional',op.fund_risk_pct?fmt(op.fund_risk_pct,4)+'%':'—'),
+      field163('Recursos próprios serviço',op.service_own_resources?'R$ '+money163(op.service_own_resources):'—'),
+      field163('Bônus CAR',op.bonus_car_pct?fmt(op.bonus_car_pct,4)+'%':'—'),
+      field163('Contrato STN',op.contract_stn||'—'),
+      field163('CNPJ cadastrante',op.registrant_cnpj||'—')
     ].join('');
 
     const production=[
@@ -94,6 +100,9 @@
       field163('Integração/consórcio',op.integration_name||op.integration_code||'—'),
       field163('Grão/semente',op.grain_seed_name||op.grain_seed_code||'—'),
       field163('Fase produtiva',op.production_phase_name||op.production_phase_code||'—'),
+      field163('Solo da operação',op.soil_name||op.soil_code||'—'),
+      field163('Ciclo/cultivar',op.cycle_name||op.cycle_code||'—'),
+      field163('Quantidade',num163(op.quantity)),
       field163('Plantio',dateRange163(op.planting_start,op.planting_end)),
       field163('Colheita',dateRange163(op.harvest_start,op.harvest_end))
     ].join('');
