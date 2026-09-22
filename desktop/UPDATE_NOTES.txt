@@ -1,19 +1,17 @@
-CAR 1.4.3: correção da consulta municipal Banco Central / SICOR.
+CAR 1.4.4: correção dos dois estados de indisponibilidade vistos em Crédito Rural e Temas SICAR.
 
-• Corrige o painel “Contexto de crédito do município” que podia aparecer como “Parcial” mesmo para municípios com operações de crédito rural.
+BANCO CENTRAL / SICOR / MDCR
+• O Banco Central informou que a forma de distribuição da MDCR foi alterada em 2026, com descontinuação dos relatórios anteriores a partir de 01/07/2026 e disponibilização por arquivos estruturados anuais.
+• O Via Verde deixa de insistir automaticamente em filtros OData que podem falhar no ambiente atual do Olinda e deixa de mostrar esse comportamento como se fosse ausência de dados do município.
+• Enquanto o leitor automático dos novos arquivos estruturados não estiver implementado e validado, o painel passa a mostrar “Fonte oficial”, com explicação da mudança e botão para abrir a MDCR oficial. Isso evita falso “Indisponível” e falso zero de operações.
+• Nenhum dado municipal é inventado ou inferido quando a fonte automática não é confiável.
 
-• A causa era a leitura de cdEstado como se fosse a sigla da UF. No SICOR esse campo usa código próprio do Banco Central; portanto uma condição como cdEstado='MG' não era válida.
+TEMAS DECLARADOS DO SICAR
+• O botão “Tentar novamente” deixa de repetir toda a consulta do CAR. Agora ele executa somente os Temas SICAR, com uma janela maior de tempo.
+• Para Minas Gerais, a tentativa manual pode aguardar até 5 minutos, porque os pacotes públicos municipais podem ser lentos; a consulta inicial do CAR continua curta para não travar o fluxo principal.
+• As requisições dos pacotes SICAR passaram a usar cabeçalhos compatíveis com navegador e referência para a consulta pública oficial.
+• APP passa a aceitar automaticamente as duas grafias observadas nas interfaces públicas: APP e APPS.
+• Cache válido e pacote oficial importado manualmente continuam sendo usados como contingência.
+• Se a fonte continuar fora do ar, o erro fica restrito aos Temas SICAR; CAR, geometria, mapa, roteiro, ambiental e demais funções continuam válidos.
 
-• A consulta passa a usar o recurso agregado CusteioInvestimentoComercialIndustrialSemFiltros e prioriza o código IBGE do município que já vem no próprio CAR (codMunicIbge), sem depender de tradução de código de estado.
-
-• Para aumentar a compatibilidade, a rotina possui alternativas de filtro por código IBGE e nome do município e valida localmente cada linha retornada antes de somar os dados.
-
-• São consultados os dois anos mais recentes. O Via Verde consolida separadamente Custeio e Investimento, por atividade agrícola/pecuária, mostrando quantidade de contratos e valor agregado quando publicados pela fonte.
-
-• Os totais são calculados sobre todas as linhas válidas retornadas para o município, antes de limitar a quantidade de linhas exibidas na tela.
-
-• O status “Parcial” foi removido dessa seção. Se a consulta retornar dados, aparece “Disponível”. Se a fonte não responder de forma compatível, aparece “Indisponível” e a limitação é informada sem afetar o restante do aplicativo.
-
-• Esses números continuam sendo contexto agregado do município. Eles não são apresentados como contratos específicos do CAR ou do proprietário.
-
-MapBiomas Alerta, Monitor do Crédito Rural, consulta sob demanda, CAR, mapa, Nova consulta, glebas A/B/C, relevo, WorldCover, Ambiental, Temas SICAR, KML, histórico, relatórios, carteira e backup permanecem preservados.
+MapBiomas Alerta, Monitor do Crédito Rural, consulta sob demanda, Nova consulta, glebas A/B/C, relevo, WorldCover, KML, histórico, relatórios, carteira, banco local, backup e atualização automática permanecem preservados.
