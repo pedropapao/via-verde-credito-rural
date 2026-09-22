@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	ibamaEmbargoLayerURL = "https://pamgia.ibama.gov.br/server/rest/services/01_Publicacoes_Bases/embargos_siscom_brasil/FeatureServer/2/query"
+	ibamaEmbargoLayerURL = "https://pamgia.ibama.gov.br/server/rest/services/01_Publicacoes_Bases/adm_embargos_ibama_a/FeatureServer/0/query"
+	ibamaEmbargoLegacyURL = "https://pamgia.ibama.gov.br/server/rest/services/01_Publicacoes_Bases/embargos_siscom_brasil/FeatureServer/2/query"
 	funaiWFSURL           = "https://geoserver.funai.gov.br/geoserver/Funai/ows"
 	icmbioWFSURL          = "https://geoservicos.inde.gov.br/geoserver/ICMBio/ows"
 	icmbioUCLayer         = "ICMBio:limiteucsfederais_a"
@@ -90,7 +91,7 @@ type UCFindings struct {
 func screenEnvironment(ctx context.Context, carGeoJSON string) EnvironmentalSummary {
 	out := EnvironmentalSummary{
 		CheckedAt:      time.Now().Format(time.RFC3339),
-		IBAMASourceURL: "https://pamgia.ibama.gov.br/server/rest/services/01_Publicacoes_Bases/embargos_siscom_brasil/FeatureServer/2",
+		IBAMASourceURL: "https://pamgia.ibama.gov.br/server/rest/services/01_Publicacoes_Bases/adm_embargos_ibama_a/FeatureServer/0",
 		FUNAISourceURL: funaiGeoURL,
 		ICMBioSourceURL: icmbioGeoURL,
 		MCRSourceURL:   environmentMCRURL,
@@ -151,29 +152,89 @@ func screenEnvironment(ctx context.Context, carGeoJSON string) EnvironmentalSumm
 }
 
 func queryIBAMAEmbargos(ctx context.Context, carRaw string) ([]EmbargoFinding, error) {
+	// A base adm_embargos_ibama_a é a publicação atual do PAMGIA e tem
+	// atualização diária. Mantemos embargos_siscom_brasil apenas como fallback.
+	type source struct {
+		URL     string
+		Current bool
+	}
+	var errs []string
+	for _, src := range []source{
+		{URL: ibamaEmbargoLayerURL, Current: true},
+		{URL: ibamaEmbargoLegacyURL, Current: false},
+	} {
+		findings, err := queryIBAMAEmbargosSource(ctx, carRaw, src.URL, src.Current)
+		if err == nil {
+			return findings, nil
+		}
+		errs = append(errs, err.Error())
+		if ctx.Err() != nil {
+			break
+		}
+	}
+	if len(errs) == 0 {
+		return nil, errors.New("fonte IBAMA não respondeu")
+	}
+	return nil, errors.New(strings.Join(errs, " | "))
+}
+
+func queryIBAMAEmbargosSource(ctx context.Context, carRaw, endpoint string, current bool) ([]EmbargoFinding, error) {
 	minLon, minLat, maxLon, maxLat, ok := geoJSONBounds(carRaw)
 	if !ok {
 		return nil, fmt.Errorf("limites do CAR indisponíveis")
 	}
-	params := url.Values{}
-	params.Set("where", "1=1")
-	params.Set("geometry", fmt.Sprintf("%.8f,%.8f,%.8f,%.8f", minLon, minLat, maxLon, maxLat))
-	params.Set("geometryType", "esriGeometryEnvelope")
-	params.Set("inSR", "4326")
-	params.Set("spatialRel", "esriSpatialRelIntersects")
-	params.Set("outFields", "numero_tad,data_tad,status_tad,sit_embarg,qtd_area_d,nom_munici,orgao,des_infrac")
+	base := url.Values{}
+	base.Set("where", "1=1")
+	base.Set("geometry", fmt.Sprintf("%.8f,%.8f,%.8f,%.8f", minLon, minLat, maxLon, maxLat))
+	base.Set("geometryType", "esriGeometryEnvelope")
+	base.Set("inSR", "4326")
+	base.Set("spatialRel", "esriSpatialRelIntersects")
+	base.Set("f", "json")
+
+	// Primeiro pedimos somente a contagem. Para a situação mais comum (zero
+	// interseções) isto evita transferir geometrias e torna a triagem muito mais
+	// leve que a consulta anterior.
+	countParams := cloneURLValues(base)
+	countParams.Set("returnCountOnly", "true")
+	countBody, err := fetchEnvironmentalBody(ctx, endpoint+"?"+countParams.Encode(), "application/json")
+	if err != nil {
+		return nil, fmt.Errorf("PAMGIA %s: %w", ibamaSourceLabel(current), err)
+	}
+	var countResp struct {
+		Count int `json:"count"`
+		Error *struct {
+			Message string `json:"message"`
+			Details []string `json:"details"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(countBody, &countResp); err != nil {
+		return nil, fmt.Errorf("PAMGIA %s retornou contagem inválida: %w", ibamaSourceLabel(current), err)
+	}
+	if countResp.Error != nil {
+		return nil, fmt.Errorf("PAMGIA %s: %s", ibamaSourceLabel(current), strings.TrimSpace(countResp.Error.Message))
+	}
+	if countResp.Count == 0 {
+		return []EmbargoFinding{}, nil
+	}
+
+	params := cloneURLValues(base)
+	if current {
+		params.Set("outFields", "num_tad,dat_embargo,sit_desmatamento,tipo_area,qtd_area_embargada,municipio,origem_geom,des_infracao")
+	} else {
+		params.Set("outFields", "numero_tad,data_tad,status_tad,sit_embarg,qtd_area_d,nom_munici,orgao,des_infrac")
+	}
 	params.Set("returnGeometry", "true")
 	params.Set("outSR", "4326")
 	params.Set("resultRecordCount", "200")
 	params.Set("f", "geojson")
 
-	body, err := fetchCARBody(ctx, ibamaEmbargoLayerURL+"?"+params.Encode())
+	body, err := fetchEnvironmentalBody(ctx, endpoint+"?"+params.Encode(), "application/geo+json,application/json")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("PAMGIA %s: %w", ibamaSourceLabel(current), err)
 	}
 	var fc carGeoJSON
 	if err := json.Unmarshal(body, &fc); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("PAMGIA %s retornou GeoJSON inválido: %w", ibamaSourceLabel(current), err)
 	}
 	out := make([]EmbargoFinding, 0, len(fc.Features))
 	for _, feature := range fc.Features {
@@ -183,21 +244,93 @@ func queryIBAMAEmbargos(ctx context.Context, carRaw string) ([]EmbargoFinding, e
 			continue
 		}
 		a := feature.Properties
+		number := anyString(a, "num_tad")
+		date := arcGISDateString(a["dat_embargo"])
+		status := anyString(a, "sit_desmatamento")
+		situation := anyString(a, "tipo_area")
+		area := anyString(a, "qtd_area_embargada")
+		municipality := anyString(a, "municipio")
+		agency := "IBAMA"
+		if !current {
+			number = anyString(a, "numero_tad")
+			date = arcGISDateString(a["data_tad"])
+			status = anyString(a, "status_tad")
+			situation = anyString(a, "sit_embarg")
+			area = anyString(a, "qtd_area_d")
+			municipality = anyString(a, "nom_munici")
+			if x := anyString(a, "orgao"); x != "" {
+				agency = x
+			}
+		}
 		out = append(out, EmbargoFinding{
-			Number:       anyString(a, "numero_tad"),
-			Date:         arcGISDateString(a["data_tad"]),
-			Status:       anyString(a, "status_tad"),
-			Situation:    anyString(a, "sit_embarg"),
-			Area:         anyString(a, "qtd_area_d"),
-			Municipality: anyString(a, "nom_munici"),
-			Agency:        anyString(a, "orgao"),
-			Infraction:    anyString(a, "des_infrac"),
-			OverlapAreaHa: intersection,
-			OverlapCARPct: carPct,
-			GeoJSON:       string(raw),
+			Number: number, Date: date, Status: status, Situation: situation,
+			Area: area, Municipality: municipality, Agency: agency,
+			Infraction: anyString(a, "des_infrac"),
+			OverlapAreaHa: intersection, OverlapCARPct: carPct, GeoJSON: string(raw),
 		})
 	}
 	return out, nil
+}
+
+func ibamaSourceLabel(current bool) string {
+	if current {
+		return "embargos IBAMA atual"
+	}
+	return "embargos SISCOM legado"
+}
+
+func cloneURLValues(in url.Values) url.Values {
+	out := url.Values{}
+	for k, values := range in {
+		for _, v := range values {
+			out.Add(k, v)
+		}
+	}
+	return out
+}
+
+func fetchEnvironmentalBody(ctx context.Context, target, accept string) ([]byte, error) {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	// O PAMGIA já apresentou conexões lentas/instáveis em HTTP/2 no Windows.
+	// Forçar HTTP/1.1 nesta triagem evita que um problema de sessão HTTP/2
+	// derrube uma consulta que o mesmo servidor aceita normalmente.
+	transport.ForceAttemptHTTP2 = false
+	client := &http.Client{Timeout: 32 * time.Second, Transport: transport}
+	var lastErr error
+	for attempt := 1; attempt <= 2; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Accept", accept)
+		req.Header.Set("User-Agent", "Mozilla/5.0 ViaVerdeCAR/"+AppVersion)
+		resp, err := client.Do(req)
+		if err == nil {
+			body, readErr := io.ReadAll(io.LimitReader(resp.Body, 12<<20))
+			resp.Body.Close()
+			if readErr == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				return body, nil
+			}
+			if readErr != nil {
+				lastErr = readErr
+			} else {
+				lastErr = fmt.Errorf("HTTP %d", resp.StatusCode)
+			}
+		} else {
+			lastErr = err
+		}
+		if attempt < 2 && ctx.Err() == nil {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(900 * time.Millisecond):
+			}
+		}
+	}
+	if lastErr == nil {
+		lastErr = errors.New("fonte não respondeu")
+	}
+	return nil, lastErr
 }
 
 func queryFUNAITerritories(ctx context.Context, carRaw string) ([]TerritoryFinding, error) {
