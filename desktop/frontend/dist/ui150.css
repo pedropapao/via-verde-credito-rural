@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 1.5.0 — Raio X completo do imóvel */
+/* ViaVerdeCAR 1.6.0 — Raio X completo + fundiário SIGEF/INCRA */
 .xray150{display:grid;gap:12px}
 .xray-hero150{background:linear-gradient(135deg,#eef7ef,#fff);border-color:#cbded0}
 .xray-hero150 h3{font-size:18px;margin:2px 0 4px}
@@ -46,3 +46,16 @@
 .xray-scope150 span{font-size:7.5px;padding:4px 6px;border-radius:999px;background:#edf3ee;color:#57705d}
 @media(max-width:1300px){.xray-metrics150{grid-template-columns:repeat(3,1fr)}.xray-grid150{grid-template-columns:1fr}.xray-fields150{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:760px){.xray-metrics150{grid-template-columns:1fr 1fr}.xray-fields150,.xray-env-grid150{grid-template-columns:1fr 1fr}}
+
+.sigef-panel150{border-color:#d9d2e8}
+.sigef-summary150{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:10px}
+.sigef-list150{display:grid;gap:8px;margin-top:10px}
+.sigef-card150{border:1px solid #ded8e8;border-radius:10px;background:#fff;padding:10px}
+.sigef-card150.high{border-color:#c8ddcc;background:#fbfefb}
+.sigef-card150.partial{border-color:#d8d8ea;background:#fcfcff}
+.sigef-card150.intersection{border-color:#e7d3aa;background:#fffdf8}
+.sigef-top150{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.sigef-top150 strong,.sigef-top150 small{display:block}
+.sigef-top150 strong{font-size:11px}
+.sigef-top150 small{font-size:8px;color:#748078;margin-top:2px}
+@media(max-width:900px){.sigef-summary150{grid-template-columns:1fr 1fr}}
