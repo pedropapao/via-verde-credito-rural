@@ -63,10 +63,10 @@
 
     const operationHtml=operations.length?operations.map((op,i)=>operationCard150(op,i)).join(''):'<div class="xray-empty150">Nenhuma operação pública foi localizada para este CAR nos arquivos processados. Isso não significa que o imóvel nunca tenha recebido financiamento.</div>';
     const envHtml='<article class="panel xray-panel150"><div class="panel-title"><div><span class="eyebrow">SOCIOAMBIENTAL</span><h3>Camadas e ocorrências</h3></div><span class="status-badge info">'+(s.environmental_hits||0)+' ocorrência(s)</span></div><div class="xray-env-grid150">'+
-      envCard150('IBAMA • Embargos',env.ibama_available?(env.ibama_embargo_count||0):'Indisponível',env.ibama_available?'consulta pública':'fonte sem resposta')+
-      envCard150('FUNAI • Terras indígenas',env.indigenous_available?(env.indigenous_count||0):'Indisponível',env.indigenous_available?'consulta pública':'fonte sem resposta')+
-      envCard150('ICMBio • UCs',env.federal_uc_available?(env.federal_uc_count||0):'Indisponível',env.federal_uc_available?'consulta pública':'fonte sem resposta')+
-      envCard150('MCR / Prodes',env.mcr_available?(env.mcr_listed?'LISTADO':'NÃO LISTADO'):'Indisponível',env.mcr_available?'lista pública consultada':'fonte sem resposta')+
+      envCard150('IBAMA • Embargos',env.ibama_checked?(env.ibama_embargo_count||0):'Indisponível',env.ibama_checked?'consulta pública':'fonte sem resposta')+
+      envCard150('FUNAI • Terras indígenas',env.funai_checked?(env.indigenous_count||0):'Indisponível',env.funai_checked?'consulta pública':'fonte sem resposta')+
+      envCard150('ICMBio • UCs',env.icmbio_checked?(env.federal_uc_count||0):'Indisponível',env.icmbio_checked?'consulta pública':'fonte sem resposta')+
+      envCard150('MCR / Prodes',env.mcr_checked?(env.mcr_listed?'LISTADO':'NÃO LISTADO'):'Indisponível',env.mcr_checked?'lista pública consultada':'fonte sem resposta')+
       envCard150('Temas SICAR',themeAvailable+'/6','APP, RL, vegetação e demais temas declarados')+
       envCard150('MapBiomas Alerta',mb.connected?(mb.total_alerts||0):'Não conectado',mb.message||'API MapBiomas Alerta')+
       '</div></article>';
