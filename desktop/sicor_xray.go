@@ -62,6 +62,16 @@ type SICORPublicOperation struct {
 	ExpectedGrossRevenue  float64      `json:"expected_gross_revenue"`
 	ObtainedProductivity  float64      `json:"obtained_productivity"`
 	ProagroRatePct        float64      `json:"proagro_rate_pct"`
+	STNRiskPct            float64      `json:"stn_risk_pct"`
+	FundRiskPct           float64      `json:"fund_risk_pct"`
+	ServiceOwnResources   float64      `json:"service_own_resources"`
+	BonusCARPct           float64      `json:"bonus_car_pct"`
+	ContractSTN           string       `json:"contract_stn"`
+	RegistrantCNPJ        string       `json:"registrant_cnpj"`
+	SoilCode              string       `json:"soil_code"`
+	SoilName              string       `json:"soil_name"`
+	CycleCode             string       `json:"cycle_code"`
+	CycleName             string       `json:"cycle_name"`
 	InsuranceCode         string       `json:"insurance_code"`
 	InsuranceName         string       `json:"insurance_name"`
 	InstrumentCode        string       `json:"instrument_code"`
@@ -526,6 +536,14 @@ func scanSICOROperations(path string, targets map[string]sicorRef, year int) ([]
 			ExpectedGrossRevenue: parseSICORNumber(fieldCSV(headers, row, "VL_RECEITA_BRUTA_ESPERADA")),
 			ObtainedProductivity: parseSICORNumber(fieldCSV(headers, row, "VL_PRODUTIV_OBTIDA")),
 			ProagroRatePct: parseSICORNumber(fieldCSV(headers, row, "VL_ALIQ_PROAGRO")),
+			STNRiskPct: parseSICORNumber(fieldCSV(headers, row, "VL_PERC_RISCO_STN")),
+			FundRiskPct: parseSICORNumber(fieldCSV(headers, row, "VL_PERC_RISCO_FUNDO_CONST")),
+			ServiceOwnResources: parseSICORNumber(fieldCSV(headers, row, "VL_REC_PROPRIO_SRV")),
+			BonusCARPct: parseSICORNumber(fieldCSV(headers, row, "PC_BONUS_CAR")),
+			ContractSTN: strings.TrimSpace(fieldCSV(headers, row, "CD_CONTRATO_STN")),
+			RegistrantCNPJ: strings.TrimSpace(fieldCSV(headers, row, "CD_CNPJ_CADASTRANTE")),
+			SoilCode: strings.TrimSpace(fieldCSV(headers, row, "CD_TIPO_SOLO")),
+			CycleCode: strings.TrimSpace(fieldCSV(headers, row, "CD_CICLO_CULTIVAR")),
 			InsuranceCode: strings.TrimSpace(fieldCSV(headers, row, "CD_TIPO_SEGURO")),
 			InstrumentCode: strings.TrimSpace(fieldCSV(headers, row, "CD_INST_CREDITO")),
 			IrrigationCode: strings.TrimSpace(fieldCSV(headers, row, "CD_TIPO_IRRIGACAO")),
