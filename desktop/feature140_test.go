@@ -123,3 +123,31 @@ func TestFilterBCBMunicipalityRowsRejectsOtherMunicipality(t *testing.T) {
 		t.Fatalf("não deveria aceitar linha de outro município: %#v", got)
 	}
 }
+
+
+func TestAggregateBCBMunicipalityRowsIncludesAllFourPurposes(t *testing.T) {
+	rows := []map[string]any{{
+		"AnoEmissao":"2026","Atividade":"2",
+		"QtdCusteio":1.0,"VlCusteio":100.0,
+		"QtdInvestimento":2.0,"VlInvestimento":200.0,
+		"QtdComercializacao":3.0,"VlComercializacao":300.0,
+		"QtdIndustrializacao":4.0,"VlIndustrializacao":400.0,
+	}}
+	got := aggregateBCBMunicipalityRows(rows)
+	if len(got) != 4 {
+		t.Fatalf("esperava as quatro finalidades do crédito rural, obteve %d: %#v", len(got), got)
+	}
+	totalQty, totalValue := 0.0, 0.0
+	kinds := map[string]bool{}
+	for _, row := range got {
+		kinds[row.Kind] = true
+		totalQty += row.Contracts
+		totalValue += row.Value
+	}
+	for _, kind := range []string{"Custeio","Investimento","Comercialização","Industrialização"} {
+		if !kinds[kind] { t.Fatalf("finalidade ausente: %s", kind) }
+	}
+	if totalQty != 10 || totalValue != 1000 {
+		t.Fatalf("totais incorretos: quantidade=%v valor=%v", totalQty, totalValue)
+	}
+}
