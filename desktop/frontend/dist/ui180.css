@@ -1,0 +1,24 @@
+/* ViaVerdeCAR 1.8.0 — Inteligência Ambiental & Laudos */
+.environmental-intel180{display:grid;gap:14px;background:linear-gradient(145deg,#fbfdfb,#fff);border-color:#cddfd2}
+.environment-intro180{display:flex;gap:12px;align-items:center;padding:14px;border:1px solid var(--line,#dbe4df);border-radius:14px;background:rgba(42,111,77,.055)}
+.environment-intro180>div:last-child{display:grid;gap:4px}.environment-intro180 span{color:var(--muted,#607168);font-size:.86rem}
+.environment-art180{width:45px;height:45px;display:grid;place-items:center;border-radius:14px;background:rgba(42,111,77,.10);font-size:1.45rem}
+.environment-actions180{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.environment-note180,.environment-legal180{padding:10px 12px;border-radius:11px;background:rgba(42,111,77,.06);font-size:.82rem;color:var(--text,#203129)}
+.environment-loading180{display:grid;place-items:center;text-align:center;gap:6px;padding:30px 18px;border:1px dashed var(--line,#dbe4df);border-radius:14px}.environment-loading180>div{font-size:2rem}.environment-loading180 span{color:var(--muted,#607168)}
+.environment-metrics180{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.environment-metrics180>div,.environment-alert-grid180>div{display:grid;gap:3px;padding:11px 12px;border:1px solid var(--line,#dbe4df);border-radius:12px;background:var(--panel-soft,#f8faf9)}
+.environment-metrics180 span,.environment-alert-grid180 span{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted,#607168)}
+.environment-metrics180 strong{font-size:1.04rem}.environment-metrics180 small,.environment-alert-grid180 small{font-size:.74rem;color:var(--muted,#607168)}
+.environment-matrix180{border:1px solid var(--line,#dbe4df);border-radius:14px;padding:10px 12px}.environment-matrix180>summary{cursor:pointer;font-weight:800}.environment-matrix180>div{display:grid;gap:6px;margin-top:10px}
+.environment-source180{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:9px;align-items:center;padding:9px 10px;border-radius:10px;background:var(--panel-soft,#f8faf9)}
+.environment-source180>span{font-size:1rem}.environment-source180>div{display:grid;gap:1px}.environment-source180 b{font-size:.82rem}.environment-source180 small{font-size:.73rem;color:var(--muted,#607168)}.environment-source180>strong{font-size:.76rem;text-align:right}.environment-source180.warn{background:rgba(155,101,24,.09)}
+.environment-alerts180{display:grid;gap:10px}.environment-alert180{display:grid;gap:10px;border:1px solid var(--line,#dbe4df);border-radius:15px;padding:13px;background:var(--panel,#fff)}.environment-alert180.high{border-color:rgba(155,101,24,.32);box-shadow:inset 3px 0 0 rgba(155,101,24,.55)}
+.environment-alert-head180{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.environment-alert-head180>div{display:grid;gap:2px}.environment-alert-head180 small{color:var(--muted,#607168)}
+.environment-alert-grid180{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.environment-alert-grid180 strong{font-size:.88rem}
+.environment-tags180{display:flex;flex-wrap:wrap;gap:6px}.environment-tags180 span{padding:5px 8px;border-radius:999px;background:rgba(155,101,24,.10);font-size:.72rem}
+.environment-reasons180{display:grid;gap:3px;padding:9px 10px;border-radius:10px;background:rgba(155,101,24,.07);font-size:.76rem}
+.environment-warnings180{border:1px solid var(--line,#dbe4df);border-radius:12px;padding:10px 12px}.environment-warnings180 summary{cursor:pointer;font-weight:800}.environment-warnings180>div{margin-top:5px;font-size:.76rem;color:var(--muted,#607168)}
+.environment-empty180{padding:18px;border:1px dashed var(--line,#dbe4df);border-radius:12px;color:var(--muted,#607168);text-align:center}
+@media(max-width:900px){.environment-metrics180,.environment-alert-grid180{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.environment-metrics180,.environment-alert-grid180{grid-template-columns:1fr}.environment-alert-head180{flex-direction:column}.environment-source180{grid-template-columns:auto 1fr}.environment-source180>strong{grid-column:2;text-align:left}}
