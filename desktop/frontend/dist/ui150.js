@@ -36,6 +36,7 @@
 
   async function buildXRay150(force){
     const box=q('xrayWorkspace150');if(!box||!state.car?.car)return;
+    clearGlebas150();clearSIGEF150();
     box.innerHTML='<div class="xray-loading150"><strong>Montando o Raio X completo…</strong><span>Sincronizando índice de propriedades do SICOR e procurando operações vinculadas ao CAR. Na primeira vez isso pode levar alguns minutos porque os arquivos oficiais são nacionais.</span></div>';
     try{
       const r=await api().BuildPropertyXRay(state.selectedProperty?.id||0,!!force);
@@ -68,7 +69,7 @@
       envCard150('Parcelas encontradas',sigef.parcel_count||0,'interseção espacial com o CAR')+
       envCard150('Registros publicados',sigef.registry_count||0,'campo registro_m da fonte')+
       envCard150('Melhor cobertura do CAR',(sigef.best_car_coverage_pct||0)?fmt(sigef.best_car_coverage_pct,1)+'%':'—','percentual do CAR dentro da parcela')+
-      envCard150('Diferença de área',sigef.best_area_difference_ha?fmt(sigef.best_area_difference_ha,2)+' ha':'—','melhor coincidência espacial')+
+      envCard150('Diferença de área',(sigef.parcel_count||0)?fmt(sigef.best_area_difference_ha||0,2)+' ha':'—','melhor coincidência espacial')+
       '</div><div class="sigef-list150">'+sigefCards+'</div><div class="xray-source150">'+esc(sigef.message||'A consulta fundiária é auxiliar e não substitui matrícula/certidão do Registro de Imóveis.')+' A ausência de parcela SIGEF não prova ausência de matrícula.</div></article>';
 
     const operationHtml=operations.length?operations.map((op,i)=>operationCard150(op,i)).join(''):'<div class="xray-empty150">Nenhuma operação pública foi localizada para este CAR nos arquivos processados. Isso não significa que o imóvel nunca tenha recebido financiamento.</div>';
