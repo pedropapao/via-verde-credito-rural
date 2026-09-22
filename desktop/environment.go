@@ -293,46 +293,39 @@ func fetchEnvironmentalBody(ctx context.Context, target, accept string) ([]byte,
 	// Deixe o Go negociar HTTP/2/HTTP/1.1 normalmente. O PAMGIA pode responder
 	// com frames HTTP/2 mesmo quando a conexão é forçada para HTTP/1.1; isso
 	// resulta em "malformed HTTP response" no Windows.
-	client := &http.Client{Timeout: 30 * time.Second}
-	var lastErr error
-	for attempt := 1; attempt <= 2; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
-		if err != nil {
-			return nil, err
+	client := &http.Client{Timeout: 28 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", accept)
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("User-Agent", "Mozilla/5.0 ViaVerdeCAR/"+AppVersion)
+
+	var directErr error
+	resp, err := client.Do(req)
+	if err == nil {
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 12<<20))
+		resp.Body.Close()
+		if readErr == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return body, nil
 		}
-		req.Header.Set("Accept", accept)
-		req.Header.Set("Cache-Control", "no-cache")
-		req.Header.Set("User-Agent", "Mozilla/5.0 ViaVerdeCAR/"+AppVersion)
-		resp, err := client.Do(req)
-		if err == nil {
-			body, readErr := io.ReadAll(io.LimitReader(resp.Body, 12<<20))
-			resp.Body.Close()
-			if readErr == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
-				return body, nil
-			}
-			if readErr != nil {
-				lastErr = readErr
-			} else {
-				lastErr = fmt.Errorf("HTTP %d", resp.StatusCode)
-			}
+		if readErr != nil {
+			directErr = readErr
 		} else {
-			lastErr = err
+			directErr = fmt.Errorf("HTTP %d", resp.StatusCode)
 		}
-		if attempt < 2 && ctx.Err() == nil {
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			case <-time.After(700 * time.Millisecond):
-			}
-		}
+	} else {
+		directErr = err
 	}
 
-	// O curl.exe do Windows usa a pilha TLS/HTTP disponível no sistema e já é
-	// usado com sucesso como contingência na consulta principal do CAR.
+	// O curl.exe do Windows usa a pilha TLS/HTTP do sistema e já é usado como
+	// contingência na consulta principal do CAR. Ir para ele imediatamente após
+	// a primeira falha evita esperar dois timeouts seguidos do PAMGIA.
 	if body, curlErr := fetchCARWithCurl(ctx, target); curlErr == nil {
 		return body, nil
-	} else if lastErr != nil {
-		return nil, fmt.Errorf("cliente nativo falhou (%v); fallback do Windows falhou (%v)", lastErr, curlErr)
+	} else if directErr != nil {
+		return nil, fmt.Errorf("cliente nativo falhou (%v); fallback do Windows falhou (%v)", directErr, curlErr)
 	} else {
 		return nil, fmt.Errorf("fallback do Windows falhou: %v", curlErr)
 	}
