@@ -1,22 +1,19 @@
-CAR 1.4.5: melhora a tolerância a falhas externas vistas nos testes reais.
+CAR 1.4.6: corrige protocolo do PAMGIA e torna a consulta municipal MDCR automática antes do fallback oficial.
 
 IBAMA / PAMGIA
-• A triagem deixa de usar como fonte principal a publicação legada embargos_siscom_brasil e passa a consultar a camada pública atual adm_embargos_ibama_a do PAMGIA.
-• A nova consulta pede primeiro somente a contagem espacial. Quando o resultado é zero, não transfere geometrias, reduzindo bastante o tempo e a carga da consulta.
-• Se houver interseções, somente então são solicitadas as feições necessárias para calcular a sobreposição real com o CAR.
-• A conexão usa HTTP/1.1 nesta fonte e duas tentativas curtas, reduzindo problemas observados no Windows com sessões lentas/instáveis.
-• A publicação SISCOM anterior permanece como fallback automático caso a camada atual não responda.
-• O rótulo da interface passa a ser “IBAMA • Embargos”, sem amarrar a análise apenas ao SISCOM legado.
+• Corrige o erro “HTTP/1.x transport connection broken: malformed HTTP response” observado no Windows.
+• O Via Verde deixa o cliente HTTP negociar HTTP/2 ou HTTP/1.1 normalmente com o PAMGIA.
+• Se a primeira chamada nativa falhar, o aplicativo usa imediatamente o curl.exe do Windows como contingência, sem repetir duas conexões incompatíveis.
+• Continua sendo consultada primeiro a camada pública atual adm_embargos_ibama_a; a publicação SISCOM anterior permanece como fallback.
+• A consulta continua leve: primeiro pede apenas a contagem espacial e só baixa geometrias quando há ocorrência.
 
-MAPBIOMAS ALERTA
-• As chamadas GraphQL passam a ter até duas tentativas com timeout ampliado para 45 segundos por tentativa.
-• HTTP 429 e falhas temporárias de servidor podem ser repetidos automaticamente; erros de autenticação ou requisição inválida continuam sendo retornados imediatamente.
-• Se as duas tentativas falharem, o erro fica restrito à aba Crédito Rural e informa claramente que o serviço não respondeu, sem afetar o restante do ViaVerdeCAR.
+BANCO CENTRAL / SICOR / MDCR
+• O painel volta a tentar automaticamente a consulta municipal antes de oferecer o botão da fonte oficial.
+• O Via Verde consulta os dois anos mais recentes no recurso público agregado do SICOR/MDCR e valida localmente código IBGE, município, UF e ano antes de aceitar qualquer linha.
+• Se o deployment do Olinda ignorar o filtro e devolver registros de outros municípios, o aplicativo rejeita esses dados em vez de atribuí-los ao CAR.
+• Quando a consulta automática funciona, o painel mostra “Automático” e consolida Custeio/Investimento por atividade.
+• Quando a API pública não aceita ou não conclui o filtro municipal, o painel mostra “Contingência” e mantém “Abrir MDCR oficial” apenas como alternativa. O navegador não é aberto automaticamente.
+• Corrigida a leitura de valores decimais retornados como texto, aceitando tanto formato com ponto quanto formato brasileiro com vírgula.
+• O contexto de Crédito Rural continua sob demanda para preservar a estabilidade do aplicativo.
 
-TEMAS SICAR
-• Mantém o retry dedicado da 1.4.4, cache e importação manual do pacote oficial.
-• Não foi adicionado um “falso fallback” para outra base não equivalente: se o GeoServices oficial continuar fora do ar e não houver cache/pacote importado, o Via Verde continua marcando os Temas SICAR como indisponíveis.
-
-Banco Central/MDCR continua no modo “Fonte oficial” introduzido na 1.4.4, sem inventar dados municipais durante a migração de distribuição de 2026.
-
-CAR, mapa, Nova consulta, FUNAI, ICMBio, MMA/MCR, glebas A/B/C, relevo, WorldCover, MapBiomas, KML, histórico, relatórios, carteira, banco local, backup e atualização automática permanecem preservados.
+MapBiomas Alerta, Temas SICAR, FUNAI, ICMBio, MMA/MCR, CAR, mapa, Nova consulta, glebas A/B/C, roteiro, relevo, WorldCover, KML, histórico, relatórios, carteira, banco local, backup e atualização automática permanecem preservados.
