@@ -53,7 +53,7 @@
     const themeAvailable=Object.values(themes).filter(x=>x?.available).length;
     const warningCount=(r.warnings||[]).length;
     const hero='<article class="panel xray-hero150"><div class="panel-title"><div><span class="eyebrow">RAIO X • '+esc(car.municipality||'')+' / '+esc(car.uf||'')+'</span><h3>'+esc(car.car||'')+'</h3><p>'+esc(sicor.scope||'Microdados públicos do SICOR e bases territoriais públicas.')+'</p></div><span class="status-badge '+(operations.length?'ok':'info')+'">'+(sicor.used_cache?'Cache local':'Atualizado')+'</span></div><div class="xray-metrics150">'+
-      metric150('Operações públicas',s.public_credit_operations||0,'SICOR vinculadas ao CAR')+
+      metric150('Operações públicas',s.public_credit_operations||0,(sicor.destination_count||0)+' destinação(ões) vinculada(s)')+
       metric150('Crédito identificado','R$ '+money150(s.public_credit_value||0),'soma das destinações localizadas')+
       metric150('Glebas financiadas',s.financed_glebas||0,'geometria pública disponível')+
       metric150('Conflitos c/ projeto',s.glebas_with_project_hit||0,'sobreposição > 0,5%')+
@@ -82,7 +82,7 @@
     if(sicor.unresolved_references)warnings.push(sicor.unresolved_references+' referência(s) do CAR no índice SICOR ficaram sem operação anual localizada.');
     const warningsHtml='<article class="panel xray-panel150"><div class="panel-title"><div><span class="eyebrow">LIMITAÇÕES E CONFERÊNCIA</span><h3>O que merece atenção</h3></div><span class="status-badge '+(warningCount?'warning':'ok')+'">'+warnings.length+'</span></div><div class="xray-warnings150">'+(warnings.length?warnings.map(x=>'<div class="xray-warning150">'+esc(x)+'</div>').join(''):'<div class="xray-warning150">Nenhuma limitação adicional registrada nesta execução.</div>')+'</div></article>';
 
-    box.innerHTML=hero+'<div class="xray-grid150"><div class="xray-stack150"><article class="panel xray-panel150"><div class="panel-title"><div><span class="eyebrow">HISTÓRICO PÚBLICO SICOR</span><h3>Operações vinculadas ao CAR</h3><p>Referência BACEN, instituição, programa, fonte, finalidade, atividade, produto, valores e glebas publicadas.</p></div><span class="status-badge '+(operations.length?'ok':'info')+'">'+operations.length+' operação(ões)</span></div><div class="xray-operation-list150">'+operationHtml+'</div></article></div><aside class="xray-stack150">'+localHtml+envHtml+warningsHtml+'</aside></div>';
+    box.innerHTML=hero+'<div class="xray-grid150"><div class="xray-stack150"><article class="panel xray-panel150"><div class="panel-title"><div><span class="eyebrow">HISTÓRICO PÚBLICO SICOR</span><h3>Operações e destinações vinculadas ao CAR</h3><p>REF BACEN identifica a operação; NU_ORDEM identifica cada destinação. A lista mostra instituição, programa, fonte, finalidade, atividade, produto, valores e glebas publicadas.</p></div><span class="status-badge '+(operations.length?'ok':'info')+'">'+(sicor.operation_count||0)+' operação(ões) • '+(sicor.destination_count||0)+' destinação(ões)</span></div><div class="xray-operation-list150">'+operationHtml+'</div></article></div><aside class="xray-stack150">'+localHtml+envHtml+warningsHtml+'</aside></div>';
 
     q('showSicorGlebas150').onclick=()=>showAllSicorGlebas150(r);
     q('exportSicor150').onclick=()=>exportSicor150(car.car);
