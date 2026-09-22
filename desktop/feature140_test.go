@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"testing"
 )
 
@@ -90,20 +89,6 @@ func TestGraphQLScalarStringAcceptsStringAndNumber(t *testing.T) {
 }
 
 
-func TestBCB2026UsesOfficialStructuredDistribution(t *testing.T) {
-	ctx := context.Background()
-	got, err := queryBCBRuralMunicipality(ctx, "Bom Jesus do Amparo", "MG", "3107703")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !got.ExternalOnly || got.Available {
-		t.Fatalf("esperava modo de fonte oficial estruturada, obteve %+v", got)
-	}
-	if got.SourceURL == "" || got.Message == "" {
-		t.Fatalf("fonte/mensagem não informadas: %+v", got)
-	}
-}
-
 func TestSICARThemeRemoteCandidatesAPP(t *testing.T) {
 	got := sicarThemeRemoteCandidates("APP")
 	if len(got) != 2 || got[0] != "APP" || got[1] != "APPS" {
@@ -112,5 +97,29 @@ func TestSICARThemeRemoteCandidatesAPP(t *testing.T) {
 	got = sicarThemeRemoteCandidates("RESERVA_LEGAL")
 	if len(got) != 1 || got[0] != "RESERVA_LEGAL" {
 		t.Fatalf("tema sem alias alterado indevidamente: %#v", got)
+	}
+}
+
+
+func TestBCBNumberMapValueDecimalFormats(t *testing.T) {
+	m := map[string]any{
+		"dot": "1234.50",
+		"br":  "1.234,50",
+	}
+	if got := numberMapValue(m, "dot"); got != 1234.5 {
+		t.Fatalf("decimal com ponto inesperado: %f", got)
+	}
+	if got := numberMapValue(m, "br"); got != 1234.5 {
+		t.Fatalf("decimal pt-BR inesperado: %f", got)
+	}
+}
+
+func TestFilterBCBMunicipalityRowsRejectsOtherMunicipality(t *testing.T) {
+	rows := []map[string]any{
+		{"codMunicIbge":"3550308","Municipio":"SAO PAULO","nomeUF":"SP","AnoEmissao":"2026"},
+	}
+	got := filterBCBMunicipalityRows(rows, "Bom Jesus do Amparo", "MG", "3107703", "2026")
+	if len(got) != 0 {
+		t.Fatalf("não deveria aceitar linha de outro município: %#v", got)
 	}
 }
