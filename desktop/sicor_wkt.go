@@ -16,7 +16,9 @@ func sicorWKTToGeoJSON(wkt string) (string, error) {
 	upper := strings.ToUpper(wkt)
 	switch {
 	case strings.HasPrefix(upper, "POLYGON"):
-		coords, err := parseWKTPolygonCoordinates(wkt[len("POLYGON"):])
+		body := strings.TrimSpace(wkt[len("POLYGON"):])
+		body = stripWKTDimensionToken(body)
+		coords, err := parseWKTPolygonCoordinates(body)
 		if err != nil {
 			return "", err
 		}
@@ -29,7 +31,9 @@ func sicorWKTToGeoJSON(wkt string) (string, error) {
 		b, _ := json.Marshal(f)
 		return string(b), nil
 	case strings.HasPrefix(upper, "MULTIPOLYGON"):
-		polys, err := parseWKTMultiPolygonCoordinates(wkt[len("MULTIPOLYGON"):])
+		body := strings.TrimSpace(wkt[len("MULTIPOLYGON"):])
+		body = stripWKTDimensionToken(body)
+		polys, err := parseWKTMultiPolygonCoordinates(body)
 		if err != nil {
 			return "", err
 		}
@@ -44,6 +48,21 @@ func sicorWKTToGeoJSON(wkt string) (string, error) {
 	default:
 		return "", fmt.Errorf("tipo WKT não suportado: %s", firstWKTWord(wkt))
 	}
+}
+
+
+func stripWKTDimensionToken(s string) string {
+	s = strings.TrimSpace(s)
+	upper := strings.ToUpper(s)
+	for _, token := range []string{"ZM", "Z", "M"} {
+		if upper == token {
+			return ""
+		}
+		if strings.HasPrefix(upper, token+" ") || strings.HasPrefix(upper, token+"(") {
+			return strings.TrimSpace(s[len(token):])
+		}
+	}
+	return s
 }
 
 func firstWKTWord(wkt string) string {
