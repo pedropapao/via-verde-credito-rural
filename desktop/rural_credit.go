@@ -65,7 +65,7 @@ func (a *App) GetRuralCreditOverview(propertyID int64) (RuralCreditOverview, err
 		BCBSourceURL: bcbRuralDataURL,
 		CheckedAt: time.Now().Format(time.RFC3339),
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 28*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 	defer cancel()
 	type bcbResult struct {
 		v   BCBRuralCreditContext
@@ -98,10 +98,17 @@ func (a *App) GetRuralCreditOverview(propertyID int64) (RuralCreditOverview, err
 	b := <-bcbCh
 	m := <-alertCh
 	if b.err != nil {
-		out.Warnings = append(out.Warnings, "Contexto municipal BCB/SICOR indisponível: "+b.err.Error())
-		out.BCB = BCBRuralCreditContext{
-			Municipality: car.Municipality, UF: car.UF, SourceURL: bcbRuralDataURL,
-			Message: "Não foi possível consultar o contexto agregado do município nesta tentativa.",
+		out.Warnings = append(out.Warnings, "Contexto municipal BCB/SICOR: "+b.err.Error())
+		out.BCB = b.v
+		if strings.TrimSpace(out.BCB.SourceURL) == "" {
+			out.BCB.SourceURL = bcbRuralDataURL
+		}
+		if strings.TrimSpace(out.BCB.Municipality) == "" {
+			out.BCB.Municipality = car.Municipality
+			out.BCB.UF = car.UF
+		}
+		if strings.TrimSpace(out.BCB.Message) == "" {
+			out.BCB.Message = "A consulta automática não pôde ser concluída; use a fonte oficial como contingência."
 		}
 	} else {
 		out.BCB = b.v
@@ -356,7 +363,7 @@ func getODataRows(ctx context.Context, target string) ([]map[string]any, error) 
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion)
-	resp, err := (&http.Client{Timeout: 18 * time.Second}).Do(req)
+	resp, err := (&http.Client{Timeout: 15 * time.Second}).Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -403,8 +410,11 @@ func numberMapValue(m map[string]any, key string) float64 {
 	case float64:
 		return x
 	case string:
-		x = strings.ReplaceAll(x, ".", "")
-		x = strings.ReplaceAll(x, ",", ".")
+		x = strings.TrimSpace(x)
+		if strings.Contains(x, ",") {
+			x = strings.ReplaceAll(x, ".", "")
+			x = strings.ReplaceAll(x, ",", ".")
+		}
 		n, _ := strconv.ParseFloat(x, 64)
 		return n
 	default:
