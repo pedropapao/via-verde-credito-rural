@@ -56,16 +56,70 @@
     ensurePanel163(
       '<div class="panel-title"><div><span class="eyebrow">CRÉDITO RURAL • FINANCEIRO COMPLETO</span><h3>Saldo, liberações, renegociação e Proagro</h3><p>Os valores abaixo são somente os registros públicos encontrados pelo ViaVerdeCAR. Não representam, por si, a dívida total do produtor.</p></div><span class="status-badge '+(r.used_cache?'info':'ok')+'">'+(r.used_cache?'Cache 7 dias':'Atualizado')+'</span></div>'+
       metrics+
-      '<div class="credit163-actions"><button class="btn ghost" id="refreshCredit163">Atualizar financeiro</button><button class="btn ghost" id="openMCR163">Abrir MCR oficial</button><button class="btn ghost" id="openZARC163">Abrir ZARC oficial</button><button class="btn ghost" id="openZARCDataset163">Base ZARC</button></div>'+
+      '<div class="credit163-actions"><button class="btn ghost" id="refreshCredit163">Atualizar financeiro</button><button class="btn primary" id="marketCredit163">Inteligência de mercado</button><button class="btn ghost" id="openMCR163">Abrir MCR oficial</button><button class="btn ghost" id="openZARC163">Abrir ZARC oficial</button><button class="btn ghost" id="openZARCDataset163">Base ZARC</button></div>'+
       '<div class="credit163-list">'+body+'</div>'+warn+
       '<div class="xray-source150">Crédito contratado no SICOR pode incluir operação ainda sem liberação de recursos. Saldo, situação, liberações e Proagro são exibidos conforme o último registro público localizado; ausência de registro não equivale a inexistência.</div>'
     );
     g('refreshCredit163')?.addEventListener('click',()=>load163(true));
+    g('marketCredit163')?.addEventListener('click',()=>loadMarket163());
     g('openMCR163')?.addEventListener('click',()=>openExternal(r.mcr_source_url||'https://www3.bcb.gov.br/mcr/completo'));
     g('openZARC163')?.addEventListener('click',()=>openExternal(r.zarc_source_url||'https://www.gov.br/agricultura/pt-br/assuntos/riscos-seguro/programa-nacional-de-zoneamento-agricola-de-risco-climatico'));
     g('openZARCDataset163')?.addEventListener('click',()=>openExternal(r.zarc_dataset_url||'https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico'));
     document.querySelectorAll('[data-mcr163]').forEach(b=>b.onclick=()=>openExternal(b.dataset.mcr163));
     document.querySelectorAll('[data-zarc163]').forEach(b=>b.onclick=()=>openExternal(b.dataset.zarc163));
+  }
+
+
+  async function loadMarket163(){
+    const host=g('creditIntelligence163'); if(!host||!state?.car?.car)return;
+    let panel=g('marketIntelligence163');
+    if(!panel){
+      panel=document.createElement('section');
+      panel.id='marketIntelligence163';panel.className='credit163-market';
+      host.appendChild(panel);
+    }
+    panel.innerHTML='<div class="credit163-loading"><strong>Consultando mercado de crédito rural…</strong><span>Evolução e produtos no município; instituições e programas no contexto da UF.</span></div>';
+    try{
+      const r=await api().GetRuralCreditMarket(state.selectedProperty?.id||0);
+      renderMarket163(r);
+    }catch(e){
+      panel.innerHTML='<div class="xray-warning150"><strong>Mercado rural não concluído.</strong><br>'+esc(String(e))+'</div>';
+    }
+  }
+
+  function renderMarket163(r){
+    const panel=g('marketIntelligence163'); if(!panel)return;
+    const trend=(r.trend||[]);
+    const products=(r.products||[]);
+    const institutions=(r.institutions||[]);
+    const programs=(r.programs||[]);
+    const years=[...new Set(trend.map(x=>x.year).filter(Boolean))].sort().reverse();
+    const trendHtml=years.length?years.map(y=>{
+      const rows=trend.filter(x=>x.year===y);
+      const total=rows.reduce((s,x)=>s+Number(x.value||0),0);
+      const qty=rows.reduce((s,x)=>s+Number(x.contracts||0),0);
+      const purposes=rows.map(x=>x.kind+': R$ '+money163(x.value||0)).join(' • ');
+      return '<div class="credit163-event"><strong>'+esc(y)+' — R$ '+money163(total)+'</strong><span>'+fmt(qty,0)+' contrato(s) agregados • '+esc(purposes)+'</span></div>';
+    }).join(''):'<div class="credit163-empty">Evolução municipal indisponível.</div>';
+    const productHtml=products.length?products.map(x=>marketRow163(x)).join(''):'<div class="credit163-empty">Produtos municipais indisponíveis nesta consulta.</div>';
+    const ifHtml=institutions.length?institutions.map(x=>marketRow163(x)).join(''):'<div class="credit163-empty">Instituições por UF indisponíveis nesta consulta.</div>';
+    const programHtml=programs.length?programs.map(x=>marketRow163(x)).join(''):'<div class="credit163-empty">Programas por UF indisponíveis nesta consulta.</div>';
+    const warns=(r.warnings||[]).length?'<details class="credit163-warnings"><summary>Limitações da consulta ('+(r.warnings||[]).length+')</summary>'+(r.warnings||[]).map(x=>'<div class="xray-warning150">'+esc(x)+'</div>').join('')+'</details>':'';
+    panel.innerHTML=
+      '<div class="panel-title"><div><span class="eyebrow">MDCR • INTELIGÊNCIA DE MERCADO</span><h3>'+esc(r.municipality||'Município')+' / '+esc(r.uf||'')+'</h3><p>'+esc(r.message||'Contexto público do crédito rural.')+'</p></div><span class="status-badge '+(r.available?'ok':'warning')+'">'+(r.available?'Dados públicos':'Limitado')+'</span></div>'+
+      '<div class="credit163-market-grid">'+
+        '<details open><summary>Evolução municipal — até 5 anos</summary>'+trendHtml+'</details>'+
+        '<details open><summary>Principais produtos — município</summary>'+productHtml+'</details>'+
+        '<details><summary>Instituições — contexto da UF</summary>'+ifHtml+'<div class="xray-source150">Este bloco é da UF. Não significa que essas instituições financiaram este CAR ou este município.</div></details>'+
+        '<details><summary>Programas — contexto da UF</summary>'+programHtml+'<div class="xray-source150">Este bloco é da UF. Não atribui programa ao produtor nem à operação individual.</div></details>'+
+      '</div>'+warns+
+      '<div class="xray-source150">Fonte: Matriz de Dados do Crédito Rural do Banco Central. Produtos municipais usam os recortes públicos de Custeio e Investimento; Comercialização e Industrialização permanecem na evolução agregada quando disponíveis.</div>';
+  }
+
+  function marketRow163(x){
+    return '<div class="credit163-event"><strong>'+esc(x.name||'—')+'</strong><span>'+
+      esc(x.kind||'')+(x.detail?' • '+esc(x.detail):'')+(x.year?' • '+esc(x.year):'')+
+      ' • '+fmt(x.contracts||0,0)+' contrato(s) • R$ '+money163(x.value||0)+'</span></div>';
   }
 
   function operation163(op){
