@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -133,11 +136,101 @@ type SICOROperationIntelligence struct {
 	ZARC                  SICORZARCContext         `json:"zarc"`
 }
 
+type SICORFinancialIntelligenceResult struct {
+	CAR                    string                 `json:"car"`
+	GeneratedAt            string                 `json:"generated_at"`
+	UsedCache              bool                   `json:"used_cache"`
+	LatestBalanceTotal     float64                `json:"latest_balance_total"`
+	ReleasedTotal          float64                `json:"released_total"`
+	ProagroPaidTotal       float64                `json:"proagro_paid_total"`
+	RenegotiatedOperations int                    `json:"renegotiated_operations"`
+	Operations             []SICORPublicOperation `json:"operations"`
+	Warnings               []string               `json:"warnings"`
+	MCRSourceURL           string                 `json:"mcr_source_url"`
+	ZARCSourceURL          string                 `json:"zarc_source_url"`
+	ZARCDatasetURL         string                 `json:"zarc_dataset_url"`
+}
+
+func (a *App) BuildSICORFinancialIntelligence(propertyID int64, force bool) (SICORFinancialIntelligenceResult, error) {
+	car, err := a.carForRuralCredit(propertyID)
+	if err != nil {
+		return SICORFinancialIntelligenceResult{}, err
+	}
+	if strings.TrimSpace(car.CAR) == "" {
+		return SICORFinancialIntelligenceResult{}, errors.New("CAR não informado")
+	}
+	cacheDir := filepath.Join(a.dataDir, "cache", "credit_intelligence")
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return SICORFinancialIntelligenceResult{}, err
+	}
+	cachePath := filepath.Join(cacheDir, safeFilePart(car.CAR)+".json")
+	if !force {
+		if st, statErr := os.Stat(cachePath); statErr == nil && time.Since(st.ModTime()) <= 7*24*time.Hour {
+			if b, readErr := os.ReadFile(cachePath); readErr == nil {
+				var cached SICORFinancialIntelligenceResult
+				if json.Unmarshal(b, &cached) == nil && strings.TrimSpace(cached.CAR) != "" {
+					cached.UsedCache = true
+					return cached, nil
+				}
+			}
+		}
+	}
+
+	base, err := a.BuildSICORPropertyXRay(propertyID, false)
+	if err != nil {
+		return SICORFinancialIntelligenceResult{}, err
+	}
+	if len(base.Operations) == 0 {
+		return SICORFinancialIntelligenceResult{
+			CAR: car.CAR, GeneratedAt: time.Now().Format(time.RFC3339),
+			Operations: base.Operations, Warnings: base.Warnings,
+			MCRSourceURL: mcrOfficialURL, ZARCSourceURL: zarcOfficialURL, ZARCDatasetURL: zarcDatasetURL,
+		}, nil
+	}
+
+	ctx := context.Background()
+	if a.ctx != nil {
+		ctx = a.ctx
+	}
+	ctx, cancel := context.WithTimeout(ctx, 35*time.Minute)
+	defer cancel()
+	sourceDir := filepath.Join(a.dataDir, "cache", "sicor_source")
+	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
+		return SICORFinancialIntelligenceResult{}, err
+	}
+	base.Warnings = append(base.Warnings, a.enrichSICORFinancialIntelligence(ctx, sourceDir, &base)...)
+	out := SICORFinancialIntelligenceResult{
+		CAR: car.CAR,
+		GeneratedAt: time.Now().Format(time.RFC3339),
+		LatestBalanceTotal: base.LatestBalanceTotal,
+		ReleasedTotal: base.ReleasedTotal,
+		ProagroPaidTotal: base.ProagroPaidTotal,
+		RenegotiatedOperations: base.RenegotiatedOperations,
+		Operations: base.Operations,
+		Warnings: base.Warnings,
+		MCRSourceURL: mcrOfficialURL,
+		ZARCSourceURL: zarcOfficialURL,
+		ZARCDatasetURL: zarcDatasetURL,
+	}
+	if b, marshalErr := json.Marshal(out); marshalErr == nil {
+		_ = os.WriteFile(cachePath, b, 0o644)
+	}
+	return out, nil
+}
+
 func (a *App) enrichSICORFinancialIntelligence(ctx context.Context, sourceDir string, result *SICORXRayResult) []string {
 	if result == nil || len(result.Operations) == 0 {
 		return nil
 	}
 	var warnings []string
+	insuranceDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "TipoGarantiaEmpreendimento.csv", "CD_TIPO_SEGURO", "DESCRICAO")
+	instrumentDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "instrumentoCredito.csv", "CD_INST_CREDITO", "DESCRICAO")
+	irrigationDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "TipoIrrigacao.csv", "CD_TIPO_IRRIGACAO", "DESCRICAO")
+	agricultureDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "TipoAgropecuaria.csv", "CD_TIPO_AGRICULTURA", "DESCRICAO")
+	cultivationDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "TipoCultivo.csv", "CD_TIPO_CULTIVO", "DESCRICAO")
+	integrationDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "TipoIntegracao.csv", "CD_TIPO_INTGR_CONSOR", "DESCRICAO")
+	grainDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "GraoSemente.csv", "CD_TIPO_GRAO_SEMENTE", "DESCRICAO")
+	phaseDomain, _ := a.loadSICORSimpleDomain(ctx, sourceDir, "FaseCicloProducao.csv", "CD_FASE_CICLO_PRODUCAO", "DESCRICAO")
 	targets := make(map[string]bool, len(result.Operations))
 	refOnly := make(map[string]bool, len(result.Operations))
 	minYear := time.Now().Year()
@@ -148,6 +241,14 @@ func (a *App) enrichSICORFinancialIntelligence(ctx context.Context, sourceDir st
 		if op.Year > 0 && op.Year < minYear {
 			minYear = op.Year
 		}
+		op.InsuranceName = insuranceDomain[normalizeDomainCode(op.InsuranceCode)]
+		op.InstrumentName = instrumentDomain[normalizeDomainCode(op.InstrumentCode)]
+		op.IrrigationName = irrigationDomain[normalizeDomainCode(op.IrrigationCode)]
+		op.AgricultureName = agricultureDomain[normalizeDomainCode(op.AgricultureCode)]
+		op.CultivationName = cultivationDomain[normalizeDomainCode(op.CultivationCode)]
+		op.IntegrationName = integrationDomain[normalizeDomainCode(op.IntegrationCode)]
+		op.GrainSeedName = grainDomain[normalizeDomainCode(op.GrainSeedCode)]
+		op.ProductionPhaseName = phaseDomain[normalizeDomainCode(op.ProductionPhaseCode)]
 		op.Intelligence.MCR = SICORMCRContext{
 			SourceURL: mcrOfficialURL,
 			Program: op.ProgramName,
