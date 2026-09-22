@@ -1,55 +1,73 @@
-CAR 1.6.2: interface reorganizada para mostrar primeiro apenas o que importa.
+CAR 1.6.3: Raio X de Crédito Rural ampliado, sem pesar a consulta normal do CAR.
 
-PRINCÍPIO DA INTERFACE
-• O Via Verde passa a trabalhar com “essencial primeiro, detalhe sob demanda”.
-• A tela principal do imóvel responde rapidamente: situação do CAR, área, pontos que merecem atenção e próximos passos.
-• Informações técnicas continuam disponíveis, mas deixam de competir visualmente com o que o usuário precisa decidir.
+CRÉDITO RURAL — FINANCEIRO COMPLETO
+• Novo botão “Financeiro completo” dentro do Raio X.
+• A consulta pesada fica sob demanda. O Raio X normal continua usando o fluxo rápido da 1.6.2.
+• O resultado financeiro fica em cache local por 7 dias e pode ser atualizado manualmente.
+• O painel deixa claro que os valores encontrados são registros públicos identificados e não representam, por si, a dívida total do produtor.
 
-NAVEGAÇÃO PRINCIPAL
-• As abas principais foram reduzidas visualmente a cinco blocos claros:
-  - Visão geral
-  - Raio X
-  - Mapa
-  - Projeto
-  - Documentos
-• “Ambiental” e “Crédito Rural” deixam de ocupar espaço permanente na barra principal.
-• As análises Ambiental e Crédito continuam completas e são acessadas a partir do Raio X por botões “Ambiental detalhado” e “Crédito detalhado”.
-• As telas avançadas recebem botão “Voltar ao Raio X”, evitando sensação de estar perdido no aplicativo.
+SALDOS E SITUAÇÃO
+• Consulta os arquivos públicos SICOR_SALDOS por ano.
+• Mostra o último saldo público localizado, data-base, saldo médio diário, saldo médio vincendo e situação da operação.
+• O sistema busca a descrição oficial da Situação da Operação quando a tabela de domínio estiver disponível.
 
-VISÃO GERAL
-• Novo bloco “O que importa agora”.
-• Exibe somente:
-  - situação do CAR;
-  - município;
-  - área principal;
-  - quantidade de pontos para revisão;
-  - atalhos para Raio X, mapa e projeto.
-• Conferência técnica, métricas KML e validações foram movidas para um bloco recolhível “Conferência técnica, KML e validações”.
-• Dados principais do CAR ficam em uma única faixa limpa; dados menos usados continuam no botão “Mais dados”.
+LIBERAÇÕES E DESEMBOLSO
+• Integra SICOR_LIBERACAO_RECURSOS.
+• Mostra cada liberação pública, valor total liberado e a diferença matemática entre contratado e liberado.
+• Integra SICOR_PARCELAS_DESEMBOLSO.
+• Exibe datas e valores previstos no cronograma de desembolso, sem confundir cronograma de liberação com amortização da dívida.
 
-RAIO X
-• O topo permanece como painel de decisão.
-• Nova faixa resume se existem conflitos de projeto, alertas MapBiomas ou ocorrências ambientais.
-• Os blocos Fundiário/SIGEF, histórico SICOR, projeto atual, socioambiental e limitações começam recolhidos, exceto quando uma limitação relevante precisa chamar atenção.
-• Cada bloco possui “Ver detalhes / Recolher”.
-• Operações e parcelas individuais continuam com seus próprios detalhes, mas não ficam todas abertas ao mesmo tempo.
-• O usuário pode acessar análises avançadas de Ambiental e Crédito sem poluir a navegação principal.
+RENEGOCIAÇÃO, FONTE E DESCLASSIFICAÇÃO
+• Consulta SICOR_LISTA_RENEGOCIACAO e SICOR_OPERACAO_BASICA_RENEGOCIACAO.
+• Exibe registros públicos relacionados à operação original ou renegociada.
+• Consulta SICOR_LISTA_ALTERACAO_FONTE.
+• Consulta SICOR_DESCLASSIFICACAO com data, valor, tipo e motivo publicado quando disponível.
 
-MAPA / PROJETO / DOCUMENTOS
-• Permanecem separados por finalidade.
-• Mapa contém visualização e geometrias.
-• Projeto concentra áreas, glebas e acesso.
-• Documentos concentra histórico e saídas profissionais.
-• Nenhuma função foi removida.
+PROAGRO
+• Integra Pedido de Cobertura (COP), RCP, Súmula de Julgamento e Parcelas do Proagro.
+• Mostra eventos públicos encontrados, datas, área, decisão, coberturas, perdas não amparadas e valores pagos quando publicados.
+• A ausência de evento Proagro não é interpretada como prova de inexistência de seguro ou sinistro.
 
-DASHBOARD
-• Informações explicativas e fluxo de uso foram movidos para “Como usar e informações do aplicativo”.
-• A tela inicial passa a privilegiar acesso ao trabalho e indicadores.
+DETALHAMENTO DA OPERAÇÃO
+• Passa a aproveitar campos que já existiam nos microdados e não apareciam na tela:
+  - recursos próprios;
+  - taxa registrada;
+  - encargo pós-fixado;
+  - custo efetivo total;
+  - prestação de investimento;
+  - produção prevista;
+  - produtividade obtida;
+  - receita bruta esperada;
+  - alíquota Proagro;
+  - seguro;
+  - instrumento de crédito;
+  - irrigação;
+  - tipo de agricultura e cultivo;
+  - integração/consórcio;
+  - grão/semente;
+  - fase produtiva;
+  - datas de plantio e colheita.
+
+MCR E ZARC
+• Cada operação ganha bloco de conferência de enquadramento.
+• Mostra programa, subprograma e taxa registrada na operação.
+• Inclui acesso direto ao MCR oficial do Banco Central.
+• Inclui contexto de plantio/manejo e acesso ao ZARC oficial e à base aberta do MAPA.
+• O ViaVerdeCAR não inventa enquadramento vigente: a regra atual continua sendo conferida na fonte oficial.
+
+MDCR MUNICIPAL
+• Corrigido o resumo municipal para considerar as quatro finalidades do crédito rural:
+  - Custeio;
+  - Investimento;
+  - Comercialização;
+  - Industrialização.
+• Antes, Comercialização e Industrialização não entravam nos totais mostrados.
+
+PRECISÃO DE TEXTO
+• “Operações concedidas” foi substituído por “operações registradas/contratadas no SICOR”.
+• O Monitor do Crédito Rural do MapBiomas deixa de ser chamado de “fonte externa oficial”; passa a ser identificado como monitor externo baseado em dados públicos.
 
 PRESERVADO
 • Banco local, clientes, imóveis, CAR, histórico e backups.
-• Raio X SICOR/REF BACEN, bancos, programas, fontes, operações e glebas financiadas.
-• SIGEF/INCRA e comparação CAR × parcela certificada.
-• MapBiomas Alerta, IBAMA, FUNAI, ICMBio, MMA/MCR e Temas SICAR.
-• Mapa, KML, relevo, WorldCover, roteiro, áreas A/B/C e relatórios.
-• Nenhuma migração destrutiva, exclusão de dados ou mudança nas regras de análise.
+• SIGEF/INCRA, glebas SICOR, MapBiomas, ambiental, mapa, KML, relevo, WorldCover, áreas de projeto e relatórios.
+• Nenhuma migração destrutiva ou exclusão de dados.
