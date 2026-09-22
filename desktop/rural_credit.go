@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -133,16 +134,56 @@ func queryBCBRuralMunicipality(ctx context.Context, municipality, uf, municipali
 	out := BCBRuralCreditContext{
 		Municipality: municipality,
 		UF:           uf,
-		SourceURL:    "https://www.bcb.gov.br/estabilidadefinanceira/micrrural/",
-		ExternalOnly: true,
-		Message: "O Banco Central alterou em 2026 a distribuição da MDCR para arquivos estruturados anuais. A consulta automática municipal por filtro OData não é mais tratada como confiável pelo Via Verde; use o botão para abrir a fonte oficial.",
+		SourceURL:    "https://dadosabertos.bcb.gov.br/dataset/matrizdadoscreditorural",
 	}
-	// Mantemos a assinatura e o contexto para compatibilidade. A integração
-	// automática será retomada quando o leitor dos novos arquivos estruturados
-	// estiver implementado e validado. Não fazemos uma chamada OData sabidamente
-	// instável só para produzir um falso status de erro.
-	_ = ctx
-	_ = municipalityCode
+	years := []int{time.Now().Year(), time.Now().Year() - 1}
+	var raw []map[string]any
+	var failures []string
+	successfulYears := 0
+
+	for _, year := range years {
+		rows, err := queryBCBMunicipalityAggregate(ctx, municipality, uf, municipalityCode, year)
+		if err != nil {
+			failures = append(failures, fmt.Sprintf("%d: %v", year, err))
+			continue
+		}
+		successfulYears++
+		raw = append(raw, rows...)
+	}
+	if len(raw) > 0 {
+		out.Rows = aggregateBCBMunicipalityRows(raw)
+		sort.SliceStable(out.Rows, func(i, j int) bool {
+			if out.Rows[i].Year == out.Rows[j].Year {
+				if out.Rows[i].Kind == out.Rows[j].Kind {
+					return out.Rows[i].Value > out.Rows[j].Value
+				}
+				return out.Rows[i].Kind < out.Rows[j].Kind
+			}
+			return out.Rows[i].Year > out.Rows[j].Year
+		})
+		for _, row := range out.Rows {
+			out.Contracts += row.Contracts
+			out.Value += row.Value
+		}
+		out.Available = true
+		out.ExternalOnly = false
+		out.Message = "Consulta automática ao SICOR/MDCR concluída para o município do CAR, usando os dois anos mais recentes disponíveis na API pública."
+		return out, nil
+	}
+
+	if successfulYears > 0 && len(failures) == 0 {
+		out.Available = true
+		out.ExternalOnly = false
+		out.Message = "A consulta automática ao SICOR/MDCR foi concluída, mas não retornou registros para este município nos dois anos consultados."
+		return out, nil
+	}
+
+	out.ExternalOnly = true
+	if len(failures) > 0 {
+		out.Message = "A consulta automática ao SICOR/MDCR foi tentada, mas a API pública não aceitou ou não concluiu o filtro municipal nesta tentativa. A fonte oficial continua disponível como contingência."
+		return out, errors.New(strings.Join(failures, " | "))
+	}
+	out.Message = "A consulta automática ao SICOR/MDCR não retornou resposta utilizável. A fonte oficial continua disponível como contingência."
 	return out, nil
 }
 
@@ -179,7 +220,8 @@ func queryBCBMunicipalityAggregate(ctx context.Context, municipality, uf, munici
 	}
 
 	var lastErr error
-	sawSuccessfulResponse := false
+	sawEmptyFilteredResponse := false
+	sawIgnoredFilter := false
 	for _, filter := range filters {
 		q := url.Values{}
 		q.Set("$format", "json")
@@ -191,14 +233,27 @@ func queryBCBMunicipalityAggregate(ctx context.Context, municipality, uf, munici
 			lastErr = err
 			continue
 		}
-		sawSuccessfulResponse = true
+		if len(raw) == 0 {
+			// Uma resposta vazia com HTTP 200 é compatível com filtro aceito e
+			// município sem registros naquele ano. Tentamos os filtros seguintes
+			// para contornar diferenças de tipagem/capitalização do serviço.
+			sawEmptyFilteredResponse = true
+			continue
+		}
 		matched := filterBCBMunicipalityRows(raw, municipality, uf, municipalityCode, yearText)
 		if len(matched) > 0 {
 			return matched, nil
 		}
+		// Se a API devolveu linhas, mas nenhuma pertence ao município/ano
+		// solicitado, o deployment provavelmente ignorou o $filter. Nunca
+		// tratamos essas linhas como dados do município.
+		sawIgnoredFilter = true
 	}
-	if sawSuccessfulResponse {
+	if sawEmptyFilteredResponse && !sawIgnoredFilter {
 		return nil, nil
+	}
+	if sawIgnoredFilter {
+		return nil, errors.New("a API do SICOR retornou dados de outros municípios e não respeitou o filtro solicitado")
 	}
 	if lastErr != nil {
 		return nil, lastErr
