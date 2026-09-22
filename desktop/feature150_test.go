@@ -187,3 +187,38 @@ func TestCreditIntelligenceGenericRenegotiationMatchesAnyRefColumn(t *testing.T)
 		t.Fatalf("renegociação não vinculada corretamente: %#v", records)
 	}
 }
+
+
+func TestZARCCheckMatchesMunicipalityCultureSoilCycleAndDecendio(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "zarc.csv")
+	data := "Nome_cultura;SafraIni;SafraFin;Cod_Cultura;Cod_Ciclo;Cod_Solo;geocodigo;UF;municipio;Nome_Outros_Manejos;Portaria;dec28;dec29;dec30\n" +
+		"Soja;2026;2027;SOJA;1;3;3107703;MG;Bom Jesus do Amparo;Sequeiro;Portaria teste;20;30;40\n" +
+		"Milho;2026;2027;MILHO;1;3;3107703;MG;Bom Jesus do Amparo;Sequeiro;Outra;20;20;20\n"
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil { t.Fatal(err) }
+	got, err := scanZARCForOperation(path, "2026/2027", "3107703", "Bom Jesus do Amparo", "MG", "Soja", "3", "AD3", "1", "Grupo I", "2026-10-05", "2026-10-15")
+	if err != nil { t.Fatal(err) }
+	if !got.Available || !got.Matched {
+		t.Fatalf("esperava correspondência ZARC: %+v", got)
+	}
+	if len(got.PlantingDecendios) != 2 || got.PlantingDecendios[0] != 28 || got.PlantingDecendios[1] != 29 {
+		t.Fatalf("decêndios inesperados: %#v", got.PlantingDecendios)
+	}
+	if len(got.RiskLevels) != 2 || got.RiskLevels[0] != 20 || got.RiskLevels[1] != 30 {
+		t.Fatalf("riscos inesperados: %#v", got.RiskLevels)
+	}
+}
+
+func TestZARCCheckDoesNotClaimMatchWithoutDateWindow(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "zarc.csv")
+	data := "Nome_cultura;Cod_Ciclo;Cod_Solo;geocodigo;UF;municipio;Portaria;dec28\n" +
+		"Soja;1;3;3107703;MG;Bom Jesus do Amparo;Portaria teste;20\n"
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil { t.Fatal(err) }
+	got, err := scanZARCForOperation(path, "2026/2027", "3107703", "Bom Jesus do Amparo", "MG", "Soja", "3", "AD3", "1", "Grupo I", "", "")
+	if err != nil { t.Fatal(err) }
+	if got.Matched {
+		t.Fatalf("não deveria concluir correspondência sem datas: %+v", got)
+	}
+	if !got.Available {
+		t.Fatalf("deveria reconhecer que a cultura/município existem na base: %+v", got)
+	}
+}
