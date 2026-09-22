@@ -28,7 +28,7 @@ CACHE E DESEMPENHO
 • A primeira sincronização pode levar alguns minutos porque os microdados oficiais são arquivos nacionais.
 • Os downloads são feitos em streaming para arquivo, sem carregar o pacote nacional inteiro na memória.
 • Os arquivos-fonte recentes são mantidos temporariamente em cache para evitar baixar tudo novamente a cada CAR.
-• O resultado final de cada CAR fica em cache local por 14 dias e pode ser atualizado do zero pelo usuário.
+• O resultado final de cada CAR fica em cache local por 14 dias e pode ser recalculado pelo usuário; os arquivos-fonte recentes continuam reutilizados conforme a validade do cache para evitar downloads nacionais desnecessários.
 • Arquivos temporários do Raio X continuam fora do backup, pois podem ser reproduzidos novamente pelas fontes oficiais.
 
 EXPORTAÇÃO
