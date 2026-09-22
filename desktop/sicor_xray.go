@@ -78,6 +78,7 @@ type SICORXRayResult struct {
 	PropertyReferences     int                    `json:"property_references"`
 	UnresolvedReferences   int                    `json:"unresolved_references"`
 	OperationCount         int                    `json:"operation_count"`
+	DestinationCount       int                    `json:"destination_count"`
 	GlebaCount             int                    `json:"gleba_count"`
 	TotalCreditValue       float64                `json:"total_credit_value"`
 	TotalFinancedAreaHa    float64                `json:"total_financed_area_ha"`
@@ -165,7 +166,7 @@ func (a *App) BuildSICORPropertyXRay(propertyID int64, force bool) (SICORXRayRes
 		CacheUntil: time.Now().Add(14*24*time.Hour).Format(time.RFC3339),
 		PropertyReferences: len(refs),
 		SourceURL: "https://www.bcb.gov.br/estabilidadefinanceira/tabelas-credito-rural-proagro",
-		Scope: "Microdados públicos do SICOR vinculados ao CAR declarado. Operações desde 2013; glebas somente quando publicadas pelo Banco Central.",
+		Scope: "Microdados públicos do SICOR vinculados ao CAR declarado. Operações concedidas desde 2013; glebas somente quando publicadas pelo Banco Central. REF BACEN é contado como operação e NU_ORDEM como destinação.",
 	}
 	if len(refs) == 0 {
 		result.Warnings = append(result.Warnings,
@@ -245,9 +246,11 @@ func (a *App) BuildSICORPropertyXRay(propertyID int64, force bool) (SICORXRayRes
 		}
 	}
 
+	uniqueRefs := map[string]bool{}
 	for _, op := range operationsByKey {
 		sort.SliceStable(op.Glebas, func(i, j int) bool { return op.Glebas[i].Index < op.Glebas[j].Index })
 		result.Operations = append(result.Operations, *op)
+		uniqueRefs[strings.TrimSpace(op.RefBacen)] = true
 		result.TotalCreditValue += op.CreditValue
 		result.TotalFinancedAreaHa += op.FinancedAreaHa
 		result.GlebaCount += len(op.Glebas)
@@ -264,7 +267,8 @@ func (a *App) BuildSICORPropertyXRay(propertyID int64, force bool) (SICORXRayRes
 		}
 		return result.Operations[i].IssueDate > result.Operations[j].IssueDate
 	})
-	result.OperationCount = len(result.Operations)
+	result.DestinationCount = len(result.Operations)
+	result.OperationCount = len(uniqueRefs)
 	result.UnresolvedReferences = len(refSet) - len(found)
 	if result.UnresolvedReferences > 0 {
 		result.Warnings = append(result.Warnings,
