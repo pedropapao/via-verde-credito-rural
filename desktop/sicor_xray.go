@@ -166,7 +166,7 @@ func (a *App) BuildSICORPropertyXRay(propertyID int64, force bool) (SICORXRayRes
 		CacheUntil: time.Now().Add(14*24*time.Hour).Format(time.RFC3339),
 		PropertyReferences: len(refs),
 		SourceURL: "https://www.bcb.gov.br/estabilidadefinanceira/tabelas-credito-rural-proagro",
-		Scope: "Microdados públicos do SICOR vinculados ao CAR declarado. Operações concedidas desde 2013; glebas somente quando publicadas pelo Banco Central. REF BACEN é contado como operação e NU_ORDEM como destinação.",
+		Scope: "Microdados públicos do SICOR vinculados ao CAR declarado. Operações registradas/contratadas no SICOR desde 2013; glebas somente quando publicadas pelo Banco Central. REF BACEN é contado como operação e NU_ORDEM como destinação.",
 	}
 	if len(refs) == 0 {
 		result.Warnings = append(result.Warnings,
