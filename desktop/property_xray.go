@@ -17,12 +17,16 @@ type PropertyXRaySummary struct {
 	EnvironmentalHits      int     `json:"environmental_hits"`
 	AvailableSICARThemes   int     `json:"available_sicar_themes"`
 	ProjectAreas           int     `json:"project_areas"`
+	SIGEFParcels           int     `json:"sigef_parcels"`
+	SIGEFRegistries        int     `json:"sigef_registries"`
+	SIGEFBestCARCoverage   float64 `json:"sigef_best_car_coverage"`
 }
 
 type PropertyXRay struct {
 	GeneratedAt string                 `json:"generated_at"`
 	CAR         CARResult              `json:"car"`
 	SICOR       SICORXRayResult        `json:"sicor"`
+	SIGEF       SIGEFPublicResult       `json:"sigef"`
 	MapBiomas   MapBiomasCARSummary    `json:"mapbiomas"`
 	Areas       []ProjectArea          `json:"areas"`
 	Route       AccessRoute            `json:"route"`
@@ -61,11 +65,16 @@ func (a *App) BuildPropertyXRay(propertyID int64, force bool) (PropertyXRay, err
 		v MapBiomasCARSummary
 		e error
 	}
+	type sigefResult struct {
+		v SIGEFPublicResult
+		e error
+	}
 	sicorCh := make(chan sicorResult, 1)
 	alertCh := make(chan alertResult, 1)
+	sigefCh := make(chan sigefResult, 1)
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 	go func() {
 		defer wg.Done()
 		defer func() {
@@ -86,10 +95,21 @@ func (a *App) BuildPropertyXRay(propertyID int64, force bool) (PropertyXRay, err
 		v, e := a.QueryMapBiomasCAR(car.CAR)
 		alertCh <- alertResult{v: v, e: e}
 	}()
+	go func() {
+		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				sigefCh <- sigefResult{e: fmt.Errorf("falha isolada no SIGEF público: %v", r)}
+			}
+		}()
+		v, e := a.QuerySIGEFPublic(propertyID)
+		sigefCh <- sigefResult{v: v, e: e}
+	}()
 
 	wg.Wait()
 	sicor := <-sicorCh
 	alerts := <-alertCh
+	sigef := <-sigefCh
 	if sicor.e != nil {
 		out.Warnings = append(out.Warnings, "SICOR: "+sicor.e.Error())
 	} else {
@@ -101,12 +121,21 @@ func (a *App) BuildPropertyXRay(propertyID int64, force bool) (PropertyXRay, err
 	} else {
 		out.MapBiomas = alerts.v
 	}
+	if sigef.e != nil {
+		out.Warnings = append(out.Warnings, "SIGEF/INCRA: "+sigef.e.Error())
+		out.SIGEF = SIGEFPublicResult{SourceURL: sigefPublicSourceURL, Message: "Fonte pública do SIGEF indisponível nesta tentativa."}
+	} else {
+		out.SIGEF = sigef.v
+	}
 
 	out.Summary.PublicCreditOperations = out.SICOR.OperationCount
 	out.Summary.PublicCreditValue = out.SICOR.TotalCreditValue
 	out.Summary.FinancedGlebas = out.SICOR.GlebaCount
 	out.Summary.MapBiomasAlerts = out.MapBiomas.TotalAlerts
 	out.Summary.ProjectAreas = len(out.Areas)
+	out.Summary.SIGEFParcels = out.SIGEF.ParcelCount
+	out.Summary.SIGEFRegistries = out.SIGEF.RegistryCount
+	out.Summary.SIGEFBestCARCoverage = out.SIGEF.BestCARCoveragePct
 
 	for _, op := range out.SICOR.Operations {
 		for _, g := range op.Glebas {
@@ -128,5 +157,6 @@ func (a *App) BuildPropertyXRay(propertyID int64, force bool) (PropertyXRay, err
 	}
 
 	out.Warnings = append(out.Warnings, out.SICOR.Warnings...)
+	out.Warnings = append(out.Warnings, out.SIGEF.Warnings...)
 	return out, nil
 }
