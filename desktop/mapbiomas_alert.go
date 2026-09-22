@@ -314,27 +314,52 @@ func mapBiomasGraphQL(token string, reqBody graphQLRequest, dst any) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest(http.MethodPost, mapBiomasAlertGraphQL, bytes.NewReader(body))
-	if err != nil {
-		return err
+	client := &http.Client{Timeout: 45 * time.Second}
+	var lastErr error
+	for attempt := 1; attempt <= 2; attempt++ {
+		req, err := http.NewRequest(http.MethodPost, mapBiomasAlertGraphQL, bytes.NewReader(body))
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion)
+		if strings.TrimSpace(token) != "" {
+			req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(token))
+		}
+
+		resp, err := client.Do(req)
+		if err == nil {
+			if resp.StatusCode == http.StatusUnauthorized {
+				resp.Body.Close()
+				return errors.New("sessão MapBiomas Alerta inválida ou expirada; conecte novamente em Configurações")
+			}
+			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				decodeErr := json.NewDecoder(resp.Body).Decode(dst)
+				resp.Body.Close()
+				if decodeErr == nil {
+					return nil
+				}
+				lastErr = decodeErr
+			} else {
+				statusErr := fmt.Errorf("MapBiomas Alerta respondeu HTTP %d", resp.StatusCode)
+				resp.Body.Close()
+				lastErr = statusErr
+				// Erros de cliente não melhoram com nova tentativa.
+				if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusTooManyRequests {
+					return statusErr
+				}
+			}
+		} else {
+			lastErr = err
+		}
+
+		if attempt < 2 {
+			time.Sleep(1500 * time.Millisecond)
+		}
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion)
-	if strings.TrimSpace(token) != "" {
-		req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(token))
+	if lastErr == nil {
+		lastErr = errors.New("serviço sem resposta")
 	}
-	client := &http.Client{Timeout: 25 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusUnauthorized {
-		return errors.New("sessão MapBiomas Alerta inválida ou expirada; conecte novamente em Configurações")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("MapBiomas Alerta respondeu HTTP %d", resp.StatusCode)
-	}
-	return json.NewDecoder(resp.Body).Decode(dst)
+	return fmt.Errorf("MapBiomas Alerta não respondeu após 2 tentativas: %w", lastErr)
 }
