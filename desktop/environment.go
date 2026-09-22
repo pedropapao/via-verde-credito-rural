@@ -290,47 +290,45 @@ func cloneURLValues(in url.Values) url.Values {
 }
 
 func fetchEnvironmentalBody(ctx context.Context, target, accept string) ([]byte, error) {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	// O PAMGIA já apresentou conexões lentas/instáveis em HTTP/2 no Windows.
-	// Forçar HTTP/1.1 nesta triagem evita que um problema de sessão HTTP/2
-	// derrube uma consulta que o mesmo servidor aceita normalmente.
-	transport.ForceAttemptHTTP2 = false
-	client := &http.Client{Timeout: 32 * time.Second, Transport: transport}
-	var lastErr error
-	for attempt := 1; attempt <= 2; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
-		if err != nil {
-			return nil, err
+	// Deixe o Go negociar HTTP/2/HTTP/1.1 normalmente. O PAMGIA pode responder
+	// com frames HTTP/2 mesmo quando a conexão é forçada para HTTP/1.1; isso
+	// resulta em "malformed HTTP response" no Windows.
+	client := &http.Client{Timeout: 28 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", accept)
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("User-Agent", "Mozilla/5.0 ViaVerdeCAR/"+AppVersion)
+
+	var directErr error
+	resp, err := client.Do(req)
+	if err == nil {
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 12<<20))
+		resp.Body.Close()
+		if readErr == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return body, nil
 		}
-		req.Header.Set("Accept", accept)
-		req.Header.Set("User-Agent", "Mozilla/5.0 ViaVerdeCAR/"+AppVersion)
-		resp, err := client.Do(req)
-		if err == nil {
-			body, readErr := io.ReadAll(io.LimitReader(resp.Body, 12<<20))
-			resp.Body.Close()
-			if readErr == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
-				return body, nil
-			}
-			if readErr != nil {
-				lastErr = readErr
-			} else {
-				lastErr = fmt.Errorf("HTTP %d", resp.StatusCode)
-			}
+		if readErr != nil {
+			directErr = readErr
 		} else {
-			lastErr = err
+			directErr = fmt.Errorf("HTTP %d", resp.StatusCode)
 		}
-		if attempt < 2 && ctx.Err() == nil {
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			case <-time.After(900 * time.Millisecond):
-			}
-		}
+	} else {
+		directErr = err
 	}
-	if lastErr == nil {
-		lastErr = errors.New("fonte não respondeu")
+
+	// O curl.exe do Windows usa a pilha TLS/HTTP do sistema e já é usado como
+	// contingência na consulta principal do CAR. Ir para ele imediatamente após
+	// a primeira falha evita esperar dois timeouts seguidos do PAMGIA.
+	if body, curlErr := fetchCARWithCurl(ctx, target); curlErr == nil {
+		return body, nil
+	} else if directErr != nil {
+		return nil, fmt.Errorf("cliente nativo falhou (%v); fallback do Windows falhou (%v)", directErr, curlErr)
+	} else {
+		return nil, fmt.Errorf("fallback do Windows falhou: %v", curlErr)
 	}
-	return nil, lastErr
 }
 
 func queryFUNAITerritories(ctx context.Context, carRaw string) ([]TerritoryFinding, error) {
