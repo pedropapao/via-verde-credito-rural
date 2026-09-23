@@ -27,11 +27,9 @@
     const panel=g('environmentIntel180');if(!panel)return;
     if(!state?.car?.car){panel.innerHTML='<div class="environment-empty180">Consulte um CAR para habilitar a Inteligência Ambiental.</div>';return}
     if(s180.data){render180(s180.data);return}
-    panel.innerHTML='<div class="panel-title"><div><span class="eyebrow">AMBIENTAL • PERFIL AUTOMÁTICO</span><h3>Raio X ambiental do imóvel</h3><p>Relevo, bioma, água, PRODES, DETER, fogo, cobertura do solo e evidências territoriais — sem download manual.</p></div><span class="status-badge neutral">Sob demanda</span></div>'+
-      '<div class="environment-intro180"><div class="environment-art180">🌎</div><div><strong>Perfil ambiental automático</strong><span>O Via Verde cruza o perímetro público do CAR com serviços públicos e gratuitos. Cada fonte falha de forma independente para não derrubar a análise inteira.</span></div></div>'+
-      '<div class="environment-actions180"><button class="btn primary" id="loadEnvironment180">Montar perfil ambiental</button><button class="btn ghost" id="openMapBiomasMethod180">Metodologia MapBiomas</button></div>';
-    g('loadEnvironment180').onclick=()=>load180(false);
-    g('openMapBiomasMethod180').onclick=()=>openExternal('https://alerta.mapbiomas.org/metodo-mapbiomas-alerta/');
+    panel.innerHTML='<div class="panel-title"><div><span class="eyebrow">AMBIENTAL • PERFIL AUTOMÁTICO</span><h3>Raio X ambiental do imóvel</h3><p>Relevo, bioma, água, PRODES, DETER, fogo, cobertura do solo e evidências territoriais — consulta automática.</p></div><span class="status-badge info">Preparando</span></div>'+
+      '<div class="environment-intro180"><div class="environment-art180">🌎</div><div><strong>Perfil ambiental automático</strong><span>O Via Verde vai cruzar este CAR com serviços públicos e gratuitos. Nenhum download ou importação manual é necessário.</span></div></div>';
+    setTimeout(()=>load180(false),0);
   }
 
   async function load180(force){
