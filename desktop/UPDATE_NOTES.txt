@@ -12,13 +12,12 @@ NOVO PERFIL AMBIENTAL
 • PRODES / INPE-TerraBrasilis: polígonos anuais de supressão que interceptam o CAR, área estimada, quantidade e distribuição por ano.
 • DETER / INPE-TerraBrasilis quando houver cobertura pública operacional para o bioma: avisos recentes, área estimada e data mais recente.
 • INPE Queimadas: focos ativos/recentes retornados pela camada pública e localizados dentro do CAR.
-• ESA WorldCover 2021: amostragem automática da composição de cobertura do solo e classe predominante.
 • Contexto territorial de proximidade: embargo IBAMA, Terra Indígena e UC federal mais próximos em raio aproximado de 50 km quando as fontes responderem.
 
-WORLD COVER — PRECISÃO
-• O WorldCover continua gratuito e automático, mas o WMS público é uma imagem RGB destinada principalmente à visualização.
-• Por isso o ViaVerdeCAR apresenta percentuais de AMOSTRAS CARTOGRÁFICAS, não hectares oficiais por classe.
-• A tela e o laudo deixam explícita essa limitação; o sistema não transforma a amostra em dado cadastral.
+WORLD COVER — DECISÃO DE QUALIDADE
+• O WorldCover é gratuito, porém o WMS público oficial é destinado à visualização e não à análise raster.
+• Por isso a 1.9.0 NÃO apresenta percentuais de uso/cobertura derivados da cor da imagem WMS.
+• A integração analítica ficará reservada para uma fonte automática que exponha os valores do raster de forma confiável, sem login nem download manual.
 
 PRODES × DETER
 • PRODES é apresentado como histórico anual de supressão.
@@ -43,7 +42,7 @@ MAPA
 
 LAUDO AMBIENTAL
 • Novo capítulo “Perfil físico-ambiental automático”.
-• O PDF passa a registrar bioma, relevo, hidrografia, PRODES, DETER, fogo, cobertura do solo e contexto territorial.
+• O PDF passa a registrar bioma, relevo, hidrografia, PRODES, DETER, fogo e contexto territorial.
 • A matriz de fontes informa “consultado”, “não aplicável” ou “indisponível”.
 • O relatório mantém linguagem técnica conservadora e diferencia evidência ambiental de conclusão jurídica.
 • O JSON de evidências também inclui todo o novo perfil.
