@@ -1,7 +1,7 @@
 /* ViaVerdeCAR 1.9.0 — Perfil Ambiental Automático */
 (function(){
   const g=id=>document.getElementById(id);
-  const s180={car:'',data:null,loading:false,layer:null};
+  const s180={car:'',data:null,loading:false,layer:null,fireLayer:null};
 
   function api180(){return typeof api==='function'?api():window.go?.main?.App}
   function esc180(v){return typeof esc==='function'?esc(String(v??'')):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -183,8 +183,16 @@
   async function exportJSON180(){try{const p=await api180().ExportEnvironmentalEvidenceJSON(state.selectedProperty?.id||0,false);toast('Evidências ambientais salvas em '+p)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
   async function exportAlert180(code){try{const p=await api180().ExportMapBiomasAlertTechnicalReport(state.selectedProperty?.id||0,code,false);toast('Laudo do alerta salvo em '+p)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
 
-  function clearMap180(){if(s180.layer&&state?.map){try{state.map.removeLayer(s180.layer);state.layerControl?.removeLayer(s180.layer)}catch(_){}}s180.layer=null}
-  function profileHasMap180(){return false}
+  function clearMap180(){
+    if(state?.map){
+      for(const layer of [s180.layer,s180.fireLayer]){
+        if(!layer)continue;
+        try{state.map.removeLayer(layer);state.layerControl?.removeLayer(layer)}catch(_){}
+      }
+    }
+    s180.layer=null;s180.fireLayer=null;
+  }
+  function profileHasMap180(p){return !!p?.fire?.geojson}
   function addGeo180(group,raw,label,style,pointStyle){
     if(!raw)return 0;
     try{
@@ -192,13 +200,29 @@
       layer.bindPopup('<strong>'+esc180(label)+'</strong>');layer.eachLayer(x=>x.addTo(group));return 1;
     }catch(_){return 0}
   }
-  function showMap180(alerts){
-    if(!state?.map)return;clearMap180();const group=L.featureGroup();let count=0;
-    arr180(alerts).forEach(a=>{if(!a?.geometry_geojson)return;count+=addGeo180(group,a.geometry_geojson,'MapBiomas Alerta '+(a.alert_code||''),{weight:3,fillOpacity:.18})});
-    if(!count){toast('Nenhuma geometria de alerta disponível para desenhar.',true);return}
-    group.addTo(state.map);state.layerControl?.addOverlay(group,'Alertas ambientais');s180.layer=group;
+  function showMap180(alerts,p){
+    if(!state?.map)return;
+    clearMap180();
+    const alertGroup=L.featureGroup(),fireGroup=L.featureGroup();
+    let alertCount=0,fireCount=0;
+    arr180(alerts).forEach(a=>{if(!a?.geometry_geojson)return;alertCount+=addGeo180(alertGroup,a.geometry_geojson,'MapBiomas Alerta '+(a.alert_code||''),{weight:3,fillOpacity:.18})});
+    if(p?.fire?.geojson){
+      fireCount+=addGeo180(fireGroup,p.fire.geojson,'Foco de calor — INPE',null,{radius:6,weight:2,fillOpacity:.8});
+    }
+    if(!alertCount&&!fireCount){toast('Nenhuma geometria ambiental disponível para desenhar.',true);return}
+    if(alertCount){
+      alertGroup.addTo(state.map);state.layerControl?.addOverlay(alertGroup,'Alertas MapBiomas');s180.layer=alertGroup;
+    }
+    if(fireCount){
+      fireGroup.addTo(state.map);state.layerControl?.addOverlay(fireGroup,'Focos de calor — INPE');s180.fireLayer=fireGroup;
+    }
     document.querySelector('[data-car-tab131="map"]')?.click();
-    setTimeout(()=>{try{const b=group.getBounds();if(b.isValid())state.map.fitBounds(b.pad(.15),{maxZoom:16})}catch(_){}},100);
+    setTimeout(()=>{try{
+      let b=null;
+      if(alertCount){const x=alertGroup.getBounds();if(x.isValid())b=x}
+      if(fireCount){const x=fireGroup.getBounds();if(x.isValid())b=b?b.extend(x):x}
+      if(b&&b.isValid())state.map.fitBounds(b.pad(.15),{maxZoom:16});
+    }catch(_){}},100);
   }
 
   function watch180(){
