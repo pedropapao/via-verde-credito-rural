@@ -25,6 +25,8 @@ const (
 	terraBrasilisBaseURL  = "https://terrabrasilis.dpi.inpe.br/geoserver"
 	inpeFireWFSURL        = "https://terrabrasilis.dpi.inpe.br/queimadas/geoserver/ows"
 	anaHydroURL           = "https://portal1.snirh.gov.br/server/rest/services/dados_abertos/Hidrografia/MapServer/0/query"
+	anaHydroPart1URL      = "https://portal1.snirh.gov.br/server/rest/services/dados_abertos/Hidrografia_Parte_1/FeatureServer/0/query"
+	anaHydroPart2URL      = "https://portal1.snirh.gov.br/server/rest/services/dados_abertos/Hidrografia_Parte_2/FeatureServer/0/query"
 	anaWaterBodyURL       = "https://portal1.snirh.gov.br/arcgis/rest/services/DADOSABERTOS/Massa_d%C3%A1gua/FeatureServer/0/query"
 	anaTelemetryURL       = "https://portal1.snirh.gov.br/server/rest/services/dados_abertos/Estacao_Telemetrica/FeatureServer/0/query"
 	worldCoverWMSURL      = "https://mapproxy.terrascope.be/mapproxy/service"
@@ -142,12 +144,15 @@ type LandCoverClass struct {
 type NearbyEnvironmentalProfile struct {
 	Available              bool    `json:"available"`
 	SearchRadiusKm         float64 `json:"search_radius_km"`
+	EmbargoChecked         bool    `json:"embargo_checked"`
 	EmbargoFound           bool    `json:"embargo_found"`
 	NearestEmbargoKm       float64 `json:"nearest_embargo_km"`
 	NearestEmbargoLabel    string  `json:"nearest_embargo_label"`
+	IndigenousChecked      bool    `json:"indigenous_checked"`
 	IndigenousFound        bool    `json:"indigenous_found"`
 	NearestIndigenousKm    float64 `json:"nearest_indigenous_km"`
 	NearestIndigenousLabel string  `json:"nearest_indigenous_label"`
+	UCChecked              bool    `json:"uc_checked"`
 	UCFound                bool    `json:"uc_found"`
 	NearestUCKm            float64 `json:"nearest_uc_km"`
 	NearestUCLabel         string  `json:"nearest_uc_label"`
@@ -353,17 +358,20 @@ func queryHydrologyProfile(ctx context.Context, car CARResult) (HydrologyProfile
 	var riverFeatures []carGeoFeature
 	var errs []string
 	hydroOK := false
-	fc, hydroErr := queryArcGISByEnvelope(ctx, anaHydroURL, minLon, minLat, maxLon, maxLat,
-		"COCURSODAG,COBACIA,NORIOCOMP,DEDOMINIAL,OBJECTID", 1000)
-	if hydroErr != nil {
-		errs = append(errs, "hidrografia: "+hydroErr.Error())
-	} else {
+	var hydroErrors []string
+	for _, endpoint := range []string{anaHydroPart1URL, anaHydroPart2URL, anaHydroURL} {
+		fc, hydroErr := queryArcGISByEnvelope(ctx, endpoint, minLon, minLat, maxLon, maxLat,
+			"*", 1000)
+		if hydroErr != nil {
+			hydroErrors = append(hydroErrors, hydroErr.Error())
+			continue
+		}
 		hydroOK = true
 		for _, f := range fc.Features {
 			if !lineGeometryIntersectsCAR(f.Geometry, car.GeoJSON) {
 				continue
 			}
-			key := carStringProp(f.Properties, "COCURSODAG", "cocursodag", "OBJECTID", "objectid")
+			key := carStringProp(f.Properties, "COCURSODAG", "cocursodag", "OBJECTID", "objectid", "FID", "fid")
 			if key == "" {
 				key = featureGeometryKey(f.Geometry)
 			}
@@ -372,12 +380,12 @@ func queryHydrologyProfile(ctx context.Context, car CARResult) (HydrologyProfile
 			}
 			riverSeen[key] = true
 			out.RiverReachCount++
-			name := carStringProp(f.Properties, "NORIOCOMP", "noriocomp", "nome", "NOME")
+			name := carStringProp(f.Properties, "NORIOCOMP", "noriocomp", "nome", "NOME", "NO_RIO", "no_rio")
 			if name != "" && !nameSeen[name] {
 				nameSeen[name] = true
 				out.NamedRivers = append(out.NamedRivers, name)
 			}
-			domain := strings.ToLower(carStringProp(f.Properties, "DEDOMINIAL", "dedominial"))
+			domain := strings.ToLower(carStringProp(f.Properties, "DEDOMINIAL", "dedominial", "DOMINIALIDADE", "dominialidade"))
 			if strings.Contains(domain, "federal") {
 				out.FederalReachCount++
 			} else if strings.Contains(domain, "estad") {
@@ -385,6 +393,9 @@ func queryHydrologyProfile(ctx context.Context, car CARResult) (HydrologyProfile
 			}
 			riverFeatures = append(riverFeatures, f)
 		}
+	}
+	if !hydroOK && len(hydroErrors) > 0 {
+		errs = append(errs, "hidrografia: "+strings.Join(hydroErrors, " | "))
 	}
 	sort.Strings(out.NamedRivers)
 	if len(out.NamedRivers) > 8 {
@@ -903,6 +914,7 @@ func queryNearbyEnvironmental(ctx context.Context, car CARResult) (NearbyEnviron
 	// IBAMA
 	if fc, err := queryArcGISByEnvelope(ctx, strings.TrimSuffix(ibamaEmbargoLayerURL, "/query")+"/query", minLon, minLat, maxLon, maxLat, "num_tad,municipio,OBJECTID", 300); err == nil {
 		success++
+		out.EmbargoChecked = true
 		best := math.Inf(1)
 		for _, f := range fc.Features {
 			d := minGeometryVertexDistanceKm(f.Geometry, car.CenterLat, car.CenterLon)
@@ -922,6 +934,7 @@ func queryNearbyEnvironmental(ctx context.Context, car CARResult) (NearbyEnviron
 	// FUNAI
 	if fc, err := querySimpleWFSBBox(ctx, funaiWFSURL, "Funai:tis_poligonais", minLon, minLat, maxLon, maxLat, 100); err == nil {
 		success++
+		out.IndigenousChecked = true
 		best := math.Inf(1)
 		for _, f := range fc.Features {
 			d := minGeometryVertexDistanceKm(f.Geometry, car.CenterLat, car.CenterLon)
@@ -941,6 +954,7 @@ func queryNearbyEnvironmental(ctx context.Context, car CARResult) (NearbyEnviron
 	// ICMBio
 	if fc, err := querySimpleWFSBBox(ctx, icmbioWFSURL, icmbioUCLayer, minLon, minLat, maxLon, maxLat, 100); err == nil {
 		success++
+		out.UCChecked = true
 		best := math.Inf(1)
 		for _, f := range fc.Features {
 			d := minGeometryVertexDistanceKm(f.Geometry, car.CenterLat, car.CenterLon)
