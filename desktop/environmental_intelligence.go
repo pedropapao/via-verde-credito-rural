@@ -185,7 +185,7 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 		Themes: SICARThemesSummary{},
 		MapBiomasMethodURL: mapBiomasMethodologyURL,
 		MapBiomasAPIURL: mapBiomasAPIURL,
-		Interpretation: "Triagem técnica auxiliar baseada em fontes públicas automáticas e cruzamentos espaciais. A presença de alerta, desmatamento, fogo ou sobreposição não determina, por si só, infração, autoria, responsabilidade ou impedimento de crédito; exige conferência documental e, quando aplicável, análise por profissional habilitado e pelo órgão competente.",
+		Interpretation: "Triagem técnica auxiliar baseada em fontes públicas automáticas. O bioma e a cobertura do solo descrevem contexto territorial; alertas e sobreposições são evidências para conferência e não determinam, por si só, infração, autoria, responsabilidade ou impedimento de crédito.",
 	}
 
 	profileCtx, profileCancel := context.WithTimeout(context.Background(), 58*time.Second)
@@ -579,9 +579,7 @@ func normalizeLegacyEnvironmentalCache(out EnvironmentalIntelligenceResult) Envi
 }
 
 func environmentalProfileHasData(p EnvironmentalProfile) bool {
-	return p.Terrain.Available || p.Biome.Available || p.Hydrology.Available ||
-		p.PRODES.Available || p.DETER.Available || p.Fire.Available ||
-		p.LandCover.Available || p.Nearby.Available
+	return p.BiomeAvailable || p.LandCoverAvailable
 }
 
 func environmentSummaryFresh(e EnvironmentalSummary, maxAge time.Duration) bool {
