@@ -133,8 +133,7 @@
     try{
       s180.loading=true;
       const result=await api180().ImportSICARThemeZIP(state.selectedProperty?.id||0,code);
-      const imported=result?.themes?.[code];
-      toast(imported?.available?'Tema SICAR importado e cruzado com o CAR.':'ZIP importado.');
+      toast(result?.message||'Tema SICAR importado e cruzado com o CAR.');
       s180.data=null;
     }catch(e){
       if(!String(e).toLowerCase().includes('cancelada'))toast(String(e),true);
