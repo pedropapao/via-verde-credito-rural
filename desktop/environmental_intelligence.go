@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,11 +10,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 const (
-	environmentalIntelligenceCacheAge = 24 * time.Hour
+	environmentalIntelligenceCacheAge = 3 * time.Hour
 	mapBiomasMethodologyURL = "https://alerta.mapbiomas.org/metodo-mapbiomas-alerta/"
 	mapBiomasAPIURL = "https://plataforma.alerta.mapbiomas.org/api/docs/index.html"
 )
@@ -91,6 +93,7 @@ type EnvironmentalIntelligenceResult struct {
 	Alerts          []EnvironmentalAlertDetail   `json:"alerts"`
 	Summary         EnvironmentalEvidenceSummary `json:"summary"`
 	Environment     EnvironmentalSummary         `json:"environment"`
+	Profile         EnvironmentalProfile         `json:"profile"`
 	Themes          SICARThemesSummary           `json:"themes"`
 	Warnings        []string                     `json:"warnings"`
 	Interpretation  string                       `json:"interpretation"`
@@ -163,9 +166,11 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 		if !force {
 			if cached, ok := loadEnvironmentalIntelligenceCache(cachePath, environmentalIntelligenceCacheAge); ok {
 				cached = sanitizeEnvironmentalAutoOnly(cached)
-				cached.UsedCache = true
-				_ = saveEnvironmentalIntelligenceCache(cachePath, cached)
-				return cached, nil
+				if environmentalProfileHasData(cached.Profile) {
+					cached.UsedCache = true
+					_ = saveEnvironmentalIntelligenceCache(cachePath, cached)
+					return cached, nil
+				}
 			}
 		}
 	}
@@ -180,8 +185,31 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 		Themes: SICARThemesSummary{},
 		MapBiomasMethodURL: mapBiomasMethodologyURL,
 		MapBiomasAPIURL: mapBiomasAPIURL,
-		Interpretation: "Triagem técnica auxiliar baseada em fontes públicas e cruzamentos espaciais. A presença de alerta ou sobreposição não determina, por si só, infração, autoria, responsabilidade ou impedimento de crédito; exige conferência documental e, quando aplicável, análise por profissional habilitado e pelo órgão competente.",
+		Interpretation: "Triagem técnica auxiliar baseada em fontes públicas automáticas e cruzamentos espaciais. A presença de alerta, desmatamento, fogo ou sobreposição não determina, por si só, infração, autoria, responsabilidade ou impedimento de crédito; exige conferência documental e, quando aplicável, análise por profissional habilitado e pelo órgão competente.",
 	}
+
+	profileCtx, profileCancel := context.WithTimeout(context.Background(), 58*time.Second)
+	defer profileCancel()
+	var profile EnvironmentalProfile
+	refreshedEnv := car.Environment
+	var extraWG sync.WaitGroup
+	extraWG.Add(1)
+	go func() {
+		defer extraWG.Done()
+		profile = buildEnvironmentalProfile(profileCtx, car)
+	}()
+	if force || !environmentSummaryFresh(car.Environment, 3*time.Hour) {
+		extraWG.Add(1)
+		go func() {
+			defer extraWG.Done()
+			env := screenEnvironment(profileCtx, car.GeoJSON)
+			if a != nil && a.dataDir != "" {
+				a.enrichMCRScreening(profileCtx, car.CAR, &env)
+			}
+			refreshedEnv = env
+		}()
+	}
+
 	mb, err := a.QueryMapBiomasCAR(car.CAR)
 	if err != nil {
 		out.Warnings = append(out.Warnings, "MapBiomas Alerta: "+err.Error())
@@ -213,6 +241,10 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 		return out.Alerts[i].DetectedAt > out.Alerts[j].DetectedAt
 	})
 	out.Summary = summarizeEnvironmentalEvidence(out.Alerts)
+	extraWG.Wait()
+	out.Profile = profile
+	out.Environment = refreshedEnv
+	out.Warnings = append(out.Warnings, profile.Warnings...)
 
 	if !mb.Connected {
 		out.Warnings = append(out.Warnings, "MapBiomas Alerta não está conectado; a análise profissional de alertas fica limitada às demais camadas públicas já carregadas.")
@@ -220,7 +252,7 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 	if len(out.Alerts) == 0 && mb.Connected {
 		out.Warnings = append(out.Warnings, "Nenhum alerta foi retornado para o CAR nesta consulta. Isso não equivale a certificado de regularidade ambiental.")
 	}
-	out.Warnings = append(out.Warnings, car.Environment.Warnings...)
+	out.Warnings = append(out.Warnings, refreshedEnv.Warnings...)
 	out = sanitizeEnvironmentalAutoOnly(out)
 
 	if cachePath != "" {
@@ -544,6 +576,20 @@ func normalizeLegacyEnvironmentalCache(out EnvironmentalIntelligenceResult) Envi
 	clean = append(clean, out.Themes.Warnings...)
 	out.Warnings = uniqueStrings(clean)
 	return out
+}
+
+func environmentalProfileHasData(p EnvironmentalProfile) bool {
+	return p.Terrain.Available || p.Biome.Available || p.Hydrology.Available ||
+		p.PRODES.Available || p.DETER.Available || p.Fire.Available ||
+		p.LandCover.Available || p.Nearby.Available
+}
+
+func environmentSummaryFresh(e EnvironmentalSummary, maxAge time.Duration) bool {
+	if strings.TrimSpace(e.CheckedAt) == "" {
+		return false
+	}
+	t, err := time.Parse(time.RFC3339, e.CheckedAt)
+	return err == nil && time.Since(t) >= 0 && time.Since(t) <= maxAge
 }
 
 func sanitizeEnvironmentalAutoOnly(out EnvironmentalIntelligenceResult) EnvironmentalIntelligenceResult {

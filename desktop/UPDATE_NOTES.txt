@@ -1,3 +1,65 @@
+CAR 1.9.0: Perfil Ambiental Automático.
+
+PRINCÍPIO
+• A análise ambiental continua 100% automática.
+• Nenhuma nova fonte exige CAPTCHA, login manual, download manual ou importação de arquivo pelo usuário.
+• Cada fonte pública é consultada de forma independente: falha de uma fonte não derruba o restante do perfil.
+
+NOVO PERFIL AMBIENTAL
+• Bioma(s) do imóvel pelo serviço geoespacial do IBGE, com estimativa de área e percentual do CAR por bioma.
+• Relevo de todo o imóvel usando Terrain Tiles / AWS Open Data: altitude mínima, média e máxima, amplitude do relevo e declividade média/máxima.
+• Hidrografia ANA/SNIRH: trechos de cursos d'água que interceptam o CAR, nomes retornados, dominialidade quando publicada, massas d'água e estação telemétrica próxima.
+• PRODES / INPE-TerraBrasilis: polígonos anuais de supressão que interceptam o CAR, área estimada, quantidade e distribuição por ano.
+• DETER / INPE-TerraBrasilis quando houver cobertura pública operacional para o bioma: avisos recentes, área estimada e data mais recente.
+• INPE Queimadas: focos ativos/recentes retornados pela camada pública e localizados dentro do CAR.
+• ESA WorldCover 2021: amostragem automática da composição de cobertura do solo e classe predominante.
+• Contexto territorial de proximidade: embargo IBAMA, Terra Indígena e UC federal mais próximos em raio aproximado de 50 km quando as fontes responderem.
+
+WORLD COVER — PRECISÃO
+• O WorldCover continua gratuito e automático, mas o WMS público é uma imagem RGB destinada principalmente à visualização.
+• Por isso o ViaVerdeCAR apresenta percentuais de AMOSTRAS CARTOGRÁFICAS, não hectares oficiais por classe.
+• A tela e o laudo deixam explícita essa limitação; o sistema não transforma a amostra em dado cadastral.
+
+PRODES × DETER
+• PRODES é apresentado como histórico anual de supressão.
+• DETER é apresentado como sistema de avisos e somente aparece como aplicável nos biomas/conjuntos públicos compatíveis.
+• Ausência de DETER não é interpretada como ausência de desmatamento.
+• Nenhum resultado PRODES/DETER é tratado automaticamente como ilegalidade, autoria ou impedimento de crédito.
+
+FOGO
+• Focos de fogo são tratados como detecções de satélite, não como área queimada, autoria ou infração.
+• Quando a camada pública informar data, risco ou FRP, esses atributos são aproveitados sem inventar valores ausentes.
+
+MAPA
+• “Mostrar dados no mapa” passa a desenhar, quando disponíveis:
+  - alertas MapBiomas;
+  - polígonos PRODES;
+  - avisos DETER;
+  - cursos d'água ANA;
+  - massas d'água ANA;
+  - limite de bioma IBGE;
+  - focos INPE.
+• As camadas antigas do mapa e o perímetro do CAR permanecem preservados.
+
+LAUDO AMBIENTAL
+• Novo capítulo “Perfil físico-ambiental automático”.
+• O PDF passa a registrar bioma, relevo, hidrografia, PRODES, DETER, fogo, cobertura do solo e contexto territorial.
+• A matriz de fontes informa “consultado”, “não aplicável” ou “indisponível”.
+• O relatório mantém linguagem técnica conservadora e diferencia evidência ambiental de conclusão jurídica.
+• O JSON de evidências também inclui todo o novo perfil.
+
+DESEMPENHO E CACHE
+• As novas fontes são consultadas em paralelo.
+• O perfil ambiental usa cache de até 3 horas.
+• Resultados da 1.8.5 sem o novo perfil não são reutilizados como se fossem completos.
+• Atualizar análise força nova consulta automática do perfil e renova as fontes territoriais principais.
+
+PRESERVADO
+• MapBiomas Alerta, IBAMA/PAMGIA, FUNAI, ICMBio e MMA/MCR.
+• CAR, KML, banco local, clientes, imóveis, histórico, backups, mapas, projeto, Crédito Rural e Inteligência Financeira.
+• Nenhuma migração destrutiva e nenhuma exclusão de dados.
+• O app continua sem janelas de CMD para processos auxiliares no Windows.
+
 CAR 1.8.5: análise ambiental somente automática.
 
 PRINCÍPIO

@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 1.8.5 — Inteligência Ambiental automática */
+/* ViaVerdeCAR 1.9.0 — Perfil Ambiental Automático */
 .environmental-intel180{display:grid;gap:14px;background:linear-gradient(145deg,#fbfdfb,#fff);border-color:#cddfd2}
 .environment-intro180{display:flex;gap:12px;align-items:center;padding:14px;border:1px solid var(--line,#dbe4df);border-radius:14px;background:rgba(42,111,77,.055)}
 .environment-intro180>div:last-child{display:grid;gap:4px}.environment-intro180 span{color:var(--muted,#607168);font-size:.86rem}
@@ -22,3 +22,22 @@
 .environment-empty180{padding:18px;border:1px dashed var(--line,#dbe4df);border-radius:12px;color:var(--muted,#607168);text-align:center}
 @media(max-width:900px){.environment-metrics180,.environment-alert-grid180{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.environment-metrics180,.environment-alert-grid180{grid-template-columns:1fr}.environment-alert-head180{flex-direction:column}.environment-source180{grid-template-columns:auto 1fr}.environment-source180>strong{grid-column:2;text-align:left}}
+
+.environment-profile180{display:grid;gap:11px;padding:14px;border:1px solid rgba(42,111,77,.18);border-radius:16px;background:linear-gradient(145deg,rgba(42,111,77,.045),rgba(255,255,255,.88))}
+.environment-profile-head180{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.environment-profile-head180>div{display:grid;gap:2px}.environment-profile-head180 h4{margin:0;font-size:1.02rem}.environment-profile-head180>small{color:var(--muted,#607168)}
+.environment-profile-grid180{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.environment-profile-card180{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:start;padding:11px;border:1px solid var(--line,#dbe4df);border-radius:13px;background:var(--panel,#fff)}
+.environment-profile-icon180{width:31px;height:31px;border-radius:9px;display:grid;place-items:center;background:rgba(42,111,77,.08)}
+.environment-profile-card180>div:last-child{display:grid;gap:2px;min-width:0}.environment-profile-card180 span{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted,#607168)}
+.environment-profile-card180 strong{font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.environment-profile-card180 small{font-size:.7rem;color:var(--muted,#607168);line-height:1.25}
+.environment-profile-details180{border-top:1px solid rgba(42,111,77,.13);padding-top:9px}.environment-profile-details180>summary{cursor:pointer;font-weight:800;font-size:.82rem}
+.environment-profile-details180>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:8px}
+.environment-profile-detail180{display:grid;gap:3px;padding:10px;border-radius:11px;background:rgba(255,255,255,.78);border:1px solid var(--line,#dbe4df)}
+.environment-profile-detail180 b{font-size:.79rem}.environment-profile-detail180>span{font-size:.76rem}.environment-profile-detail180 small{font-size:.68rem;color:var(--muted,#607168);line-height:1.3}
+.environment-landcover180>div{display:grid;gap:5px}.environment-landcover180>div>span{position:relative;display:block;height:18px;border-radius:6px;background:rgba(42,111,77,.05);overflow:hidden}
+.environment-landcover180 i{position:absolute;left:0;top:0;bottom:0;background:rgba(42,111,77,.16);border-radius:6px}.environment-landcover180 em{position:relative;z-index:1;font-size:.67rem;font-style:normal;padding-left:6px;line-height:18px}
+.environment-risk-title180{display:grid;gap:2px;padding-top:2px}.environment-risk-title180 strong{font-size:.9rem}.environment-risk-title180 span{font-size:.74rem;color:var(--muted,#607168)}
+@media(max-width:1100px){.environment-profile-grid180{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.environment-profile-grid180{grid-template-columns:repeat(2,minmax(0,1fr))}.environment-profile-details180>div{grid-template-columns:1fr}}
+@media(max-width:620px){.environment-profile-grid180{grid-template-columns:1fr}.environment-profile-head180{flex-direction:column}}
