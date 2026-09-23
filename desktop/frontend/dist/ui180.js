@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 1.8.1 — Inteligência Ambiental & Laudos resilientes */
+/* ViaVerdeCAR 1.8.3 — Inteligência Ambiental & importação oficial SICAR */
 (function(){
   const g=id=>document.getElementById(id);
   const s180={car:'',data:null,loading:false,layer:null};
@@ -76,6 +76,7 @@
       '</div>'+
       (!hasProperty180()?'<div class="environment-note180">Para gerar laudos, vincule o CAR a um imóvel salvo. A análise pode ser visualizada normalmente em consulta avulsa.</div>':'')+
       ((!appOK||!rlOK)?'<div class="environment-note180"><strong>Camadas SICAR incompletas.</strong> “Indisponível” significa que a fonte não foi obtida nesta execução; o ViaVerdeCAR não assume 0 ha.</div>':'')+
+      manualSICARControls180(r)+
       evidenceMatrix180(r)+
       '<div class="environment-alerts180">'+(alerts.length?alerts.map((a,i)=>alert180(a,i,r)).join(''):'<div class="environment-empty180">'+esc180(mb.message||'Nenhum alerta MapBiomas foi retornado nesta consulta.')+'<br><small>Ausência de alerta não equivale a certificado de regularidade ambiental.</small></div>')+'</div>'+
       (warnings.length?'<details class="environment-warnings180"><summary>Limitações e ocorrências da consulta ('+warnings.length+')</summary>'+warnings.map(w=>'<div>• '+esc180(w)+'</div>').join('')+'</details>':'')+
@@ -86,6 +87,8 @@
     g('showEnvironmentalMap180').onclick=()=>showMap180(alerts);
     g('refreshEnvironment180').onclick=()=>load180(true);
     g('openMapBiomasProperty180').onclick=()=>openExternal('https://plataforma.alerta.mapbiomas.org/imovel/'+encodeURIComponent(r.car||''));
+    const openSicar=g('openSICARDownloads180');if(openSicar)openSicar.onclick=()=>openExternal('https://consulta.car.gov.br/');
+    panel.querySelectorAll('[data-import-sicar-theme180]').forEach(b=>b.onclick=()=>importSICARTheme180(b.dataset.importSicarTheme180));
     panel.querySelectorAll('[data-alert-report180]').forEach(b=>b.onclick=()=>exportAlert180(b.dataset.alertReport180));
     panel.querySelectorAll('[data-alert-open180]').forEach(b=>b.onclick=()=>openExternal(b.dataset.alertOpen180));
     panel.querySelectorAll('[data-alert-map180]').forEach(b=>b.onclick=()=>showMap180([alerts[Number(b.dataset.alertMap180)]]));
@@ -96,11 +99,48 @@
   function themeAvailable180(themes,code){return !!themeMetric180(themes,code)?.available}
   function themeStatus180(themes,code,label){
     const m=themeMetric180(themes,code);
+    if(m?.status==='manual_required')return label+': download manual';
     if(!m||!m.available)return label+': indisponível';
     if(m.cache_status==='cache_stale')return label+': cache anterior';
     if(m.cache_status==='manual')return label+': importado';
     if(m.cache_status==='cache_fresh')return label+': cache recente';
     return label+': consultado';
+  }
+
+  function manualSICARControls180(r){
+    const themes=r?.themes||{};
+    const defs=[
+      ['APP','APP'],
+      ['RESERVA_LEGAL','Reserva Legal'],
+      ['VEGETACAO_NATIVA','Vegetação Nativa'],
+      ['AREA_CONSOLIDADA','Área Consolidada'],
+      ['USO_RESTRITO','Uso Restrito'],
+      ['SERVIDAO_ADMINISTRATIVA','Servidão Administrativa']
+    ];
+    const missing=defs.filter(([code])=>!themeAvailable180(themes,code));
+    if(!missing.length)return '';
+    const manual=missing.some(([code])=>themeMetric180(themes,code)?.status==='manual_required');
+    if(!manual)return '';
+    return '<section class="sicar-manual180">'+
+      '<div class="sicar-manual-head180"><div><strong>📦 Temas detalhados do SICAR exigem validação humana</strong><span>A Base de Downloads está devolvendo a página de validação/CAPTCHA em vez do ZIP. Faça o download oficial no portal e importe cada tema abaixo. O ViaVerdeCAR cruza o arquivo com este CAR automaticamente.</span></div><button class="btn ghost" id="openSICARDownloads180">Abrir Base oficial</button></div>'+
+      '<div class="sicar-manual-themes180">'+missing.map(([code,label])=>'<button class="btn ghost" data-import-sicar-theme180="'+code+'">Importar '+esc180(label)+'</button>').join('')+'</div>'+
+      '<small>O aplicativo não tenta contornar o CAPTCHA. O ZIP importado fica identificado como “pacote oficial importado” e pode ser usado nos laudos.</small>'+
+      '</section>';
+  }
+
+  async function importSICARTheme180(code){
+    if(s180.loading)return;
+    try{
+      s180.loading=true;
+      const result=await api180().ImportSICARThemeZIP(state.selectedProperty?.id||0,code);
+      const imported=result?.themes?.[code];
+      toast(imported?.available?'Tema SICAR importado e cruzado com o CAR.':'ZIP importado.');
+      s180.data=null;
+    }catch(e){
+      if(!String(e).toLowerCase().includes('cancelada'))toast(String(e),true);
+      return;
+    }finally{s180.loading=false}
+    await load180(false);
   }
 
   function evidenceMatrix180(r){
@@ -181,7 +221,7 @@
   }
 
   function watch180(){
-    const install=()=>{try{attach180()}catch(e){try{console.error('ViaVerdeCAR 1.8.1 ambiental:',e)}catch(_){}}};
+    const install=()=>{try{attach180()}catch(e){try{console.error('ViaVerdeCAR 1.8.3 ambiental:',e)}catch(_){}}};
     install();
     const root=g('carTabXRay150')||document.body;
     new MutationObserver(()=>install()).observe(root,{childList:true,subtree:true});
