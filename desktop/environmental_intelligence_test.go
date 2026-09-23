@@ -1,7 +1,10 @@
 package main
 
 import (
+	"archive/zip"
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -192,5 +195,51 @@ func TestThemeSourceSummary181(t *testing.T) {
 	got = themeSourceSummary(mixed)
 	if !strings.Contains(got, "2/6") || !strings.Contains(strings.ToLower(got), "cache") {
 		t.Fatalf("resumo de cache inadequado: %s", got)
+	}
+}
+
+
+func TestSICARHTMLRequiresManualValidation183(t *testing.T) {
+	html := []byte("<!doctype html><html><body>Base de Downloads</body></html>")
+	if !sicarThemePayloadRequiresHumanValidation(html, "text/html; charset=UTF-8") {
+		t.Fatal("HTML do portal deveria exigir validação humana")
+	}
+	if sicarThemePayloadRequiresHumanValidation([]byte(`{"erro":"temporario"}`), "application/json") {
+		t.Fatal("JSON de erro não deve ser confundido automaticamente com CAPTCHA")
+	}
+}
+
+func TestRebuildSICARWarningsCollapsesManualRequirement183(t *testing.T) {
+	s := SICARThemesSummary{Themes: map[string]SICARThemeMetric{
+		"APP": {Code:"APP", Status:"manual_required", Available:false},
+		"RESERVA_LEGAL": {Code:"RESERVA_LEGAL", Status:"manual_required", Available:false},
+		"AREA_CONSOLIDADA": {Code:"AREA_CONSOLIDADA", Status:"manual_required", Available:false},
+	}}
+	got := rebuildSICARThemeWarnings(s)
+	if len(got) != 1 {
+		t.Fatalf("esperava um aviso agrupado, obteve %#v", got)
+	}
+	if !strings.Contains(strings.ToLower(got[0]), "captcha") {
+		t.Fatalf("aviso deveria orientar sobre CAPTCHA: %s", got[0])
+	}
+}
+
+func TestSICARThemeZipCompatibility183(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "tema.zip")
+	f, err := os.Create(path)
+	if err != nil { t.Fatal(err) }
+	zw := zip.NewWriter(f)
+	w, err := zw.Create("MG_APP.shp")
+	if err != nil { t.Fatal(err) }
+	_, _ = w.Write([]byte("teste"))
+	if err := zw.Close(); err != nil { t.Fatal(err) }
+	if err := f.Close(); err != nil { t.Fatal(err) }
+
+	if !sicarThemeZipLooksCompatible(path, "APP") {
+		t.Fatal("ZIP de APP não reconhecido")
+	}
+	if sicarThemeZipLooksCompatible(path, "RESERVA_LEGAL") {
+		t.Fatal("ZIP de APP não pode ser aceito como Reserva Legal")
 	}
 }
