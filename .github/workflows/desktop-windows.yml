@@ -81,6 +81,7 @@ jobs:
           )
 
           $prepareUrl = $env:UPDATE_ENDPOINT + "?action=prepare"
+          $prepareResponse = Join-Path $env:RUNNER_TEMP "viaverde-prepare.json"
           $prepareArgs = @(
             "--fail-with-body",
             "--silent",
@@ -88,11 +89,12 @@ jobs:
             "--retry", "3",
             "--retry-delay", "2",
             "--request", "POST",
-            $prepareUrl
+            $prepareUrl,
+            "--output", $prepareResponse
           ) + $commonHeaders
-          $prepareRaw = & curl.exe @prepareArgs
+          & curl.exe @prepareArgs
           if ($LASTEXITCODE -ne 0) { throw "Falha ao preparar upload da atualização" }
-          $prepare = $prepareRaw | ConvertFrom-Json
+          $prepare = (Get-Content $prepareResponse -Raw) | ConvertFrom-Json
           if (-not $prepare.upload_url) { throw "URL assinada de upload não retornada" }
 
           $uploadArgs = @(
@@ -113,6 +115,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Falha ao enviar EXE para o Storage" }
 
           $finalizeUrl = $env:UPDATE_ENDPOINT + "?action=finalize"
+          $finalizeResponse = Join-Path $env:RUNNER_TEMP "viaverde-finalize.json"
           $finalizeArgs = @(
             "--fail-with-body",
             "--silent",
@@ -121,9 +124,10 @@ jobs:
             "--retry-delay", "2",
             "--request", "POST",
             $finalizeUrl,
-            "--header", "x-notes-base64: $notes64"
+            "--header", "x-notes-base64: $notes64",
+            "--output", $finalizeResponse
           ) + $commonHeaders
-          $finalizeRaw = & curl.exe @finalizeArgs
+          & curl.exe @finalizeArgs
           if ($LASTEXITCODE -ne 0) { throw "Falha ao finalizar publicação da atualização" }
-          $finalize = $finalizeRaw | ConvertFrom-Json
+          $finalize = (Get-Content $finalizeResponse -Raw) | ConvertFrom-Json
           if (-not $finalize.ok) { throw "Publicação não confirmada pelo servidor" }
