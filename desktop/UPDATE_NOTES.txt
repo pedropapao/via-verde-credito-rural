@@ -1,3 +1,41 @@
+CAR 1.8.5: análise ambiental somente automática.
+
+PRINCÍPIO
+• O ViaVerdeCAR deixa de exibir ou exigir qualquer etapa manual para completar a análise ambiental.
+• Se uma informação pública depende de CAPTCHA, download manual ou importação de arquivo, ela não participa mais do fluxo principal.
+
+REMOVIDO DO FLUXO
+• Botões “Abrir Base oficial” e “Importar ...”.
+• Download/importação manual de APP, Reserva Legal, Vegetação Nativa, Área Consolidada, Uso Restrito e Servidão Administrativa.
+• Linha “SICAR — temas” da matriz ambiental.
+• Métricas “APP indisponível” e “Reserva Legal indisponível” baseadas nesses pacotes.
+• Tentativas automáticas de baixar os seis ZIPs municipais protegidos por CAPTCHA.
+• Avisos técnicos e mensagens de ZIP/GeoServices relacionados a esse fluxo.
+• Referências a esses temas locais nos laudos ambientais.
+
+MANTIDO AUTOMATICAMENTE
+• Perímetro público do CAR via WFS.
+• MapBiomas Alerta.
+• Cruzamentos reportados automaticamente pela própria API MapBiomas, inclusive APP e Reserva Legal quando publicados.
+• IBAMA / PAMGIA.
+• FUNAI.
+• ICMBio.
+• MMA / MCR-PRODES.
+• Alertas, mapa, laudos PDF e JSON de evidências.
+
+MELHORIA DE PRIORIDADE
+• Cruzamentos automáticos reportados pelo MapBiomas com APP, Reserva Legal, embargo, Terra Indígena e Unidade de Conservação passam a alimentar a prioridade técnica do alerta.
+• A linguagem continua conservadora: prioridade de conferência não significa declaração de ilegalidade.
+
+DESEMPENHO
+• A consulta CAR deixa de iniciar downloads inúteis dos seis temas SICAR protegidos por validação humana.
+• Atualizar análise passa a atualizar somente fontes realmente automatizadas.
+
+COMPATIBILIDADE
+• Estruturas antigas são mantidas internamente apenas para leitura de históricos já gravados.
+• Caches antigos são higienizados para não voltar a exibir avisos ou temas manuais.
+• Nenhum dado local é apagado e nenhuma migração destrutiva é executada.
+
 CAR 1.8.4: migração automática do cache ambiental e importação SICAR sempre acessível.
 
 CORREÇÃO DA 1.8.3
