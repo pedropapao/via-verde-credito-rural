@@ -1,3 +1,20 @@
+CAR 1.8.4: migração automática do cache ambiental e importação SICAR sempre acessível.
+
+CORREÇÃO DA 1.8.3
+• Resultados ambientais antigos, gravados antes do fluxo de CAPTCHA, eram reaproveitados como “indisponível”.
+• A tela podia esconder os botões de importação mesmo com a 1.8.3 instalada.
+• A 1.8.4 normaliza automaticamente esses caches antigos, sem exigir limpeza manual nem nova consulta do CAR.
+
+INTERFACE
+• Sempre que um dos seis temas SICAR estiver faltando, o bloco de importação oficial aparece.
+• Quando o retorno antigo contém HTML/ZIP inválido, o estado é migrado para “download manual”.
+• Falhas genéricas de rede continuam como “indisponível” e não são rotuladas como CAPTCHA sem evidência.
+• Erros técnicos antigos repetidos são substituídos por um aviso único e orientativo.
+
+PRESERVADO
+• Importação oficial por ZIP, MapBiomas, IBAMA, FUNAI, ICMBio, MMA/MCR, laudos, crédito rural, KML e banco local.
+• Nenhum dado é apagado.
+
 CAR 1.8.3: fluxo correto para temas detalhados do SICAR protegidos por CAPTCHA.
 
 BASE DE DOWNLOADS DO SICAR
