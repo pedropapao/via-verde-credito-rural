@@ -106,6 +106,11 @@ func TestEnvironmentalReportPDF180(t *testing.T) {
 		MapBiomas:MapBiomasCARSummary{Connected:true, TotalAlerts:1, TotalAreaHa:5},
 		Alerts:[]EnvironmentalAlertDetail{alert},
 		Summary:summarizeEnvironmentalEvidence([]EnvironmentalAlertDetail{alert}),
+		Profile:EnvironmentalProfile{Fire:EnvironmentalFireProfile{
+			Checked:true,Available:true,Status:fireStatusFound,FeatureCount:2,
+			LastDetectedAt:"2026-09-22T18:00:00Z",Satellites:[]string{"AQUA","NOAA-20"},
+			SourceLayer:"focos:focos_48h",SourceURL:inpeFireWFSURL,
+		}},
 		Interpretation:"Triagem técnica auxiliar.",
 	}
 	pdf := buildEnvironmentalTechnicalPDF(p,car,intel,"")
@@ -115,13 +120,44 @@ func TestEnvironmentalReportPDF180(t *testing.T) {
 	if !bytes.HasPrefix(pdf, []byte("%PDF-1.4")) {
 		t.Fatal("cabeçalho PDF inválido")
 	}
-	if !bytes.Contains(pdf, []byte("/Count 5")) {
-		t.Fatal("esperava 5 páginas no laudo consolidado com perfil ambiental")
+	if !bytes.Contains(pdf, []byte("/Count 6")) {
+		t.Fatal("esperava 6 páginas no laudo consolidado com página de focos de calor")
 	}
 
 	single := buildEnvironmentalTechnicalPDF(p,car,intel,"12345")
-	if !bytes.Contains(single, []byte("/Count 5")) {
-		t.Fatal("laudo individual deveria manter capa, perfil, mapa, alerta e metodologia")
+	if !bytes.Contains(single, []byte("/Count 6")) {
+		t.Fatal("laudo individual deveria manter capa, perfil, focos, mapa, alerta e metodologia")
+	}
+}
+
+
+func TestEnvironmentalFireReportStatus191(t *testing.T) {
+	status,value,_:=environmentalFireReportStatus(EnvironmentalFireProfile{Status:fireStatusFound,FeatureCount:3})
+	if status!="Ocorrência encontrada" || value!="3 foco(s)" {
+		t.Fatalf("status de ocorrência inesperado: %q %q",status,value)
+	}
+	status,value,_=environmentalFireReportStatus(EnvironmentalFireProfile{Status:fireStatusNone,Checked:true,Available:true})
+	if status!="Consulta concluída" || value!="0 focos" {
+		t.Fatalf("status sem ocorrência inesperado: %q %q",status,value)
+	}
+	status,value,_=environmentalFireReportStatus(EnvironmentalFireProfile{Status:fireStatusUnavailable,Warning:"timeout"})
+	if status!="Base indisponível" || value!="Não determinado" {
+		t.Fatalf("status indisponível inesperado: %q %q",status,value)
+	}
+}
+
+func TestEnvironmentalEvidenceJSONIncludesFire191(t *testing.T) {
+	intel:=EnvironmentalIntelligenceResult{
+		CAR:"MG-0000000-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+		Profile:EnvironmentalProfile{Fire:EnvironmentalFireProfile{
+			Checked:true,Available:true,Status:fireStatusFound,FeatureCount:1,SourceURL:inpeFireWFSURL,
+		}},
+	}
+	b,err:=json.Marshal(intel)
+	if err!=nil{t.Fatal(err)}
+	text:=string(b)
+	if !strings.Contains(text,`"fire"`) || !strings.Contains(text,`"feature_count":1`) || !strings.Contains(text,"terrabrasilis") {
+		t.Fatalf("JSON de evidências não preservou focos: %s",text)
 	}
 }
 
