@@ -207,16 +207,6 @@ func buildEnvironmentalProfile(parent context.Context, car CARResult) Environmen
 		out.Hydrology = h
 	})
 	run(func() {
-		l, err := queryWorldCoverProfile(ctx, car.GeoJSON)
-		mu.Lock()
-		defer mu.Unlock()
-		if err != nil {
-			l.Warning = err.Error()
-			out.Warnings = append(out.Warnings, "ESA WorldCover: "+err.Error())
-		}
-		out.LandCover = l
-	})
-	run(func() {
 		f, err := queryFireProfile(ctx, car.GeoJSON)
 		mu.Lock()
 		defer mu.Unlock()
@@ -1013,7 +1003,6 @@ func buildEnvironmentalProfileSources(p EnvironmentalProfile) []EnvironmentalPro
 		{Key: "prodes", Label: "INPE / PRODES", Available: p.PRODES.Available, Applicable: p.PRODES.Applicable, SourceURL: p.PRODES.SourceURL, Detail: p.PRODES.Warning},
 		{Key: "deter", Label: "INPE / DETER", Available: p.DETER.Available, Applicable: p.DETER.Applicable, SourceURL: p.DETER.SourceURL, Detail: p.DETER.Warning},
 		{Key: "fire", Label: "INPE / Queimadas", Available: p.Fire.Available, Applicable: true, SourceURL: p.Fire.SourceURL, Detail: p.Fire.Warning},
-		{Key: "worldcover", Label: "ESA WorldCover 2021", Available: p.LandCover.Available, Applicable: true, SourceURL: worldCoverWMSURL, Detail: p.LandCover.Warning},
 		{Key: "nearby", Label: "Proximidade territorial", Available: p.Nearby.Available, Applicable: true, SourceURL: "", Detail: p.Nearby.Warning},
 	}
 	for i := range s {
