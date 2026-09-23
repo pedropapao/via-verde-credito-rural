@@ -1,3 +1,36 @@
+CAR 1.8.3: fluxo correto para temas detalhados do SICAR protegidos por CAPTCHA.
+
+BASE DE DOWNLOADS DO SICAR
+• O ViaVerdeCAR passa a reconhecer quando o portal oficial devolve a página HTML de validação humana/CAPTCHA em vez do ZIP.
+• Nessas situações, o aplicativo deixa de repetir tentativas inúteis e não exibe seis mensagens técnicas longas.
+• Os temas afetados passam para o estado “download manual” em vez de “erro genérico”.
+• Um único aviso explica que a Base de Downloads exige validação humana.
+
+IMPORTAÇÃO OFICIAL
+• Novo botão para abrir a Base oficial do SICAR no navegador.
+• Cada tema ausente pode ser importado por ZIP: APP, Reserva Legal, Vegetação Nativa, Área Consolidada, Uso Restrito e Servidão Administrativa.
+• O usuário resolve o CAPTCHA no portal oficial, baixa o ZIP e seleciona o arquivo no ViaVerdeCAR.
+• O aplicativo valida se o ZIP contém shapefile e se o nome do tema é compatível antes de aceitar.
+• O arquivo importado é preservado em cache e marcado como “pacote oficial importado manualmente”.
+• Após a importação, o ViaVerdeCAR cruza o tema com o CAR, atualiza a análise ambiental e limpa o cache do laudo para recalcular os resultados.
+
+SEGURANÇA
+• O aplicativo não tenta contornar ou automatizar CAPTCHA.
+• Tema indisponível continua diferente de 0 ha.
+• Um ZIP de APP não é aceito como Reserva Legal, e vice-versa, quando o nome do shapefile permite identificar o tema.
+• A importação não cria histórico duplicado do CAR nem apaga dados existentes.
+
+PRESERVADO
+• Consulta automática do perímetro CAR pelo WFS público.
+• MapBiomas Alerta, IBAMA, FUNAI, ICMBio, MMA/MCR, crédito rural, KML, laudos e banco local.
+• Cache válido anterior continua sendo usado quando disponível.
+
+TESTES
+• Detecção de HTML/CAPTCHA.
+• Agrupamento dos avisos de validação humana.
+• Identificação de ZIP compatível por tema.
+• Mantidos os testes anteriores de zero versus indisponível e geração dos laudos.
+
 CAR 1.8.2: consultas silenciosas no Windows.
 
 INTERFACE
