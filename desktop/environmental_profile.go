@@ -882,8 +882,10 @@ func nearestWorldCoverClass(r, g, b int) (int, bool) {
 			bestCode = p.Code
 		}
 	}
-	// Tolerância para antialiasing/reamostragem do serviço RGB.
-	return bestCode, best <= 85*85*3
+	// Tolerância deliberadamente conservadora: o WMS é RGB e não é produto
+	// analítico. Pixels muito reamostrados/escuros são descartados em vez de
+	// serem forçados para uma classe de cobertura.
+	return bestCode, best <= 45*45*3
 }
 
 func queryNearbyEnvironmental(ctx context.Context, car CARResult) (NearbyEnvironmentalProfile, error) {
