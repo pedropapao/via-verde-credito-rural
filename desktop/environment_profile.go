@@ -38,6 +38,7 @@ type EnvironmentalProfile struct {
 	LandCoverSamples  int                           `json:"land_cover_samples"`
 	DominantLandCover string                        `json:"dominant_land_cover"`
 	LandCoverClasses  []EnvironmentalLandCoverClass `json:"land_cover_classes"`
+	Fire              EnvironmentalFireProfile       `json:"fire"`
 	Warnings          []string                      `json:"warnings"`
 }
 
@@ -71,6 +72,7 @@ func (a *App) buildEnvironmentalProfile(ctx context.Context, car CARResult) Envi
 		BiomeSource:     "MapBiomas Alerta — territórios",
 		LandCoverSource: "ESA WorldCover 2021 v200 — serviço público ArcGIS",
 		LandCoverYear:   worldCoverYear,
+		Fire:            newEnvironmentalFireProfile(),
 	}
 	if strings.TrimSpace(car.GeoJSON) == "" {
 		out.Warnings = append(out.Warnings, "Perfil ambiental: geometria do CAR indisponível.")
@@ -86,8 +88,13 @@ func (a *App) buildEnvironmentalProfile(ctx context.Context, car CARResult) Envi
 		samples int
 		err     error
 	}
+	type fireResult struct {
+		profile EnvironmentalFireProfile
+		err     error
+	}
 	biomeCh := make(chan biomeResult, 1)
 	coverCh := make(chan coverResult, 1)
+	fireCh := make(chan fireResult, 1)
 
 	go func() {
 		name, err := a.queryBiomeAtCAR(ctx, car)
@@ -96,6 +103,10 @@ func (a *App) buildEnvironmentalProfile(ctx context.Context, car CARResult) Envi
 	go func() {
 		classes, samples, err := queryWorldCoverForCAR(ctx, car)
 		coverCh <- coverResult{classes: classes, samples: samples, err: err}
+	}()
+	go func() {
+		profile, err := queryFireProfile(ctx, car.GeoJSON)
+		fireCh <- fireResult{profile: profile, err: err}
 	}()
 
 	b := <-biomeCh
@@ -116,6 +127,12 @@ func (a *App) buildEnvironmentalProfile(ctx context.Context, car CARResult) Envi
 		if len(lc.classes) > 0 {
 			out.DominantLandCover = lc.classes[0].Label
 		}
+	}
+
+	fire := <-fireCh
+	out.Fire = fire.profile
+	if fire.err != nil {
+		out.Warnings = append(out.Warnings, "Focos de calor: "+fire.err.Error())
 	}
 	return out
 }
