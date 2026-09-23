@@ -1,7 +1,6 @@
 package main
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -38,8 +37,8 @@ func TestEnvironmentalProfileSources190(t *testing.T) {
 		Nearby: NearbyEnvironmentalProfile{Available:true},
 	}
 	sources := buildEnvironmentalProfileSources(p)
-	if len(sources) < 8 {
-		t.Fatalf("esperava matriz ampla de fontes, obteve %d", len(sources))
+	if len(sources) < 7 {
+		t.Fatalf("esperava matriz ampla de fontes automáticas, obteve %d", len(sources))
 	}
 	foundNonApplicable := false
 	for _, s := range sources {
@@ -55,13 +54,11 @@ func TestEnvironmentalProfileSources190(t *testing.T) {
 	}
 }
 
-func TestWorldCoverWarningIsApproximate190(t *testing.T) {
-	p := LandCoverProfile{
-		Approximate:true,
-		Source:"ESA WorldCover 2021 v200 / Terrascope WMS (amostragem cartográfica automática)",
-		Warning:"Percentuais representam a participação dos pontos amostrados na imagem WMS RGB; não substitui análise raster.",
-	}
-	if !p.Approximate || !strings.Contains(strings.ToLower(p.Warning),"amostr") {
-		t.Fatalf("WorldCover precisa permanecer identificado como aproximado: %+v", p)
+func TestWorldCoverNotAdvertisedAsAnalyticalSource190(t *testing.T) {
+	p := EnvironmentalProfile{}
+	for _, s := range buildEnvironmentalProfileSources(p) {
+		if s.Key == "worldcover" {
+			t.Fatal("WorldCover WMS visual não deve ser anunciado como fonte analítica do perfil")
+		}
 	}
 }
