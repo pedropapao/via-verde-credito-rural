@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 1.8.3 — Inteligência Ambiental & importação oficial SICAR */
+/* ViaVerdeCAR 1.8.4 — Inteligência Ambiental & migração de cache SICAR */
 (function(){
   const g=id=>document.getElementById(id);
   const s180={car:'',data:null,loading:false,layer:null};
@@ -120,9 +120,12 @@
     const missing=defs.filter(([code])=>!themeAvailable180(themes,code));
     if(!missing.length)return '';
     const manual=missing.some(([code])=>themeMetric180(themes,code)?.status==='manual_required');
-    if(!manual)return '';
+    const title=manual?'📦 Temas detalhados do SICAR exigem validação humana':'📦 Temas SICAR faltantes';
+    const detail=manual
+      ?'A Base de Downloads está devolvendo a página de validação/CAPTCHA em vez do ZIP. Faça o download oficial no portal e importe cada tema abaixo. O ViaVerdeCAR cruza o arquivo com este CAR automaticamente.'
+      :'A consulta automática não obteve estas camadas. Você pode baixar os ZIPs oficiais no portal SICAR e importá-los aqui; o ViaVerdeCAR valida e cruza cada tema com este CAR.';
     return '<section class="sicar-manual180">'+
-      '<div class="sicar-manual-head180"><div><strong>📦 Temas detalhados do SICAR exigem validação humana</strong><span>A Base de Downloads está devolvendo a página de validação/CAPTCHA em vez do ZIP. Faça o download oficial no portal e importe cada tema abaixo. O ViaVerdeCAR cruza o arquivo com este CAR automaticamente.</span></div><button class="btn ghost" id="openSICARDownloads180">Abrir Base oficial</button></div>'+
+      '<div class="sicar-manual-head180"><div><strong>'+title+'</strong><span>'+detail+'</span></div><button class="btn ghost" id="openSICARDownloads180">Abrir Base oficial</button></div>'+
       '<div class="sicar-manual-themes180">'+missing.map(([code,label])=>'<button class="btn ghost" data-import-sicar-theme180="'+code+'">Importar '+esc180(label)+'</button>').join('')+'</div>'+
       '<small>O aplicativo não tenta contornar o CAPTCHA. O ZIP importado fica identificado como “pacote oficial importado” e pode ser usado nos laudos.</small>'+
       '</section>';
@@ -220,7 +223,7 @@
   }
 
   function watch180(){
-    const install=()=>{try{attach180()}catch(e){try{console.error('ViaVerdeCAR 1.8.3 ambiental:',e)}catch(_){}}};
+    const install=()=>{try{attach180()}catch(e){try{console.error('ViaVerdeCAR 1.8.4 ambiental:',e)}catch(_){}}};
     install();
     const root=g('carTabXRay150')||document.body;
     new MutationObserver(()=>install()).observe(root,{childList:true,subtree:true});
