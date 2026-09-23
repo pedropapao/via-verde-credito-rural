@@ -292,12 +292,13 @@ func queryWorldCoverSamples(ctx context.Context, points [][2]float64) ([]int, er
 	q.Set("interpolation", "RSP_NearestNeighbor")
 	q.Set("returnFirstValueOnly", "true")
 	q.Set("f", "json")
-	target := worldCoverImageServer + "/getSamples?" + q.Encode()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	target := worldCoverImageServer + "/getSamples"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, strings.NewReader(q.Encode()))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion)
 	resp, err := (&http.Client{Timeout: 25 * time.Second}).Do(req)
 	if err != nil {
