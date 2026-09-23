@@ -69,7 +69,6 @@ jobs:
           $sha = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
           $size = (Get-Item $exe).Length
           $notes = (Get-Content "UPDATE_NOTES.txt" -Raw).Trim()
-          $notes64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($notes))
 
           $commonHeaders = @(
             "--header", "Authorization: Bearer $env:GITHUB_API_TOKEN",
@@ -116,6 +115,8 @@ jobs:
 
           $finalizeUrl = $env:UPDATE_ENDPOINT + "?action=finalize"
           $finalizeResponse = Join-Path $env:RUNNER_TEMP "viaverde-finalize.json"
+          $finalizePayload = Join-Path $env:RUNNER_TEMP "viaverde-finalize-payload.json"
+          @{ notes = $notes } | ConvertTo-Json -Compress | Set-Content -Path $finalizePayload -Encoding utf8
           $finalizeArgs = @(
             "--fail-with-body",
             "--silent",
@@ -124,7 +125,8 @@ jobs:
             "--retry-delay", "2",
             "--request", "POST",
             $finalizeUrl,
-            "--header", "x-notes-base64: $notes64",
+            "--header", "content-type: application/json",
+            "--data-binary", "@$finalizePayload",
             "--output", $finalizeResponse
           ) + $commonHeaders
           & curl.exe @finalizeArgs
