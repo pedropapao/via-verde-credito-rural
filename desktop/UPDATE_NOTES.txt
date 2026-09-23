@@ -1,3 +1,31 @@
+CAR 1.9.1: Focos de calor — Programa Queimadas/INPE.
+
+NOVIDADE
+• Consulta automática dos focos de calor do Programa Queimadas/INPE pela camada pública WFS.
+• O cruzamento usa a própria geometria do CAR e mantém apenas os focos localizados dentro do imóvel.
+• A consulta diferencia ocorrência encontrada, sem ocorrência, base indisponível e consulta não realizada.
+
+RAIO X E MAPA
+• Novo cartão “Focos de calor” no Raio X Ambiental.
+• Exibe quantidade, data mais recente e satélite/sensor quando retornados pela fonte.
+• Os focos podem ser mostrados no mapa em camada independente “Focos de calor — INPE”.
+• Alertas MapBiomas e focos INPE permanecem em camadas separadas.
+
+LAUDO E EVIDÊNCIAS
+• O laudo ambiental ganha página própria para os focos de calor.
+• O JSON de evidências passa a incluir o bloco fire.
+• Foco de calor é tratado como detecção por satélite e não como prova automática de área queimada, autoria, infração ou impedimento de crédito.
+• Ausência de focos no período consultado não é apresentada como prova de ausência histórica de queimadas.
+
+CONFIABILIDADE
+• Cache antigo sem estado da consulta de focos não é reutilizado como resultado completo.
+• Falha do INPE não é apresentada como zero focos.
+• Bioma, WorldCover, MapBiomas Alerta, IBAMA/PAMGIA, FUNAI, ICMBio e MMA/MCR continuam independentes.
+
+PRESERVADO
+• CAR, KML, banco SQLite, clientes, imóveis, histórico, backups, mapa, Crédito Rural e Inteligência Financeira.
+• Nenhuma migração destrutiva ou exclusão de dados.
+
 CAR 1.9.0: Etapa 1 do Perfil Ambiental — Bioma + Cobertura do Solo.
 
 PRINCÍPIO
