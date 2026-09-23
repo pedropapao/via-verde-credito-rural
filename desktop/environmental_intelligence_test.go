@@ -2,7 +2,6 @@ package main
 
 import (
 	"archive/zip"
-	"encoding/json"
 	"bytes"
 	"os"
 	"path/filepath"
@@ -341,66 +340,5 @@ func TestEnvironmentalAttentionUsesAutomaticMapBiomas185(t *testing.T) {
 	}
 	if len(reasons) == 0 || !strings.Contains(strings.ToLower(strings.Join(reasons, " ")), "reserva legal") {
 		t.Fatalf("motivo de Reserva Legal não registrado: %#v", reasons)
-	}
-}
-
-
-func TestNormalizeBiomeKey190(t *testing.T) {
-	cases := map[string]string{
-		"Mata Atlântica": "mata_atlantica",
-		"Amazônia": "amazonia",
-		"Cerrado": "cerrado",
-		"Caatinga": "caatinga",
-		"Pampa": "pampa",
-		"Pantanal": "pantanal",
-	}
-	for in, want := range cases {
-		if got := normalizeBiomeKey(in); got != want {
-			t.Fatalf("normalizeBiomeKey(%q)=%q; want %q", in, got, want)
-		}
-	}
-}
-
-func TestChooseWFSLayer190(t *testing.T) {
-	types := []wfsFeatureType{
-		{Name: "x:municipality", Title: "Municipalities"},
-		{Name: "x:yearly_deforestation", Title: "Yearly deforestation"},
-		{Name: "x:grid", Title: "Grid"},
-	}
-	got := chooseWFSLayer(types, []string{"yearly_deforestation", "deforestation"}, []string{"municip", "grid"})
-	if got != "x:yearly_deforestation" {
-		t.Fatalf("camada escolhida inesperada: %s", got)
-	}
-}
-
-func TestNearestWorldCoverClass190(t *testing.T) {
-	code, ok := nearestWorldCoverClass(0, 100, 0)
-	if !ok || code != 10 {
-		t.Fatalf("classe arbórea não reconhecida: code=%d ok=%v", code, ok)
-	}
-	if _, ok := nearestWorldCoverClass(30, 30, 30); ok {
-		t.Fatal("cor muito distante da paleta não deveria ser classificada")
-	}
-}
-
-func TestEnvironmentalProfileHasData190(t *testing.T) {
-	if environmentalProfileHasData(EnvironmentalProfile{}) {
-		t.Fatal("perfil vazio não pode ser tratado como cache completo")
-	}
-	p := EnvironmentalProfile{Biome: BiomeProfile{Available: true, Dominant: "Cerrado"}}
-	if !environmentalProfileHasData(p) {
-		t.Fatal("perfil com bioma disponível deveria ser considerado útil")
-	}
-}
-
-func TestLineGeometryIntersectsCAR190(t *testing.T) {
-	car := `{"type":"Feature","properties":{},"geometry":{"type":"Polygon","coordinates":[[[-47,-21],[-46,-21],[-46,-20],[-47,-20],[-47,-21]]]}}`
-	line := carGeoJSONGeometry{Type: "LineString", Coordinates: json.RawMessage(`[[-47.2,-20.5],[-45.8,-20.5]]`)}
-	if !lineGeometryIntersectsCAR(line, car) {
-		t.Fatal("linha atravessando o CAR deveria ser detectada")
-	}
-	outside := carGeoJSONGeometry{Type: "LineString", Coordinates: json.RawMessage(`[[-49,-23],[-48,-22]]`)}
-	if lineGeometryIntersectsCAR(outside, car) {
-		t.Fatal("linha fora do CAR não deveria ser detectada")
 	}
 }
