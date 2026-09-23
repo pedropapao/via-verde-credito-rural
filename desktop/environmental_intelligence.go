@@ -152,6 +152,10 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 	if err != nil {
 		return EnvironmentalIntelligenceResult{}, err
 	}
+	// Migra em memória resultados antigos (1.8.0–1.8.2) que registravam HTML
+	// retornado pelo GeoServices apenas como "indisponível". A 1.8.3 passou a
+	// tratar esse cenário como fluxo de download oficial com validação humana.
+	car.Themes = normalizeLegacySICARThemes(car.Themes)
 
 	// "Atualizar análise" precisa refazer também os seis temas detalhados do
 	// SICAR. Na 1.8.0 o force invalidava apenas a inteligência ambiental, mas
@@ -170,7 +174,11 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 		cachePath = filepath.Join(a.dataDir, "cache", "environmental_intelligence", safeFilePart(car.CAR)+".json")
 		if !force {
 			if cached, ok := loadEnvironmentalIntelligenceCache(cachePath, environmentalIntelligenceCacheAge); ok {
+				cached = normalizeLegacyEnvironmentalCache(cached)
 				cached.UsedCache = true
+				// Regrava somente o formato normalizado para que a migração seja
+				// persistente e não dependa de o usuário limpar cache manualmente.
+				_ = saveEnvironmentalIntelligenceCache(cachePath, cached)
 				return cached, nil
 			}
 		}
@@ -490,6 +498,67 @@ func uniqueStrings(in []string) []string {
 		if v==""||seen[v]{continue}
 		seen[v]=true;out=append(out,v)
 	}
+	return out
+}
+
+func normalizeLegacySICARThemes(summary SICARThemesSummary) SICARThemesSummary {
+	if summary.Themes == nil {
+		summary.Themes = map[string]SICARThemeMetric{}
+	}
+	manualRequired := 0
+	for _, def := range sicarThemeDefinitions {
+		m, ok := summary.Themes[def.Code]
+		if !ok || m.Available {
+			continue
+		}
+		legacy := strings.ToLower(strings.TrimSpace(m.Error))
+		if m.Status == "manual_required" ||
+			strings.Contains(legacy, "text/html") ||
+			strings.Contains(legacy, "página html") ||
+			strings.Contains(legacy, "pagina html") ||
+			strings.Contains(legacy, "não é zip") ||
+			strings.Contains(legacy, "nao e zip") ||
+			strings.Contains(legacy, "conteúdo que não é zip") ||
+			strings.Contains(legacy, "conteudo que nao e zip") {
+			m.Status = "manual_required"
+			m.Error = "Download oficial requer validação humana no portal SICAR. Baixe o ZIP do tema e importe-o no ViaVerdeCAR."
+			summary.Themes[def.Code] = m
+			manualRequired++
+		}
+	}
+	if manualRequired > 0 {
+		summary.Warnings = rebuildSICARThemeWarnings(summary)
+	}
+	return summary
+}
+
+func normalizeLegacyEnvironmentalCache(out EnvironmentalIntelligenceResult) EnvironmentalIntelligenceResult {
+	out.Themes = normalizeLegacySICARThemes(out.Themes)
+	clean := make([]string, 0, len(out.Warnings)+2)
+	for _, w := range out.Warnings {
+		lw := strings.ToLower(strings.TrimSpace(w))
+		if lw == "" {
+			continue
+		}
+		legacyThemeWarning := false
+		for _, def := range sicarThemeDefinitions {
+			prefix := strings.ToLower(def.Label) + ":"
+			if strings.HasPrefix(lw, prefix) &&
+				(strings.Contains(lw, "text/html") ||
+					strings.Contains(lw, "não é zip") ||
+					strings.Contains(lw, "nao e zip") ||
+					strings.Contains(lw, "geoservices")) {
+				legacyThemeWarning = true
+				break
+			}
+		}
+		if legacyThemeWarning || strings.Contains(lw, "temas detalhados do sicar:") {
+			continue
+		}
+		clean = append(clean, w)
+	}
+	clean = append(clean, out.Themes.Warnings...)
+	out.Warnings = uniqueStrings(clean)
 	return out
 }
 

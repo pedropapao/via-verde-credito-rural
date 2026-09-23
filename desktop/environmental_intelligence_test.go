@@ -243,3 +243,60 @@ func TestSICARThemeZipCompatibility183(t *testing.T) {
 		t.Fatal("ZIP de APP não pode ser aceito como Reserva Legal")
 	}
 }
+
+
+func TestNormalizeLegacySICARThemes184(t *testing.T) {
+	in := SICARThemesSummary{
+		Themes: map[string]SICARThemeMetric{
+			"APP": {
+				Code: "APP", Label: "Área de Preservação Permanente",
+				Status: "unavailable", Available: false,
+				Error: "GeoServices não entregou pacote utilizável (HTTP nativo: GeoServices respondeu conteúdo que não é ZIP (página HTML/erro do serviço; text/html; charset=UTF-8))",
+			},
+			"RESERVA_LEGAL": {
+				Code: "RESERVA_LEGAL", Label: "Reserva Legal",
+				Status: "unavailable", Available: false,
+				Error: "falha de rede sem resposta HTTP",
+			},
+		},
+		Warnings: []string{
+			"Área de Preservação Permanente: GeoServices não entregou pacote utilizável (text/html)",
+			"Reserva Legal: falha de rede sem resposta HTTP",
+		},
+	}
+	got := normalizeLegacySICARThemes(in)
+	if got.Themes["APP"].Status != "manual_required" {
+		t.Fatalf("APP legada deveria migrar para manual_required: %+v", got.Themes["APP"])
+	}
+	if got.Themes["RESERVA_LEGAL"].Status != "unavailable" {
+		t.Fatalf("falha de rede genérica não deve ser rotulada como CAPTCHA: %+v", got.Themes["RESERVA_LEGAL"])
+	}
+}
+
+func TestNormalizeLegacyEnvironmentalCache184(t *testing.T) {
+	in := EnvironmentalIntelligenceResult{
+		CAR: "MG-0000000-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+		Themes: SICARThemesSummary{
+			Themes: map[string]SICARThemeMetric{
+				"APP": {Code:"APP", Label:"Área de Preservação Permanente", Status:"unavailable", Error:"GeoServices respondeu conteúdo que não é ZIP (página HTML/erro do serviço; text/html)"},
+			},
+			Warnings: []string{"Área de Preservação Permanente: GeoServices respondeu conteúdo que não é ZIP (text/html)"},
+		},
+		Warnings: []string{
+			"Nenhum alerta foi retornado para o CAR nesta consulta. Isso não equivale a certificado de regularidade ambiental.",
+			"Área de Preservação Permanente: GeoServices respondeu conteúdo que não é ZIP (text/html)",
+		},
+	}
+	got := normalizeLegacyEnvironmentalCache(in)
+	if got.Themes.Themes["APP"].Status != "manual_required" {
+		t.Fatal("cache antigo não foi migrado")
+	}
+	if len(got.Warnings) != 2 {
+		t.Fatalf("esperava aviso MapBiomas + aviso SICAR agrupado, obteve %#v", got.Warnings)
+	}
+	for _, w := range got.Warnings {
+		if strings.Contains(strings.ToLower(w), "conteúdo que não é zip") {
+			t.Fatalf("erro técnico legado não deveria permanecer: %s", w)
+		}
+	}
+}
