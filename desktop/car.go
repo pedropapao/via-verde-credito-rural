@@ -173,22 +173,15 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 	if result.HasGeometry {
 		envCtx, envCancel := context.WithTimeout(context.Background(), 75*time.Second)
 		var env EnvironmentalSummary
-		var themes SICARThemesSummary
 		var autoRoute AccessRoute
 		var autoRouteErr error
 		var wg sync.WaitGroup
-		wg.Add(3)
+		wg.Add(2)
 		go func() {
 			defer wg.Done()
 			env = screenEnvironment(envCtx, result.GeoJSON)
 			if a != nil && a.dataDir != "" {
 				a.enrichMCRScreening(envCtx, result.CAR, &env)
-			}
-		}()
-		go func() {
-			defer wg.Done()
-			if a != nil && a.dataDir != "" {
-				themes = a.analyzeSICARThemes(envCtx, result.CAR, result.UF, result.MunicipalityCode, result.GeoJSON, result.AreaHa)
 			}
 		}()
 		go func() {
@@ -200,7 +193,7 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 		wg.Wait()
 		envCancel()
 		result.Environment = env
-		result.Themes = themes
+		result.Themes = SICARThemesSummary{}
 		result.AutoRoute = autoRoute
 		if autoRouteErr == nil && autoRoute.RouteDistanceKm > 0 {
 			result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "Roteiro automático", Detail: fmt.Sprintf("Referência %s; acesso viário estimado %.2f km / %.0f min.", autoRoute.ReferenceLabel, autoRoute.RouteDistanceKm, autoRoute.RouteDurationMin)})
@@ -237,20 +230,6 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 		}
 		for _, warning := range result.Environment.Warnings {
 			result.Checks = append(result.Checks, QualityCheck{Level: "info", Title: "Triagem ambiental", Detail: warning})
-		}
-		if len(result.Themes.Themes) > 0 {
-			labels := []string{}
-			for _, code := range []string{"APP", "RESERVA_LEGAL", "VEGETACAO_NATIVA", "AREA_CONSOLIDADA"} {
-				if m, ok := result.Themes.Themes[code]; ok && m.Available {
-					labels = append(labels, fmt.Sprintf("%s %.2f ha", m.Code, m.AreaHa))
-				}
-			}
-			if len(labels) > 0 {
-				result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "Temas detalhados do SICAR", Detail: "Triagem espacial municipal: " + strings.Join(labels, "; ") + "."})
-			}
-		}
-		for _, warning := range result.Themes.Warnings {
-			result.Checks = append(result.Checks, QualityCheck{Level: "info", Title: "Temas SICAR", Detail: warning})
 		}
 	}
 
