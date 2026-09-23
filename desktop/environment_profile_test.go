@@ -78,10 +78,24 @@ func TestEnvironmentalProfileHasData190(t *testing.T) {
 	if environmentalProfileHasData(EnvironmentalProfile{}) {
 		t.Fatal("perfil vazio não deveria ser considerado preenchido")
 	}
-	if !environmentalProfileHasData(EnvironmentalProfile{BiomeAvailable:true,Biome:"Cerrado"}) {
-		t.Fatal("bioma deveria tornar perfil válido")
+	if environmentalProfileHasData(EnvironmentalProfile{BiomeAvailable:true,Biome:"Cerrado"}) {
+		t.Fatal("cache antigo sem estado dos focos não deve ser reutilizado")
 	}
-	if !environmentalProfileHasData(EnvironmentalProfile{LandCoverAvailable:true,DominantLandCover:"Cultivos anuais"}) {
-		t.Fatal("WorldCover deveria tornar perfil válido")
+	if environmentalProfileHasData(EnvironmentalProfile{LandCoverAvailable:true,DominantLandCover:"Cultivos anuais"}) {
+		t.Fatal("cache antigo do WorldCover sem focos não deve ser reutilizado")
+	}
+	if !environmentalProfileHasData(EnvironmentalProfile{
+		BiomeAvailable:true,
+		Biome:"Cerrado",
+		Fire:EnvironmentalFireProfile{Status:fireStatusNone,Checked:true,Available:true},
+	}) {
+		t.Fatal("perfil atual com consulta de focos concluída deveria ser válido")
+	}
+	if !environmentalProfileHasData(EnvironmentalProfile{
+		LandCoverAvailable:true,
+		DominantLandCover:"Cultivos anuais",
+		Fire:EnvironmentalFireProfile{Status:fireStatusUnavailable},
+	}) {
+		t.Fatal("falha registrada da fonte de focos ainda identifica cache da versão atual")
 	}
 }

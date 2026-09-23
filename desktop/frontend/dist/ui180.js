@@ -1,7 +1,7 @@
 /* ViaVerdeCAR 1.9.0 — Perfil Ambiental Automático */
 (function(){
   const g=id=>document.getElementById(id);
-  const s180={car:'',data:null,loading:false,layer:null};
+  const s180={car:'',data:null,loading:false,layer:null,fireLayer:null};
 
   function api180(){return typeof api==='function'?api():window.go?.main?.App}
   function esc180(v){return typeof esc==='function'?esc(String(v??'')):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -102,6 +102,7 @@
         profileCard180('🌿','Bioma',biomeText,p.biome_available?(p.biome_source||'MapBiomas Alerta'):'fonte não respondeu')+
         profileCard180('🛰️','Cobertura dominante',coverText,coverDetail)+
       '</div>'+
+      fireCard180(p.fire||{})+
       landCoverDetails180(p,classes)+
       '<div class="environment-profile-note180">A cobertura do solo é uma estimativa amostral baseada no ESA WorldCover 2021 (10 m). Ela descreve a cobertura observada pelo produto de sensoriamento remoto e não substitui levantamento de campo, cadastro ambiental ou identificação da cultura atual.</div>'+
       '</section>';
@@ -109,6 +110,28 @@
   }
 
   function profileCard180(icon,label,value,detail){return '<div class="environment-profile-card180"><div class="environment-profile-icon180">'+icon+'</div><div><span>'+esc180(label)+'</span><strong>'+esc180(value)+'</strong><small>'+esc180(detail||'')+'</small></div></div>'}
+
+  function fireCard180(f){
+    const status=String(f?.status||'consulta_nao_realizada');
+    let value='Consulta não realizada',detail=f?.warning||'Programa Queimadas/INPE';
+    if(status==='ocorrencia_encontrada'){
+      const n=Number(f?.feature_count||0);
+      value=n+' foco'+(n===1?' encontrado':'s encontrados');
+      const parts=[];
+      if(f?.last_detected_at)parts.push('Último '+date180(f.last_detected_at));
+      if(arr180(f?.satellites).length)parts.push(arr180(f.satellites).slice(0,2).join(', '));
+      detail=parts.join(' • ')||f?.window_label||'Programa Queimadas/INPE';
+    }else if(status==='sem_ocorrencia'){
+      value='0 focos encontrados';
+      detail=f?.window_label||'Programa Queimadas/INPE consultado';
+    }else if(status==='base_indisponivel'){
+      value='Base indisponível';
+      detail=f?.warning||'Programa Queimadas/INPE não respondeu';
+    }
+    return '<div class="environment-risk-title180"><strong>Focos de calor</strong><span>Programa Queimadas/INPE</span></div>'+
+      '<div class="environment-profile-grid180 environment-profile-grid-stage1">'+
+      profileCard180('🔥','Focos de calor',value,detail)+'</div>';
+  }
 
   function landCoverDetails180(p,classes){
     if(!p?.land_cover_available||!classes.length)return '';
@@ -160,8 +183,16 @@
   async function exportJSON180(){try{const p=await api180().ExportEnvironmentalEvidenceJSON(state.selectedProperty?.id||0,false);toast('Evidências ambientais salvas em '+p)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
   async function exportAlert180(code){try{const p=await api180().ExportMapBiomasAlertTechnicalReport(state.selectedProperty?.id||0,code,false);toast('Laudo do alerta salvo em '+p)}catch(e){if(!String(e).includes('cancelada'))toast(String(e),true)}}
 
-  function clearMap180(){if(s180.layer&&state?.map){try{state.map.removeLayer(s180.layer);state.layerControl?.removeLayer(s180.layer)}catch(_){}}s180.layer=null}
-  function profileHasMap180(){return false}
+  function clearMap180(){
+    if(state?.map){
+      for(const layer of [s180.layer,s180.fireLayer]){
+        if(!layer)continue;
+        try{state.map.removeLayer(layer);state.layerControl?.removeLayer(layer)}catch(_){}
+      }
+    }
+    s180.layer=null;s180.fireLayer=null;
+  }
+  function profileHasMap180(p){return !!p?.fire?.geojson}
   function addGeo180(group,raw,label,style,pointStyle){
     if(!raw)return 0;
     try{
@@ -169,13 +200,29 @@
       layer.bindPopup('<strong>'+esc180(label)+'</strong>');layer.eachLayer(x=>x.addTo(group));return 1;
     }catch(_){return 0}
   }
-  function showMap180(alerts){
-    if(!state?.map)return;clearMap180();const group=L.featureGroup();let count=0;
-    arr180(alerts).forEach(a=>{if(!a?.geometry_geojson)return;count+=addGeo180(group,a.geometry_geojson,'MapBiomas Alerta '+(a.alert_code||''),{weight:3,fillOpacity:.18})});
-    if(!count){toast('Nenhuma geometria de alerta disponível para desenhar.',true);return}
-    group.addTo(state.map);state.layerControl?.addOverlay(group,'Alertas ambientais');s180.layer=group;
+  function showMap180(alerts,p){
+    if(!state?.map)return;
+    clearMap180();
+    const alertGroup=L.featureGroup(),fireGroup=L.featureGroup();
+    let alertCount=0,fireCount=0;
+    arr180(alerts).forEach(a=>{if(!a?.geometry_geojson)return;alertCount+=addGeo180(alertGroup,a.geometry_geojson,'MapBiomas Alerta '+(a.alert_code||''),{weight:3,fillOpacity:.18})});
+    if(p?.fire?.geojson){
+      fireCount+=addGeo180(fireGroup,p.fire.geojson,'Foco de calor — INPE',null,{radius:6,weight:2,fillOpacity:.8});
+    }
+    if(!alertCount&&!fireCount){toast('Nenhuma geometria ambiental disponível para desenhar.',true);return}
+    if(alertCount){
+      alertGroup.addTo(state.map);state.layerControl?.addOverlay(alertGroup,'Alertas MapBiomas');s180.layer=alertGroup;
+    }
+    if(fireCount){
+      fireGroup.addTo(state.map);state.layerControl?.addOverlay(fireGroup,'Focos de calor — INPE');s180.fireLayer=fireGroup;
+    }
     document.querySelector('[data-car-tab131="map"]')?.click();
-    setTimeout(()=>{try{const b=group.getBounds();if(b.isValid())state.map.fitBounds(b.pad(.15),{maxZoom:16})}catch(_){}},100);
+    setTimeout(()=>{try{
+      let b=null;
+      if(alertCount){const x=alertGroup.getBounds();if(x.isValid())b=x}
+      if(fireCount){const x=fireGroup.getBounds();if(x.isValid())b=b?b.extend(x):x}
+      if(b&&b.isValid())state.map.fitBounds(b.pad(.15),{maxZoom:16});
+    }catch(_){}},100);
   }
 
   function watch180(){

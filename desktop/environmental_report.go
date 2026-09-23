@@ -73,6 +73,7 @@ func buildEnvironmentalTechnicalPDF(p Property,car CARResult,intel Environmental
 	page:=1
 	pages=append(pages,environmentalCoverPage(p,car,intel,title,subtitle,alerts,page));page++
 	pages=append(pages,environmentalProfilePage(p,car,intel,title,page));page++
+	pages=append(pages,environmentalFirePage(p,car,intel,title,page));page++
 	pages=append(pages,environmentalMapPage(p,car,intel,title,alerts,page));page++
 	for _,a:=range alerts{
 		pages=append(pages,environmentalAlertPage(p,car,intel,a,title,page));page++
@@ -169,6 +170,50 @@ func environmentalProfilePage(p Property,car CARResult,intel EnvironmentalIntell
 	return c.b.String()
 }
 
+func environmentalFirePage(p Property,car CARResult,intel EnvironmentalIntelligenceResult,title string,page int)string{
+	var c pdfCanvas
+	envReportHeader(&c,title,"Focos de calor — Programa Queimadas/INPE",page)
+	y:=718.0
+	fire:=intel.Profile.Fire
+
+	envSection(&c,&y,"RESULTADO DA CONSULTA")
+	status,value,detail:=environmentalFireReportStatus(fire)
+	envMetricBox(&c,40,y-60,250,54,"Situação",status,detail)
+	latest:="—"
+	if strings.TrimSpace(fire.LastDetectedAt)!=""{latest=dateBR(fire.LastDetectedAt)}
+	envMetricBox(&c,304,y-60,251,54,"Última detecção",latest,fire.WindowLabel)
+	y-=80
+
+	envSection(&c,&y,"EVIDÊNCIAS RETORNADAS")
+	envRow(&c,&y,"Focos dentro do CAR",value)
+	if len(fire.Satellites)>0{envRow(&c,&y,"Satélite(s) / sensor(es)",strings.Join(fire.Satellites,", "))}
+	if fire.MaxFRP>0{envRow(&c,&y,"FRP máximo informado",fmtBR(fire.MaxFRP,2))}
+	if fire.MaxRisk>0{envRow(&c,&y,"Risco de fogo máximo informado",fmtBR(fire.MaxRisk,2))}
+	envRow(&c,&y,"Camada consultada",firstNonEmptyText(fire.SourceLayer,"Não informada"))
+	envRow(&c,&y,"Fonte",firstNonEmptyText(fire.SourceURL,inpeFireWFSURL))
+
+	y-=6
+	envSection(&c,&y,"LEITURA TÉCNICA")
+	note:="Focos de calor são detecções por satélite associadas a fogo ativo ou recente. A presença de um foco dentro do CAR não equivale, por si só, a área queimada, autoria, infração ambiental ou impedimento de crédito. Da mesma forma, ausência de focos no período consultado não comprova ausência histórica de queimadas."
+	c.b.WriteString("0.20 0.27 0.23 rg\n")
+	c.wrapped(42,y,7.6,false,note,103,10)
+	envReportFooter(&c,page)
+	return c.b.String()
+}
+
+func environmentalFireReportStatus(f EnvironmentalFireProfile)(status,value,detail string){
+	switch f.Status{
+	case fireStatusFound:
+		return "Ocorrência encontrada",fmt.Sprintf("%d foco(s)",f.FeatureCount),firstNonEmptyText(f.WindowLabel,"Programa Queimadas/INPE")
+	case fireStatusNone:
+		return "Consulta concluída","0 focos","nenhuma ocorrência localizada dentro do CAR no período consultado"
+	case fireStatusUnavailable:
+		return "Base indisponível","Não determinado",firstNonEmptyText(f.Warning,"Programa Queimadas/INPE não respondeu")
+	default:
+		return "Consulta não realizada","Não determinado",firstNonEmptyText(f.Warning,"pré-requisitos da consulta não disponíveis")
+	}
+}
+
 func environmentalMapPage(p Property,car CARResult,intel EnvironmentalIntelligenceResult,title string,alerts []EnvironmentalAlertDetail,page int)string{
 	var c pdfCanvas
 	envReportHeader(&c,title,"Mapa técnico e matriz de fontes automáticas",page)
@@ -189,6 +234,8 @@ func environmentalMapPage(p Property,car CARResult,intel EnvironmentalIntelligen
 	coverDetail:="ESA WorldCover"
 	if intel.Profile.LandCoverAvailable {coverStatus="Consultado";coverDetail=fmt.Sprintf("%d amostras • referência %d",intel.Profile.LandCoverSamples,intel.Profile.LandCoverYear)}
 	envSourceRow(&c,&y,"ESA WorldCover",coverStatus,coverDetail)
+	fireStatus,fireValue,fireDetail:=environmentalFireReportStatus(intel.Profile.Fire)
+	envSourceRow(&c,&y,"INPE / Programa Queimadas",fireStatus,fireValue+" • "+fireDetail)
 	envSourceRow(&c,&y,"MapBiomas Alerta",sourceState(intel.MapBiomas.Connected,intel.MapBiomas.TotalAlerts),fmt.Sprintf("%d alerta(s); %s ha somados",intel.MapBiomas.TotalAlerts,fmtBR(intel.MapBiomas.TotalAreaHa,2)))
 	envSourceRow(&c,&y,"IBAMA / PAMGIA",sourceState(intel.Environment.IBAMAChecked,intel.Environment.IBAMAEmbargoCount),fmt.Sprintf("%d interseção(ões) com embargo no CAR",intel.Environment.IBAMAEmbargoCount))
 	envSourceRow(&c,&y,"FUNAI",sourceState(intel.Environment.FUNAIChecked,intel.Environment.IndigenousCount),fmt.Sprintf("%d interseção(ões) com Terra Indígena no CAR",intel.Environment.IndigenousCount))
@@ -251,7 +298,7 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 	envReportHeader(&c,title,"Metodologia, rastreabilidade e limitações",page)
 	y:=718.0
 	envSection(&c,&y,"METODOLOGIA")
-	method:="1) identificação do imóvel pela geometria pública do CAR; 2) identificação automática do bioma no ponto central do imóvel; 3) amostragem espacial de pontos internos ao CAR; 4) classificação desses pontos no ESA WorldCover 2021; 5) cálculo da participação percentual e da área estimada por classe; 6) manutenção das consultas automáticas MapBiomas Alerta, IBAMA/PAMGIA, FUNAI, ICMBio e MMA/MCR já existentes."
+	method:="1) identificação do imóvel pela geometria pública do CAR; 2) identificação automática do bioma no ponto central do imóvel; 3) amostragem espacial de pontos internos ao CAR e classificação no ESA WorldCover 2021; 4) consulta automática ao Programa Queimadas/INPE e cruzamento espacial dos focos com o polígono do CAR; 5) manutenção das consultas automáticas MapBiomas Alerta, IBAMA/PAMGIA, FUNAI, ICMBio e MMA/MCR já existentes."
 	c.b.WriteString("0.15 0.23 0.19 rg\n")
 	y=c.wrapped(42,y,8,false,method,104,11)
 	y-=10
@@ -260,6 +307,7 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 	for _,row:=range []struct{n,u string}{
 		{"ESA WorldCover 2021 v200",worldCoverSourceURL},
 		{"ESA WorldCover — serviço público de amostragem",worldCoverImageServer},
+		{"INPE — Programa Queimadas / WFS",inpeFireWFSURL},
 		{"MapBiomas Alerta — API V2","https://plataforma.alerta.mapbiomas.org/api/v2/graphql"},
 		{"MapBiomas Alerta — metodologia",mapBiomasMethodologyURL},
 		{"SICAR — perímetro público do CAR",carWFSURL},
@@ -279,6 +327,8 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 		"As áreas por classe são estimadas pela proporção de amostras internas ao CAR e não substituem levantamento de campo, geoprocessamento cadastral ou medição oficial.",
 		"A classe de vegetação herbácea do WorldCover pode incluir pastagens e outras formações herbáceas; ela não deve ser interpretada automaticamente como pastagem produtiva.",
 		"O bioma é identificado automaticamente no ponto central do CAR para esta etapa; imóveis sobre limites de biomas exigem análise espacial mais detalhada.",
+		"Focos de calor são detecções por satélite e não equivalem automaticamente a área queimada, autoria, infração ou impedimento de crédito.",
+		"Ausência de focos no período consultado não comprova ausência histórica de queimadas no imóvel.",
 		"Alertas do MapBiomas e cruzamentos territoriais são evidências para conferência e não constituem, por si só, decisão administrativa, autoria ou juízo de legalidade.",
 	}
 	for _,v:=range limits{y=c.wrapped(46,y,7.4,false,"• "+v,100,10);y-=3}
@@ -308,6 +358,14 @@ func environmentalConclusionText(intel EnvironmentalIntelligenceResult,alerts []
 	}
 	if intel.Profile.LandCoverAvailable {
 		text+=fmt.Sprintf(" A cobertura dominante estimada pelo ESA WorldCover %d foi %s.",intel.Profile.LandCoverYear,intel.Profile.DominantLandCover)
+	}
+	switch intel.Profile.Fire.Status{
+	case fireStatusFound:
+		text+=fmt.Sprintf(" O Programa Queimadas/INPE retornou %d foco(s) dentro do CAR no período consultado.",intel.Profile.Fire.FeatureCount)
+	case fireStatusNone:
+		text+=" A consulta ao Programa Queimadas/INPE foi concluída sem focos localizados dentro do CAR no período consultado."
+	case fireStatusUnavailable:
+		text+=" A base de focos de calor do Programa Queimadas/INPE ficou indisponível nesta execução."
 	}
 	if s.AlertsOverIBAMA>0||s.AlertsOverIndigenousLand>0||s.AlertsOverFederalUC>0{
 		text+=fmt.Sprintf(" Há alertas com interseção espacial estimada em camadas sensíveis: embargo IBAMA (%d), Terra Indígena (%d) e UC federal (%d).",s.AlertsOverIBAMA,s.AlertsOverIndigenousLand,s.AlertsOverFederalUC)
