@@ -58,6 +58,10 @@ func (a *App) ExportEnvironmentalEvidenceJSON(propertyID int64, force bool)(stri
 }
 
 func buildEnvironmentalTechnicalPDF(p Property,car CARResult,intel EnvironmentalIntelligenceResult,alertFilter string)[]byte{
+	// Usa no documento exatamente as camadas que participaram da inteligência
+	// ambiental desta execução, inclusive quando foram atualizadas manualmente.
+	car.Themes = intel.Themes
+	car.Environment = intel.Environment
 	alerts:=intel.Alerts
 	title:="LAUDO TÉCNICO DE TRIAGEM AMBIENTAL"
 	subtitle:="CAR, MapBiomas Alerta e cruzamentos territoriais públicos"
@@ -70,7 +74,7 @@ func buildEnvironmentalTechnicalPDF(p Property,car CARResult,intel Environmental
 	pages=append(pages,environmentalCoverPage(p,car,intel,title,subtitle,alerts))
 	pages=append(pages,environmentalMapPage(p,car,intel,title,alerts))
 	for _,a:=range alerts{
-		pages=append(pages,environmentalAlertPage(p,car,a,title))
+		pages=append(pages,environmentalAlertPage(p,car,intel,a,title))
 	}
 	pages=append(pages,environmentalSourcesPage(p,car,intel,title,alertFilter))
 	return assembleMultiPagePDF(pages)
@@ -96,8 +100,10 @@ func environmentalCoverPage(p Property,car CARResult,intel EnvironmentalIntellig
 	}
 	envMetricBox(&c,40,y-60,122,54,"Alertas MapBiomas",fmt.Sprintf("%d",s.Alerts),"vinculados ao CAR")
 	envMetricBox(&c,172,y-60,122,54,"Área dos alertas",fmtBR(s.AlertAreaInCARHa,2)+" ha","estimada dentro do CAR")
-	envMetricBox(&c,304,y-60,122,54,"APP",fmtBR(s.APPOverlapHa,2)+" ha","interseção calculada")
-	envMetricBox(&c,436,y-60,119,54,"Reserva Legal",fmtBR(s.RLOverlapHa,2)+" ha","interseção calculada")
+	appValue, appDetail := environmentalThemeOverlapLabel(intel.Themes, "APP", s.APPOverlapHa)
+	rlValue, rlDetail := environmentalThemeOverlapLabel(intel.Themes, "RESERVA_LEGAL", s.RLOverlapHa)
+	envMetricBox(&c,304,y-60,122,54,"APP",appValue,appDetail)
+	envMetricBox(&c,436,y-60,119,54,"Reserva Legal",rlValue,rlDetail)
 	y-=76
 	envMetricBox(&c,40,y-60,122,54,"Embargo IBAMA",fmt.Sprintf("%d",s.AlertsOverIBAMA),"alerta(s) com interseção")
 	envMetricBox(&c,172,y-60,122,54,"Terra Indígena",fmt.Sprintf("%d",s.AlertsOverIndigenousLand),"alerta(s) com interseção")
@@ -137,7 +143,8 @@ func environmentalMapPage(p Property,car CARResult,intel EnvironmentalIntelligen
 	y:=350.0
 	envSection(&c,&y,"MATRIZ DE FONTES CONSULTADAS")
 	envSourceRow(&c,&y,"MapBiomas Alerta",sourceState(intel.MapBiomas.Connected,intel.MapBiomas.TotalAlerts),fmt.Sprintf("%d alerta(s); %s ha somados",intel.MapBiomas.TotalAlerts,fmtBR(intel.MapBiomas.TotalAreaHa,2)))
-	envSourceRow(&c,&y,"SICAR — temas declarados",sourceState(len(intel.Themes.Themes)>0,0),themeSourceSummary(intel.Themes))
+	availableThemes := availableSICARThemeCount(intel.Themes)
+	envSourceRow(&c,&y,"SICAR — temas declarados",sourceState(availableThemes>0,0),themeSourceSummary(intel.Themes))
 	envSourceRow(&c,&y,"IBAMA / PAMGIA",sourceState(intel.Environment.IBAMAChecked,intel.Environment.IBAMAEmbargoCount),fmt.Sprintf("%d interseção(ões) com embargo no CAR",intel.Environment.IBAMAEmbargoCount))
 	envSourceRow(&c,&y,"FUNAI",sourceState(intel.Environment.FUNAIChecked,intel.Environment.IndigenousCount),fmt.Sprintf("%d interseção(ões) com Terra Indígena no CAR",intel.Environment.IndigenousCount))
 	envSourceRow(&c,&y,"ICMBio",sourceState(intel.Environment.ICMBioChecked,intel.Environment.FederalUCCount),fmt.Sprintf("%d interseção(ões) com UC federal no CAR",intel.Environment.FederalUCCount))
@@ -146,7 +153,7 @@ func environmentalMapPage(p Property,car CARResult,intel EnvironmentalIntelligen
 	return c.b.String()
 }
 
-func environmentalAlertPage(p Property,car CARResult,a EnvironmentalAlertDetail,title string)string{
+func environmentalAlertPage(p Property,car CARResult,intel EnvironmentalIntelligenceResult,a EnvironmentalAlertDetail,title string)string{
 	var c pdfCanvas
 	envReportHeader(&c,title,"Alerta "+a.AlertCode+" — evidências e cruzamentos",3)
 	y:=718.0
@@ -165,13 +172,13 @@ func environmentalAlertPage(p Property,car CARResult,a EnvironmentalAlertDetail,
 
 	y-=5
 	envSection(&c,&y,"CRUZAMENTOS NO IMÓVEL")
-	envCompactMetric(&c,&y,"APP declarada",a.APPOverlapHa,"SICAR × geometria do alerta")
-	envCompactMetric(&c,&y,"Reserva Legal declarada",a.RLOverlapHa,"SICAR × geometria do alerta")
-	envCompactMetric(&c,&y,"Vegetação nativa declarada",a.NativeOverlapHa,"SICAR × geometria do alerta")
-	envCompactMetric(&c,&y,"Área consolidada declarada",a.ConsolidatedOverlapHa,"SICAR × geometria do alerta")
-	envCompactMetric(&c,&y,"Embargo IBAMA",a.IBAMAOverlapHa,"PAMGIA × geometria do alerta")
-	envCompactMetric(&c,&y,"Terra Indígena",a.IndigenousOverlapHa,"FUNAI × geometria do alerta")
-	envCompactMetric(&c,&y,"UC federal",a.FederalUCOverlapHa,"ICMBio × geometria do alerta")
+	envCompactMetricState(&c,&y,"APP declarada",a.APPOverlapHa,sicarThemeAvailable(intel.Themes,"APP"),"SICAR × geometria do alerta")
+	envCompactMetricState(&c,&y,"Reserva Legal declarada",a.RLOverlapHa,sicarThemeAvailable(intel.Themes,"RESERVA_LEGAL"),"SICAR × geometria do alerta")
+	envCompactMetricState(&c,&y,"Vegetação nativa declarada",a.NativeOverlapHa,sicarThemeAvailable(intel.Themes,"VEGETACAO_NATIVA"),"SICAR × geometria do alerta")
+	envCompactMetricState(&c,&y,"Área consolidada declarada",a.ConsolidatedOverlapHa,sicarThemeAvailable(intel.Themes,"AREA_CONSOLIDADA"),"SICAR × geometria do alerta")
+	envCompactMetricState(&c,&y,"Embargo IBAMA",a.IBAMAOverlapHa,intel.Environment.IBAMAChecked,"PAMGIA × geometria do alerta")
+	envCompactMetricState(&c,&y,"Terra Indígena",a.IndigenousOverlapHa,intel.Environment.FUNAIChecked,"FUNAI × geometria do alerta")
+	envCompactMetricState(&c,&y,"UC federal",a.FederalUCOverlapHa,intel.Environment.ICMBioChecked,"ICMBio × geometria do alerta")
 
 	y-=4
 	envSection(&c,&y,"CRUZAMENTOS REPORTADOS PELO MAPBIOMAS")
@@ -262,6 +269,9 @@ func environmentalConclusionText(intel EnvironmentalIntelligenceResult,alerts []
 	if s.HighAttentionAlerts>0{
 		text+=fmt.Sprintf(" %d alerta(s) receberam alta prioridade de conferência pelas regras objetivas descritas no relatório.",s.HighAttentionAlerts)
 	}
+	if !sicarThemeAvailable(intel.Themes,"APP") || !sicarThemeAvailable(intel.Themes,"RESERVA_LEGAL") {
+		text+=" APP e/ou Reserva Legal não estavam disponíveis no SICAR nesta execução; nenhuma área zero foi presumida para essas camadas."
+	}
 	text+=" A conclusão jurídica ou de elegibilidade para crédito depende da conferência de autorizações, documentos, datas, situação dos registros e análise competente."
 	return text
 }
@@ -301,8 +311,18 @@ func envMetricBox(c *pdfCanvas,x,y,w,h float64,label,value,detail string){
 }
 
 func envCompactMetric(c *pdfCanvas,y *float64,label string,value float64,source string){
+	envCompactMetricState(c,y,label,value,true,source)
+}
+
+func envCompactMetricState(c *pdfCanvas,y *float64,label string,value float64,available bool,source string){
 	c.b.WriteString("0.35 0.42 0.39 rg\n");c.text(42,*y,7.1,true,label)
-	c.b.WriteString("0.08 0.15 0.12 rg\n");c.text(230,*y,7.4,false,fmtBR(value,4)+" ha")
+	c.b.WriteString("0.08 0.15 0.12 rg\n")
+	valueText := fmtBR(value,4)+" ha"
+	if !available {
+		valueText = "Indisponível"
+		source = source+" • fonte não obtida"
+	}
+	c.text(230,*y,7.4,false,valueText)
 	c.b.WriteString("0.40 0.46 0.42 rg\n");c.text(334,*y,6.2,false,source);*y-=13
 }
 
@@ -318,9 +338,44 @@ func sourceState(checked bool,count int)string{
 	return "Consulta concluída"
 }
 func themeSourceSummary(t SICARThemesSummary)string{
-	available:=0
-	for _,m:=range t.Themes{if m.Available{available++}}
+	available:=availableSICARThemeCount(t)
+	if available==0 {
+		return "0/6 temas disponíveis; fonte indisponível nesta execução, sem assumir área zero"
+	}
+	stale:=0
+	for _,m:=range t.Themes{if m.Available && (m.CacheStatus=="cache_stale" || m.CacheStatus=="manual"){stale++}}
+	if stale>0 {
+		return fmt.Sprintf("%d/6 tema(s) disponível(is); %d por cache/importação; dados declarados do SICAR",available,stale)
+	}
 	return fmt.Sprintf("%d/6 tema(s) disponível(is); dados declarados do SICAR",available)
+}
+
+func availableSICARThemeCount(t SICARThemesSummary)int{
+	n:=0
+	for _,m:=range t.Themes{if m.Available{n++}}
+	return n
+}
+
+func sicarThemeAvailable(t SICARThemesSummary,code string)bool{
+	m,ok:=t.Themes[code]
+	return ok&&m.Available
+}
+
+func environmentalThemeOverlapLabel(t SICARThemesSummary,code string,value float64)(string,string){
+	m,ok:=t.Themes[code]
+	if !ok||!m.Available {
+		return "Indisponível","fonte SICAR não obtida"
+	}
+	detail:="interseção calculada"
+	switch m.CacheStatus {
+	case "cache_stale":
+		detail=fmt.Sprintf("cache anterior • %.0f h",m.CacheAgeHours)
+	case "manual":
+		detail="pacote oficial importado"
+	case "cache_fresh":
+		detail="cache recente do SICAR"
+	}
+	return fmtBR(value,2)+" ha",detail
 }
 func mcrSourceSummary(e EnvironmentalSummary)string{
 	if !e.MCRChecked{return "lista não consultada nesta execução"}

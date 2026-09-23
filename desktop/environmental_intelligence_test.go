@@ -135,3 +135,62 @@ func TestEnvironmentalCacheRoundTrip180(t *testing.T) {
 		t.Fatalf("cache inesperado: ok=%v got=%+v",ok,got)
 	}
 }
+
+
+func TestSICARThemePayloadDetection181(t *testing.T) {
+	if !hasZIPSignature([]byte{'P','K',3,4,0,0}) {
+		t.Fatal("assinatura ZIP válida não reconhecida")
+	}
+	if hasZIPSignature([]byte("<html><body>erro</body></html>")) {
+		t.Fatal("HTML não pode ser reconhecido como ZIP")
+	}
+	desc := describeSICARThemePayload([]byte("<!doctype html><html>serviço indisponível</html>"), "text/html; charset=utf-8")
+	if !strings.Contains(strings.ToLower(desc), "html") {
+		t.Fatalf("diagnóstico de HTML inesperado: %s", desc)
+	}
+	desc = describeSICARThemePayload([]byte(`{"erro":"temporario"}`), "application/json")
+	if !strings.Contains(strings.ToLower(desc), "json") {
+		t.Fatalf("diagnóstico de JSON inesperado: %s", desc)
+	}
+}
+
+func TestEnvironmentalThemeUnavailableIsNotZero181(t *testing.T) {
+	themes := SICARThemesSummary{Themes: map[string]SICARThemeMetric{
+		"APP": {Code:"APP", Label:"Área de Preservação Permanente", Available:false, Status:"unavailable", Error:"fonte indisponível"},
+		"RESERVA_LEGAL": {Code:"RESERVA_LEGAL", Label:"Reserva Legal", Available:true, AreaHa:0, Status:"online", CacheStatus:"online"},
+	}}
+	value, detail := environmentalThemeOverlapLabel(themes, "APP", 0)
+	if value != "Indisponível" {
+		t.Fatalf("fonte indisponível foi apresentada como %q", value)
+	}
+	if !strings.Contains(strings.ToLower(detail), "não obtida") {
+		t.Fatalf("detalhe inesperado: %s", detail)
+	}
+	value, _ = environmentalThemeOverlapLabel(themes, "RESERVA_LEGAL", 0)
+	if value == "Indisponível" {
+		t.Fatal("zero confirmado em camada disponível foi confundido com indisponibilidade")
+	}
+	if !strings.Contains(value, "0") {
+		t.Fatalf("zero confirmado não foi mantido: %s", value)
+	}
+}
+
+func TestThemeSourceSummary181(t *testing.T) {
+	allUnavailable := SICARThemesSummary{Themes: map[string]SICARThemeMetric{
+		"APP": {Available:false},
+		"RESERVA_LEGAL": {Available:false},
+	}}
+	got := themeSourceSummary(allUnavailable)
+	if !strings.Contains(got, "0/6") || !strings.Contains(strings.ToLower(got), "sem assumir área zero") {
+		t.Fatalf("resumo indisponível inadequado: %s", got)
+	}
+
+	mixed := SICARThemesSummary{Themes: map[string]SICARThemeMetric{
+		"APP": {Available:true, CacheStatus:"cache_stale"},
+		"RESERVA_LEGAL": {Available:true, CacheStatus:"online"},
+	}}
+	got = themeSourceSummary(mixed)
+	if !strings.Contains(got, "2/6") || !strings.Contains(strings.ToLower(got), "cache") {
+		t.Fatalf("resumo de cache inadequado: %s", got)
+	}
+}

@@ -1,3 +1,37 @@
+CAR 1.8.1: robustez dos temas SICAR e segurança dos laudos ambientais.
+
+CORREÇÃO DOS TEMAS SICAR
+• O download municipal de APP, Reserva Legal, Vegetação Nativa, Área Consolidada, Uso Restrito e Servidão Administrativa passa a validar a assinatura real do ZIP antes de processar.
+• Quando o cliente HTTP nativo do Go/Windows recebe conteúdo inválido ou falha na conexão, o aplicativo tenta novamente pelo curl/Schannel do próprio Windows, seguindo o mesmo padrão de contingência já usado no WFS do CAR.
+• Respostas HTML, JSON, vazias ou incompatíveis deixam de aparecer apenas como “ZIP inválido”; o diagnóstico passa a indicar que o GeoServices retornou página de erro, JSON ou conteúdo inesperado.
+• O último pacote ZIP válido em cache continua disponível como contingência quando o serviço público está temporariamente instável.
+• A camada registra estado explícito: online, cache recente, cache anterior, importado ou indisponível.
+
+ZERO ≠ INDISPONÍVEL
+• Laudos e tela deixam de apresentar 0,00 ha quando APP, Reserva Legal ou outra camada não foi obtida.
+• “0 ha” só é exibido quando a camada foi efetivamente obtida e o cruzamento calculado resultou em zero.
+• Quando a fonte não responde, o resultado é “Indisponível — fonte SICAR não obtida”.
+• A síntese do laudo registra quando APP/RL não estavam disponíveis e informa que nenhuma área zero foi presumida.
+
+ATUALIZAR ANÁLISE
+• O botão “Atualizar análise” agora refaz também os seis temas detalhados do SICAR.
+• Na 1.8.0, a atualização refazia MapBiomas/inteligência ambiental, mas podia reutilizar APP/RL/etc. de uma consulta anterior.
+• Falha na nova tentativa não apaga um resultado válido anterior nem os demais dados do imóvel.
+
+QUALIDADE DA FONTE
+• A matriz ambiental mostra quantos dos 6 temas SICAR foram efetivamente obtidos.
+• Exibe por tema: consultado, cache recente, cache anterior/importado ou indisponível.
+• Laudos individuais também distinguem disponibilidade de APP, RL, Vegetação Nativa e Área Consolidada.
+• IBAMA, FUNAI e ICMBio continuam diferenciando consulta concluída de fonte indisponível.
+
+PRESERVADO
+• Nenhuma exclusão ou migração destrutiva de banco.
+• MapBiomas Alerta, IBAMA, FUNAI, ICMBio, MMA/MCR, CAR, KML, histórico e crédito rural permanecem preservados.
+• A interpretação técnica conservadora da 1.8.0 foi mantida.
+
+TESTES
+• Testes de assinatura ZIP, identificação de HTML/JSON inesperado, distinção entre zero e indisponibilidade, resumo de cache e geração dos laudos ambientais.
+
 CAR 1.8.0: Inteligência Ambiental e laudos técnicos profissionais.
 
 INTELIGÊNCIA AMBIENTAL
