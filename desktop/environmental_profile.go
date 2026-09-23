@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"encoding/xml"
@@ -824,13 +825,9 @@ func queryWorldCoverProfile(ctx context.Context, carRaw string) (LandCoverProfil
 	if err != nil {
 		return out, err
 	}
-	img, _, err := image.Decode(strings.NewReader(string(body)))
+	img, _, err := image.Decode(bytes.NewReader(body))
 	if err != nil {
-		// binary bytes must not be converted semantically; retry via byte reader helper
-		img, err = decodeImageBytes(body)
-		if err != nil {
-			return out, fmt.Errorf("WorldCover retornou imagem inválida: %w", err)
-		}
+		return out, fmt.Errorf("WorldCover retornou imagem inválida: %w", err)
 	}
 	mp, err := geoJSONToPlanar(carRaw, sharedLatitude(carRaw))
 	if err != nil {
@@ -877,25 +874,6 @@ func queryWorldCoverProfile(ctx context.Context, carRaw string) (LandCoverProfil
 		out.DominantPct = out.Classes[0].SamplePct
 	}
 	return out, nil
-}
-
-func decodeImageBytes(body []byte) (image.Image, error) {
-	return image.Decode(bytesReader(body))
-}
-
-type byteSliceReader struct {
-	b []byte
-	i int
-}
-
-func bytesReader(b []byte) *byteSliceReader { return &byteSliceReader{b: b} }
-func (r *byteSliceReader) Read(p []byte) (int, error) {
-	if r.i >= len(r.b) {
-		return 0, errors.New("EOF")
-	}
-	n := copy(p, r.b[r.i:])
-	r.i += n
-	return n, nil
 }
 
 func nearestWorldCoverClass(r, g, b int) (int, bool) {
