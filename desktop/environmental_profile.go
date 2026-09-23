@@ -172,17 +172,6 @@ func buildEnvironmentalProfile(parent context.Context, car CARResult) Environmen
 	ctx, cancel := context.WithTimeout(parent, 52*time.Second)
 	defer cancel()
 
-	biome, biomeErr := queryBiomeProfile(ctx, car.GeoJSON, firstPositive(car.GeometryAreaHa, car.AreaHa))
-	if biomeErr != nil {
-		biome.Warning = biomeErr.Error()
-		out.Warnings = append(out.Warnings, "Bioma/IBGE: "+biomeErr.Error())
-	}
-	out.Biome = biome
-
-	type profilePart struct {
-		key string
-		set func()
-	}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	run := func(fn func()) {
@@ -190,6 +179,8 @@ func buildEnvironmentalProfile(parent context.Context, car CARResult) Environmen
 		go func() { defer wg.Done(); fn() }()
 	}
 
+	// Fontes independentes começam imediatamente. Bioma é consultado em
+	// paralelo e serve apenas para selecionar os workspaces PRODES/DETER.
 	run(func() {
 		m, err := terrainMetricForCAR(ctx, car.GeoJSON, firstPositive(car.GeometryAreaHa, car.AreaHa))
 		mu.Lock()
@@ -240,6 +231,15 @@ func buildEnvironmentalProfile(parent context.Context, car CARResult) Environmen
 		}
 		out.Nearby = n
 	})
+
+	biome, biomeErr := queryBiomeProfile(ctx, car.GeoJSON, firstPositive(car.GeometryAreaHa, car.AreaHa))
+	mu.Lock()
+	if biomeErr != nil {
+		biome.Warning = biomeErr.Error()
+		out.Warnings = append(out.Warnings, "Bioma/IBGE: "+biomeErr.Error())
+	}
+	out.Biome = biome
+	mu.Unlock()
 
 	biomeName := biome.Dominant
 	run(func() {
