@@ -579,7 +579,10 @@ func normalizeLegacyEnvironmentalCache(out EnvironmentalIntelligenceResult) Envi
 }
 
 func environmentalProfileHasData(p EnvironmentalProfile) bool {
-	return p.BiomeAvailable || p.LandCoverAvailable
+	// Exige o estado dos focos para invalidar caches antigos da Etapa 1,
+	// mesmo quando a fonte do INPE respondeu sem ocorrências.
+	return strings.TrimSpace(p.Fire.Status) != "" &&
+		(p.BiomeAvailable || p.LandCoverAvailable || p.Fire.Status != fireStatusNotRun)
 }
 
 func environmentSummaryFresh(e EnvironmentalSummary, maxAge time.Duration) bool {
