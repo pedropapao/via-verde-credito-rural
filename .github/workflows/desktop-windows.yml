@@ -12,6 +12,10 @@ on:
       - '.github/workflows/desktop-windows.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   test-and-build:
     runs-on: windows-latest
@@ -59,25 +63,67 @@ jobs:
         shell: pwsh
         env:
           UPDATE_ENDPOINT: https://igrxqbroklfwujcwbiwh.supabase.co/functions/v1/via-verde-desktop-update
-          UPDATE_PUBLISH_TOKEN: 4iwOcySMYGzeVwy3bdqBRaz7pzrEcqH9obJ_kO3m-XBksZjtXs796cSHZHoNcg5y
+          GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $exe = "build/bin/ViaVerdeCAR.exe"
           $sha = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          $size = (Get-Item $exe).Length
           $notes = (Get-Content "UPDATE_NOTES.txt" -Raw).Trim()
           $notes64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($notes))
-          $publishUrl = $env:UPDATE_ENDPOINT + "?action=publish"
-          $args = @(
+
+          $commonHeaders = @(
+            "--header", "Authorization: Bearer $env:GITHUB_API_TOKEN",
+            "--header", "x-github-run-id: $env:GITHUB_RUN_ID",
+            "--header", "x-github-sha: $env:GITHUB_SHA",
+            "--header", "x-version: $env:APP_VERSION",
+            "--header", "x-sha256: $sha",
+            "--header", "x-size: $size"
+          )
+
+          $prepareUrl = $env:UPDATE_ENDPOINT + "?action=prepare"
+          $prepareArgs = @(
             "--fail-with-body",
+            "--silent",
+            "--show-error",
             "--retry", "3",
             "--retry-delay", "2",
             "--request", "POST",
-            $publishUrl,
-            "--header", "x-publish-token: $env:UPDATE_PUBLISH_TOKEN",
-            "--header", "x-version: $env:APP_VERSION",
-            "--header", "x-sha256: $sha",
-            "--header", "x-notes-base64: $notes64",
-            "--header", "content-type: application/octet-stream",
-            "--data-binary", "@$exe"
+            $prepareUrl
+          ) + $commonHeaders
+          $prepareRaw = & curl.exe @prepareArgs
+          if ($LASTEXITCODE -ne 0) { throw "Falha ao preparar upload da atualização" }
+          $prepare = $prepareRaw | ConvertFrom-Json
+          if (-not $prepare.upload_url) { throw "URL assinada de upload não retornada" }
+
+          $uploadArgs = @(
+            "--fail-with-body",
+            "--silent",
+            "--show-error",
+            "--retry", "3",
+            "--retry-delay", "2",
+            "--request", "PUT",
+            $prepare.upload_url,
+            "--header", "content-type: application/vnd.microsoft.portable-executable",
+            "--header", "cache-control: max-age=3600",
+            "--header", "x-upsert: true",
+            "--data-binary", "@$exe",
+            "--output", "NUL"
           )
-          & curl.exe @args
-          if ($LASTEXITCODE -ne 0) { throw "Falha ao publicar atualização" }
+          & curl.exe @uploadArgs
+          if ($LASTEXITCODE -ne 0) { throw "Falha ao enviar EXE para o Storage" }
+
+          $finalizeUrl = $env:UPDATE_ENDPOINT + "?action=finalize"
+          $finalizeArgs = @(
+            "--fail-with-body",
+            "--silent",
+            "--show-error",
+            "--retry", "3",
+            "--retry-delay", "2",
+            "--request", "POST",
+            $finalizeUrl,
+            "--header", "x-notes-base64: $notes64"
+          ) + $commonHeaders
+          $finalizeRaw = & curl.exe @finalizeArgs
+          if ($LASTEXITCODE -ne 0) { throw "Falha ao finalizar publicação da atualização" }
+          $finalize = $finalizeRaw | ConvertFrom-Json
+          if (-not $finalize.ok) { throw "Publicação não confirmada pelo servidor" }
