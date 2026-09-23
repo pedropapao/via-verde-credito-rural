@@ -30,7 +30,16 @@ func TestFireCardUI191(t *testing.T) {
 		}
 	}
 
-	if strings.Contains(js, "p?.fire?.geojson") || strings.Contains(js, "p.fire.geojson") {
-		t.Fatal("Parte 3B não deve adicionar focos ao mapa")
+	requiredMap := []string{
+		"profileHasMap180(p)",
+		"p?.fire?.geojson",
+		"Foco de calor — INPE",
+		"Focos de calor — INPE",
+		"s180.fireLayer",
+	}
+	for _, want := range requiredMap {
+		if !strings.Contains(js, want) {
+			t.Fatalf("Parte 3C não contém integração de mapa %q", want)
+		}
 	}
 }
