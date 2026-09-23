@@ -62,3 +62,10 @@ func TestWorldCoverNotAdvertisedAsAnalyticalSource190(t *testing.T) {
 		}
 	}
 }
+
+func TestEnvironmentalProfileFinalValidation190(t *testing.T) {
+	// Branch temporária: força CI sobre o estado final da 1.9.0 sem alterar o binário de produção.
+	if AppVersion != "1.9.0" {
+		t.Fatalf("versão inesperada: %s", AppVersion)
+	}
+}
