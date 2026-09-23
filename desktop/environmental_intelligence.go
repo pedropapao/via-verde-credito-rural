@@ -252,7 +252,7 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 	if len(out.Alerts) == 0 && mb.Connected {
 		out.Warnings = append(out.Warnings, "Nenhum alerta foi retornado para o CAR nesta consulta. Isso não equivale a certificado de regularidade ambiental.")
 	}
-	out.Warnings = append(out.Warnings, car.Environment.Warnings...)
+	out.Warnings = append(out.Warnings, refreshedEnv.Warnings...)
 	out = sanitizeEnvironmentalAutoOnly(out)
 
 	if cachePath != "" {
