@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 1.8.3 — Inteligência Ambiental & importação SICAR */
+/* ViaVerdeCAR 1.8.5 — Inteligência Ambiental automática */
 .environmental-intel180{display:grid;gap:14px;background:linear-gradient(145deg,#fbfdfb,#fff);border-color:#cddfd2}
 .environment-intro180{display:flex;gap:12px;align-items:center;padding:14px;border:1px solid var(--line,#dbe4df);border-radius:14px;background:rgba(42,111,77,.055)}
 .environment-intro180>div:last-child{display:grid;gap:4px}.environment-intro180 span{color:var(--muted,#607168);font-size:.86rem}
@@ -22,9 +22,3 @@
 .environment-empty180{padding:18px;border:1px dashed var(--line,#dbe4df);border-radius:12px;color:var(--muted,#607168);text-align:center}
 @media(max-width:900px){.environment-metrics180,.environment-alert-grid180{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.environment-metrics180,.environment-alert-grid180{grid-template-columns:1fr}.environment-alert-head180{flex-direction:column}.environment-source180{grid-template-columns:auto 1fr}.environment-source180>strong{grid-column:2;text-align:left}}
-.sicar-manual180{display:grid;gap:10px;padding:13px;border:1px solid rgba(155,101,24,.28);border-radius:14px;background:rgba(155,101,24,.07)}
-.sicar-manual-head180{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
-.sicar-manual-head180>div{display:grid;gap:4px}.sicar-manual-head180 span{font-size:.8rem;color:var(--muted,#607168)}
-.sicar-manual-themes180{display:flex;flex-wrap:wrap;gap:7px}
-.sicar-manual180>small{font-size:.72rem;color:var(--muted,#607168)}
-@media(max-width:620px){.sicar-manual-head180{flex-direction:column}}
