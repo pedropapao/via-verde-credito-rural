@@ -13,14 +13,14 @@ func TestEnvironmentalAttention180(t *testing.T) {
 	item := EnvironmentalAlertDetail{
 		AlertCode:    "123",
 		AreaHa:       10,
-		APPOverlapHa: 1.25,
+		MapBiomasPermanentProtectedAreaHa: 1.25,
 	}
 	level, reasons := environmentalAttention(item, false)
 	if level != "Alta prioridade de conferência" {
 		t.Fatalf("nível inesperado: %s", level)
 	}
 	if len(reasons) == 0 || !strings.Contains(strings.ToLower(reasons[0]), "app") {
-		t.Fatalf("motivo de APP não registrado: %#v", reasons)
+		t.Fatalf("motivo automático de APP/MapBiomas não registrado: %#v", reasons)
 	}
 
 	item = EnvironmentalAlertDetail{AlertCode: "456", AreaHa: 4, AlertAreaInCAR: 3}
@@ -298,5 +298,47 @@ func TestNormalizeLegacyEnvironmentalCache184(t *testing.T) {
 		if strings.Contains(strings.ToLower(w), "conteúdo que não é zip") {
 			t.Fatalf("erro técnico legado não deveria permanecer: %s", w)
 		}
+	}
+}
+
+
+func TestSanitizeEnvironmentalAutoOnly185(t *testing.T) {
+	in := EnvironmentalIntelligenceResult{
+		CAR: "MG-0000000-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+		Themes: SICARThemesSummary{
+			Themes: map[string]SICARThemeMetric{
+				"APP": {Code:"APP", Available:true, AreaHa:10},
+			},
+		},
+		Warnings: []string{
+			"Nenhum alerta foi retornado para o CAR nesta consulta. Isso não equivale a certificado de regularidade ambiental.",
+			"Temas detalhados do SICAR: a Base de Downloads exige validação humana/CAPTCHA.",
+			"Reserva Legal: GeoServices respondeu conteúdo que não é ZIP (text/html)",
+		},
+	}
+	got := sanitizeEnvironmentalAutoOnly(in)
+	if len(got.Themes.Themes) != 0 {
+		t.Fatalf("temas SICAR não deveriam permanecer na inteligência automática: %+v", got.Themes)
+	}
+	if len(got.Warnings) != 1 {
+		t.Fatalf("avisos manuais/técnicos do SICAR deveriam ser removidos: %#v", got.Warnings)
+	}
+	if !strings.Contains(got.Warnings[0], "Nenhum alerta") {
+		t.Fatalf("aviso MapBiomas válido foi removido: %#v", got.Warnings)
+	}
+}
+
+func TestEnvironmentalAttentionUsesAutomaticMapBiomas185(t *testing.T) {
+	item := EnvironmentalAlertDetail{
+		AlertCode: "MB-1",
+		AreaHa: 4,
+		MapBiomasLegalReserveAreaHa: 0.75,
+	}
+	level, reasons := environmentalAttention(item, false)
+	if level != "Alta prioridade de conferência" {
+		t.Fatalf("cruzamento automático MapBiomas/RL deveria elevar prioridade: %s", level)
+	}
+	if len(reasons) == 0 || !strings.Contains(strings.ToLower(strings.Join(reasons, " ")), "reserva legal") {
+		t.Fatalf("motivo de Reserva Legal não registrado: %#v", reasons)
 	}
 }
