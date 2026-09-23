@@ -162,13 +162,50 @@ func (a *App) queryBiomeAtCAR(ctx context.Context, car CARResult) (string, error
 	if len(resp.Errors) > 0 {
 		return "", errors.New(joinGraphQLErrors(resp.Errors))
 	}
-	for _, t := range resp.Data.PointInformation.Territories {
-		cat := strings.ToLower(strings.TrimSpace(t.CategoryName))
-		if strings.Contains(cat, "bioma") {
-			return strings.TrimSpace(t.Name), nil
-		}
+	if name := biomeFromMapBiomasTerritories(resp.Data.PointInformation.Territories); name != "" {
+		return name, nil
 	}
 	return "", errors.New("bioma não retornado para o ponto central do CAR")
+}
+
+func biomeFromMapBiomasTerritories(items []struct {
+	Name         string  `json:"name"`
+	CategoryName string  `json:"categoryName"`
+	Code         string  `json:"code"`
+	AreaHa       float64 `json:"areaHa"`
+}) string {
+	for _, t := range items {
+		cat := strings.ToLower(strings.TrimSpace(t.CategoryName))
+		if strings.Contains(cat, "bioma") {
+			return strings.TrimSpace(t.Name)
+		}
+	}
+	return ""
+}
+
+func worldCoverClassesFromCounts(counts map[int]int, valid int, areaHa float64) []EnvironmentalLandCoverClass {
+	if valid <= 0 {
+		return nil
+	}
+	classes := make([]EnvironmentalLandCoverClass, 0, len(counts))
+	for code, n := range counts {
+		label, ok := worldCoverLabel(code)
+		if !ok || n <= 0 {
+			continue
+		}
+		pct := float64(n) / float64(valid) * 100
+		classes = append(classes, EnvironmentalLandCoverClass{
+			Code: code, Label: label, Samples: n,
+			Percent: pct, AreaHa: areaHa * pct / 100,
+		})
+	}
+	sort.SliceStable(classes, func(i, j int) bool {
+		if classes[i].Samples == classes[j].Samples {
+			return classes[i].Code < classes[j].Code
+		}
+		return classes[i].Samples > classes[j].Samples
+	})
+	return classes
 }
 
 func carGeometryCenterFromGeoJSON(raw string) (lat, lon float64) {
@@ -211,22 +248,7 @@ func queryWorldCoverForCAR(ctx context.Context, car CARResult) ([]EnvironmentalL
 		return nil, 0, errors.New("serviço WorldCover não retornou amostras válidas")
 	}
 	areaHa := firstPositive(car.GeometryAreaHa, car.AreaHa)
-	classes := make([]EnvironmentalLandCoverClass, 0, len(counts))
-	for code, n := range counts {
-		label, _ := worldCoverLabel(code)
-		pct := float64(n) / float64(valid) * 100
-		classes = append(classes, EnvironmentalLandCoverClass{
-			Code: code, Label: label, Samples: n,
-			Percent: pct, AreaHa: areaHa * pct / 100,
-		})
-	}
-	sort.SliceStable(classes, func(i, j int) bool {
-		if classes[i].Samples == classes[j].Samples {
-			return classes[i].Code < classes[j].Code
-		}
-		return classes[i].Samples > classes[j].Samples
-	})
-	return classes, valid, nil
+	return worldCoverClassesFromCounts(counts, valid, areaHa), valid, nil
 }
 
 func worldCoverSamplePoints(raw string, limit int) ([][2]float64, error) {
