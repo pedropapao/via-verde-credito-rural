@@ -152,6 +152,19 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 	if err != nil {
 		return EnvironmentalIntelligenceResult{}, err
 	}
+
+	// "Atualizar análise" precisa refazer também os seis temas detalhados do
+	// SICAR. Na 1.8.0 o force invalidava apenas a inteligência ambiental, mas
+	// reutilizava APP/RL/etc. da consulta anterior.
+	themeRefreshWarning := ""
+	if force {
+		if refreshed, refreshErr := a.RetrySICARThemes(propertyID); refreshErr == nil {
+			car.Themes = refreshed
+		} else {
+			themeRefreshWarning = "Temas SICAR: nova tentativa não concluída: " + refreshErr.Error()
+		}
+	}
+
 	cachePath := ""
 	if a != nil && a.dataDir != "" {
 		cachePath = filepath.Join(a.dataDir, "cache", "environmental_intelligence", safeFilePart(car.CAR)+".json")
@@ -174,6 +187,9 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 		MapBiomasMethodURL: mapBiomasMethodologyURL,
 		MapBiomasAPIURL: mapBiomasAPIURL,
 		Interpretation: "Triagem técnica auxiliar baseada em fontes públicas e cruzamentos espaciais. A presença de alerta ou sobreposição não determina, por si só, infração, autoria, responsabilidade ou impedimento de crédito; exige conferência documental e, quando aplicável, análise por profissional habilitado e pelo órgão competente.",
+	}
+	if themeRefreshWarning != "" {
+		out.Warnings = append(out.Warnings, themeRefreshWarning)
 	}
 
 	mb, err := a.QueryMapBiomasCAR(car.CAR)
