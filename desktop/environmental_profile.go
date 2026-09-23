@@ -371,9 +371,12 @@ func queryHydrologyProfile(ctx context.Context, car CARResult) (HydrologyProfile
 			if !lineGeometryIntersectsCAR(f.Geometry, car.GeoJSON) {
 				continue
 			}
-			key := carStringProp(f.Properties, "COCURSODAG", "cocursodag", "OBJECTID", "objectid", "FID", "fid")
+			// OBJECTID/FID podem se repetir entre os serviços/partes da ANA.
+			// A geometria é a chave de deduplicação mais estável quando fazemos
+			// fallback em múltiplos endpoints da mesma BHO.
+			key := featureGeometryKey(f.Geometry)
 			if key == "" {
-				key = featureGeometryKey(f.Geometry)
+				key = carStringProp(f.Properties, "COCURSODAG", "cocursodag", "OBJECTID", "objectid", "FID", "fid")
 			}
 			if riverSeen[key] {
 				continue
