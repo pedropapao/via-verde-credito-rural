@@ -1,3 +1,6 @@
+PUBLICAÇÃO 1.8.1 REEMITIDA
+• Reprocessamento do canal automático de atualização após validação final da correção ambiental.
+
 CAR 1.8.1: robustez dos temas SICAR e segurança dos laudos ambientais.
 
 CORREÇÃO DOS TEMAS SICAR
