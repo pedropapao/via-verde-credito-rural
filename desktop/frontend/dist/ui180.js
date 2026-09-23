@@ -127,12 +127,16 @@
   function nearestText180(n){
     if(!n?.available)return {value:'Indisponível',detail:'fontes territoriais'};
     const opts=[];
-    if(n.embargo_found)opts.push({d:Number(n.nearest_embargo_km||0),t:'IBAMA'});
-    if(n.indigenous_found)opts.push({d:Number(n.nearest_indigenous_km||0),t:'TI'});
-    if(n.uc_found)opts.push({d:Number(n.nearest_uc_km||0),t:'UC'});
+    if(n.embargo_checked&&n.embargo_found)opts.push({d:Number(n.nearest_embargo_km||0),t:'IBAMA'});
+    if(n.indigenous_checked&&n.indigenous_found)opts.push({d:Number(n.nearest_indigenous_km||0),t:'TI'});
+    if(n.uc_checked&&n.uc_found)opts.push({d:Number(n.nearest_uc_km||0),t:'UC'});
     opts.sort((a,b)=>a.d-b.d);
-    if(!opts.length)return {value:'Nenhuma em '+n180(n.search_radius_km||50,0)+' km',detail:'IBAMA • FUNAI • ICMBio'};
-    return {value:n180(opts[0].d,1)+' km',detail:'mais próxima: '+opts[0].t};
+    const checked=[n.embargo_checked?'IBAMA':null,n.indigenous_checked?'FUNAI':null,n.uc_checked?'ICMBio':null].filter(Boolean);
+    if(!opts.length){
+      if(checked.length===3)return {value:'Nenhuma em '+n180(n.search_radius_km||50,0)+' km',detail:'IBAMA • FUNAI • ICMBio consultados'};
+      return {value:'Nenhuma nas fontes consultadas',detail:checked.length?checked.join(' • ')+'; demais indisponíveis':'fontes indisponíveis'};
+    }
+    return {value:n180(opts[0].d,1)+' km',detail:'mais próxima: '+opts[0].t+(checked.length<3?' • consulta parcial':'')};
   }
 
   function profileDetails180(p){
@@ -149,7 +153,13 @@
   }
 
   function years180(years){const x=arr180(years).slice(0,6);return x.length?x.map(y=>y.year+': '+n180(y.area_ha,2)+' ha').join(' • '):'Sem ano identificado nos polígonos retornados'}
-  function nearbyParts180(n){const a=[];a.push(n.embargo_found?'IBAMA '+n180(n.nearest_embargo_km,1)+' km':'IBAMA: nenhuma em '+n180(n.search_radius_km||50,0)+' km');a.push(n.indigenous_found?'TI '+n180(n.nearest_indigenous_km,1)+' km':'TI: nenhuma');a.push(n.uc_found?'UC '+n180(n.nearest_uc_km,1)+' km':'UC: nenhuma');return a}
+  function nearbyParts180(n){
+    const a=[],radius=n180(n.search_radius_km||50,0);
+    a.push(!n.embargo_checked?'IBAMA: indisponível':(n.embargo_found?'IBAMA '+n180(n.nearest_embargo_km,1)+' km':'IBAMA: nenhuma em '+radius+' km'));
+    a.push(!n.indigenous_checked?'TI: indisponível':(n.indigenous_found?'TI '+n180(n.nearest_indigenous_km,1)+' km':'TI: nenhuma em '+radius+' km'));
+    a.push(!n.uc_checked?'UC: indisponível':(n.uc_found?'UC '+n180(n.nearest_uc_km,1)+' km':'UC: nenhuma em '+radius+' km'));
+    return a;
+  }
 
   function evidenceMatrix180(r){
     const env=r.environment||{},mb=r.mapbiomas||{},p=r.profile||{};
