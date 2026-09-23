@@ -1,63 +1,44 @@
-CAR 1.9.0: Perfil Ambiental Automático.
+CAR 1.9.0: Etapa 1 do Perfil Ambiental — Bioma + Cobertura do Solo.
 
 PRINCÍPIO
-• A análise ambiental continua 100% automática.
-• Nenhuma nova fonte exige CAPTCHA, login manual, download manual ou importação de arquivo pelo usuário.
-• Cada fonte pública é consultada de forma independente: falha de uma fonte não derruba o restante do perfil.
+• Esta versão implementa somente a Etapa 1, para permitir validação antes das próximas fontes ambientais.
+• Todo o fluxo é automático; não há CAPTCHA, download manual ou importação de arquivo.
+• Falha do bioma ou do WorldCover não derruba MapBiomas, IBAMA, FUNAI, ICMBio ou MMA/MCR.
 
-NOVO PERFIL AMBIENTAL
-• Bioma(s) do imóvel pelo serviço geoespacial do IBGE, com estimativa de área e percentual do CAR por bioma.
-• Relevo de todo o imóvel usando Terrain Tiles / AWS Open Data: altitude mínima, média e máxima, amplitude do relevo e declividade média/máxima.
-• Hidrografia ANA/SNIRH: trechos de cursos d'água que interceptam o CAR, nomes retornados, dominialidade quando publicada, massas d'água e estação telemétrica próxima.
-• PRODES / INPE-TerraBrasilis: polígonos anuais de supressão que interceptam o CAR, área estimada, quantidade e distribuição por ano.
-• DETER / INPE-TerraBrasilis quando houver cobertura pública operacional para o bioma: avisos recentes, área estimada e data mais recente.
-• INPE Queimadas: focos ativos/recentes retornados pela camada pública e localizados dentro do CAR.
-• Contexto territorial de proximidade: embargo IBAMA, Terra Indígena e UC federal mais próximos em raio aproximado de 50 km quando as fontes responderem.
+BIOMA
+• Identificação automática do bioma no ponto central do CAR usando os territórios retornados pela API já conectada do MapBiomas Alerta.
+• O bioma é apresentado como contexto territorial; imóveis próximos a limites de biomas podem exigir conferência cartográfica mais detalhada.
 
-WORLD COVER — DECISÃO DE QUALIDADE
-• O WorldCover é gratuito, porém o WMS público oficial é destinado à visualização e não à análise raster.
-• Por isso a 1.9.0 NÃO apresenta percentuais de uso/cobertura derivados da cor da imagem WMS.
-• A integração analítica ficará reservada para uma fonte automática que exponha os valores do raster de forma confiável, sem login nem download manual.
+COBERTURA DO SOLO
+• Integração automática com o ESA WorldCover 2021 v200, resolução nominal de 10 m.
+• O ViaVerdeCAR cria uma malha de pontos dentro do próprio polígono do CAR e consulta a classe raster de cada amostra.
+• O resultado mostra classe dominante, percentual estimado e hectares estimados por classe.
+• Classes exibidas incluem cobertura arbórea, arbustos, vegetação herbácea, cultivos anuais, área construída, solo exposto/vegetação esparsa, água e áreas úmidas quando encontradas.
+• A chamada ao serviço é feita por POST e em blocos, evitando URLs grandes e mantendo a consulta automática.
 
-PRODES × DETER
-• PRODES é apresentado como histórico anual de supressão.
-• DETER é apresentado como sistema de avisos e somente aparece como aplicável nos biomas/conjuntos públicos compatíveis.
-• Ausência de DETER não é interpretada como ausência de desmatamento.
-• Nenhum resultado PRODES/DETER é tratado automaticamente como ilegalidade, autoria ou impedimento de crédito.
+QUALIDADE DA INFORMAÇÃO
+• Os hectares por classe são estimativas amostrais: percentual das amostras válidas × área do CAR.
+• “Vegetação herbácea” pode incluir pastagens e outras formações herbáceas; não é rotulada automaticamente como pastagem produtiva.
+• WorldCover 2021 não é apresentado como prova da cultura atual nem substitui levantamento de campo ou geoprocessamento cadastral.
+• Ausência de resposta de uma fonte é mostrada como indisponibilidade, nunca como área zero confirmada.
 
-FOGO
-• Focos de fogo são tratados como detecções de satélite, não como área queimada, autoria ou infração.
-• Quando a camada pública informar data, risco ou FRP, esses atributos são aproveitados sem inventar valores ausentes.
+INTERFACE E LAUDO
+• Novo bloco “Bioma e cobertura do solo” no Raio X Ambiental.
+• Distribuição visual das classes com percentual e hectares estimados.
+• Matriz de fontes passa a registrar Bioma e ESA WorldCover.
+• Laudo ambiental ganha página específica da Etapa 1 e registra metodologia, fonte e limitações.
+• JSON de evidências inclui o perfil da Etapa 1.
 
-MAPA
-• “Mostrar dados no mapa” passa a desenhar, quando disponíveis:
-  - alertas MapBiomas;
-  - polígonos PRODES;
-  - avisos DETER;
-  - cursos d'água ANA;
-  - massas d'água ANA;
-  - limite de bioma IBGE;
-  - focos INPE.
-• As camadas antigas do mapa e o perímetro do CAR permanecem preservados.
-
-LAUDO AMBIENTAL
-• Novo capítulo “Perfil físico-ambiental automático”.
-• O PDF passa a registrar bioma, relevo, hidrografia, PRODES, DETER, fogo e contexto territorial.
-• A matriz de fontes informa “consultado”, “não aplicável” ou “indisponível”.
-• O relatório mantém linguagem técnica conservadora e diferencia evidência ambiental de conclusão jurídica.
-• O JSON de evidências também inclui todo o novo perfil.
-
-DESEMPENHO E CACHE
-• As novas fontes são consultadas em paralelo.
-• O perfil ambiental usa cache de até 3 horas.
-• Resultados da 1.8.5 sem o novo perfil não são reutilizados como se fossem completos.
-• Atualizar análise força nova consulta automática do perfil e renova as fontes territoriais principais.
+CACHE E DESEMPENHO
+• O perfil ambiental continua com cache de até 3 horas.
+• Cache antigo sem Bioma/WorldCover não é tratado como perfil completo.
+• As consultas de Bioma e WorldCover são executadas em paralelo.
 
 PRESERVADO
 • MapBiomas Alerta, IBAMA/PAMGIA, FUNAI, ICMBio e MMA/MCR.
 • CAR, KML, banco local, clientes, imóveis, histórico, backups, mapas, projeto, Crédito Rural e Inteligência Financeira.
-• Nenhuma migração destrutiva e nenhuma exclusão de dados.
-• O app continua sem janelas de CMD para processos auxiliares no Windows.
+• A remoção dos temas SICAR protegidos por CAPTCHA da 1.8.5 permanece preservada.
+• Nenhuma migração destrutiva ou exclusão de dados.
 
 CAR 1.8.5: análise ambiental somente automática.
 

@@ -131,107 +131,40 @@ func environmentalCoverPage(p Property,car CARResult,intel EnvironmentalIntellig
 
 func environmentalProfilePage(p Property,car CARResult,intel EnvironmentalIntelligenceResult,title string,page int)string{
 	var c pdfCanvas
-	envReportHeader(&c,title,"Perfil físico-ambiental automático do imóvel",page)
+	envReportHeader(&c,title,"Bioma e cobertura do solo — Etapa 1",page)
 	y:=718.0
 	profile:=intel.Profile
 
-	envSection(&c,&y,"PERFIL DO TERRITÓRIO")
+	envSection(&c,&y,"PERFIL TERRITORIAL")
 	biome:="Indisponível"
-	if profile.Biome.Available {
-		biome=firstNonEmptyText(profile.Biome.Dominant,"Bioma identificado")
-	}
-	terrain:="Indisponível"
-	terrainDetail:="fonte não obtida"
-	if profile.Terrain.Available {
-		terrain=fmt.Sprintf("%.0f m",profile.Terrain.ElevationMeanM)
-		terrainDetail=fmt.Sprintf("mín. %.0f m • máx. %.0f m • declive médio %.1f%%",profile.Terrain.ElevationMinM,profile.Terrain.ElevationMaxM,profile.Terrain.MeanSlopePct)
-	}
-	hydro:="Indisponível"
-	hydroDetail:="ANA/SNIRH"
-	if profile.Hydrology.Available {
-		hydro=fmt.Sprintf("%d trecho(s)",profile.Hydrology.RiverReachCount)
-		hydroDetail=fmt.Sprintf("%d massa(s) d'água • %.2f ha",profile.Hydrology.WaterBodyCount,profile.Hydrology.WaterBodyAreaHa)
+	biomeDetail:="fonte automática não respondeu"
+	if profile.BiomeAvailable {
+		biome=firstNonEmptyText(profile.Biome,"Identificado")
+		biomeDetail=firstNonEmptyText(profile.BiomeSource,"MapBiomas Alerta — territórios")
 	}
 	cover:="Indisponível"
 	coverDetail:="ESA WorldCover"
-	if profile.LandCover.Available {
-		cover=profile.LandCover.DominantClass
-		coverDetail=fmt.Sprintf("%.1f%% das amostras • referência %d",profile.LandCover.DominantPct,profile.LandCover.ReferenceYear)
+	if profile.LandCoverAvailable {
+		cover=firstNonEmptyText(profile.DominantLandCover,"Classificado")
+		coverDetail=fmt.Sprintf("%d amostras • referência %d",profile.LandCoverSamples,profile.LandCoverYear)
 	}
-	envMetricBox(&c,40,y-60,122,54,"Bioma",biome,"IBGE 1:250.000")
-	envMetricBox(&c,172,y-60,122,54,"Altitude média",terrain,terrainDetail)
-	envMetricBox(&c,304,y-60,122,54,"Hidrografia",hydro,hydroDetail)
-	envMetricBox(&c,436,y-60,119,54,"Cobertura dominante",cover,coverDetail)
-	y-=78
+	envMetricBox(&c,40,y-60,250,54,"Bioma",biome,biomeDetail)
+	envMetricBox(&c,304,y-60,251,54,"Cobertura dominante",cover,coverDetail)
+	y-=80
 
-	envSection(&c,&y,"MONITORAMENTO POR SATÉLITE")
-	prodesValue:="Indisponível"
-	prodesDetail:="INPE / TerraBrasilis"
-	if profile.PRODES.Available {
-		prodesValue=fmtBR(profile.PRODES.AreaInCARHa,2)+" ha"
-		prodesDetail=fmt.Sprintf("%d polígono(s)",profile.PRODES.FeatureCount)
-		if profile.PRODES.LatestYear>0 {prodesDetail+=fmt.Sprintf(" • último %d",profile.PRODES.LatestYear)}
-	}
-	deterValue:="Indisponível"
-	deterDetail:="INPE / TerraBrasilis"
-	if !profile.DETER.Applicable {
-		deterValue="Não se aplica"
-		deterDetail="fora da cobertura operacional pública deste bioma"
-	} else if profile.DETER.Available {
-		deterValue=fmt.Sprintf("%d aviso(s)",profile.DETER.FeatureCount)
-		deterDetail=fmtBR(profile.DETER.AreaInCARHa,2)+" ha nos últimos 12 meses"
-	}
-	fireValue:="Indisponível"
-	fireDetail:="INPE Queimadas"
-	if profile.Fire.Available {
-		fireValue=fmt.Sprintf("%d foco(s)",profile.Fire.FeatureCount)
-		fireDetail=profile.Fire.WindowLabel
-	}
-	nearValue:="Indisponível"
-	nearDetail:="IBAMA • FUNAI • ICMBio"
-	if profile.Nearby.Available {
-		best:=math.Inf(1);label:=""
-		if profile.Nearby.EmbargoChecked && profile.Nearby.EmbargoFound && profile.Nearby.NearestEmbargoKm<best {best=profile.Nearby.NearestEmbargoKm;label="IBAMA"}
-		if profile.Nearby.IndigenousChecked && profile.Nearby.IndigenousFound && profile.Nearby.NearestIndigenousKm<best {best=profile.Nearby.NearestIndigenousKm;label="Terra Indígena"}
-		if profile.Nearby.UCChecked && profile.Nearby.UCFound && profile.Nearby.NearestUCKm<best {best=profile.Nearby.NearestUCKm;label="UC federal"}
-		checked:=0
-		if profile.Nearby.EmbargoChecked {checked++}
-		if profile.Nearby.IndigenousChecked {checked++}
-		if profile.Nearby.UCChecked {checked++}
-		if math.IsInf(best,1) {
-			if checked==3 {
-				nearValue=fmt.Sprintf("Nenhuma em %.0f km",profile.Nearby.SearchRadiusKm)
-				nearDetail="IBAMA • FUNAI • ICMBio consultados"
-			} else {
-				nearValue="Nenhuma nas fontes consultadas"
-				nearDetail=fmt.Sprintf("%d/3 fonte(s) respondida(s)",checked)
-			}
-		} else {
-			nearValue=fmt.Sprintf("%.1f km",best);nearDetail="mais próxima: "+label
-			if checked<3 {nearDetail+=" • consulta parcial"}
+	if profile.LandCoverAvailable && len(profile.LandCoverClasses)>0 {
+		envSection(&c,&y,"DISTRIBUIÇÃO ESTIMADA DA COBERTURA DO SOLO")
+		for _,item:=range profile.LandCoverClasses {
+			if y<120 {break}
+			envRow(&c,&y,item.Label,fmt.Sprintf("%.2f ha • %.1f%% • %d amostras",item.AreaHa,item.Percent,item.Samples))
 		}
+		y-=6
 	}
-	envMetricBox(&c,40,y-60,122,54,"PRODES no CAR",prodesValue,prodesDetail)
-	envMetricBox(&c,172,y-60,122,54,"DETER recente",deterValue,deterDetail)
-	envMetricBox(&c,304,y-60,122,54,"Fogo ativo/recente",fireValue,fireDetail)
-	envMetricBox(&c,436,y-60,119,54,"Contexto próximo",nearValue,nearDetail)
-	y-=82
 
-	if profile.Biome.Available && len(profile.Biome.Items)>0 {
-		envSection(&c,&y,"BIOMA(S) NO CAR")
-		for _,item:=range profile.Biome.Items {
-			envRow(&c,&y,item.Name,fmt.Sprintf("%.2f ha • %.1f%% do CAR",item.AreaHa,item.CARPct))
-		}
-		y-=4
-	}
-	if profile.Hydrology.Available {
-		envSection(&c,&y,"RECURSOS HÍDRICOS")
-		envRow(&c,&y,"Cursos d'água nomeados",firstNonEmptyText(strings.Join(profile.Hydrology.NamedRivers,", "),"Nenhum nome retornado nas feições que interceptam o CAR"))
-		if profile.Hydrology.NearestStationName!="" {
-			envRow(&c,&y,"Estação telemétrica próxima",fmt.Sprintf("%s • %.1f km",profile.Hydrology.NearestStationName,profile.Hydrology.NearestStationKm))
-		}
-		y-=4
-	}
+	envSection(&c,&y,"LEITURA TÉCNICA")
+	note:=fmt.Sprintf("A cobertura do solo é uma estimativa amostral sobre o perímetro do CAR, baseada no ESA WorldCover %d com resolução nominal de 10 m. Os hectares por classe são derivados da proporção das amostras válidas multiplicada pela área do imóvel; portanto, são valores de triagem e não medição cadastral.",profile.LandCoverYear)
+	c.b.WriteString("0.20 0.27 0.23 rg\n")
+	c.wrapped(42,y,7.6,false,note,103,10)
 	envReportFooter(&c,page)
 	return c.b.String()
 }
@@ -241,24 +174,26 @@ func environmentalMapPage(p Property,car CARResult,intel EnvironmentalIntelligen
 	envReportHeader(&c,title,"Mapa técnico e matriz de fontes automáticas",page)
 	c.b.WriteString("0.10 0.18 0.14 rg\n")
 	c.text(40,720,10,true,"MAPA ESQUEMÁTICO DE EVIDÊNCIAS")
-	c.text(40,704,7.5,false,"Perímetro do CAR, alertas MapBiomas e camadas públicas disponíveis. Sem base cartográfica; uso para conferência espacial.")
+	c.text(40,704,7.5,false,"Perímetro do CAR, alertas MapBiomas e embargos IBAMA disponíveis. Sem base cartográfica; uso para conferência espacial.")
 	c.b.WriteString("0.80 0.86 0.82 RG 0.8 w\n")
 	c.rect(40,378,515,306,false)
-	drawEnvironmentalEvidenceMap(&c,car,intel.Profile,alerts,52,400,491,260)
+	drawEnvironmentalEvidenceMap(&c,car,alerts,52,400,491,260)
 
 	y:=350.0
 	envSection(&c,&y,"MATRIZ DE FONTES CONSULTADAS")
+	biomeStatus:="Indisponível"
+	biomeDetail:="fonte automática não respondeu"
+	if intel.Profile.BiomeAvailable {biomeStatus="Identificado";biomeDetail=intel.Profile.Biome+" • "+intel.Profile.BiomeSource}
+	envSourceRow(&c,&y,"Bioma",biomeStatus,biomeDetail)
+	coverStatus:="Indisponível"
+	coverDetail:="ESA WorldCover"
+	if intel.Profile.LandCoverAvailable {coverStatus="Consultado";coverDetail=fmt.Sprintf("%d amostras • referência %d",intel.Profile.LandCoverSamples,intel.Profile.LandCoverYear)}
+	envSourceRow(&c,&y,"ESA WorldCover",coverStatus,coverDetail)
 	envSourceRow(&c,&y,"MapBiomas Alerta",sourceState(intel.MapBiomas.Connected,intel.MapBiomas.TotalAlerts),fmt.Sprintf("%d alerta(s); %s ha somados",intel.MapBiomas.TotalAlerts,fmtBR(intel.MapBiomas.TotalAreaHa,2)))
 	envSourceRow(&c,&y,"IBAMA / PAMGIA",sourceState(intel.Environment.IBAMAChecked,intel.Environment.IBAMAEmbargoCount),fmt.Sprintf("%d interseção(ões) com embargo no CAR",intel.Environment.IBAMAEmbargoCount))
 	envSourceRow(&c,&y,"FUNAI",sourceState(intel.Environment.FUNAIChecked,intel.Environment.IndigenousCount),fmt.Sprintf("%d interseção(ões) com Terra Indígena no CAR",intel.Environment.IndigenousCount))
 	envSourceRow(&c,&y,"ICMBio",sourceState(intel.Environment.ICMBioChecked,intel.Environment.FederalUCCount),fmt.Sprintf("%d interseção(ões) com UC federal no CAR",intel.Environment.FederalUCCount))
 	envSourceRow(&c,&y,"MMA / MCR-PRODES",sourceState(intel.Environment.MCRChecked,boolInt(intel.Environment.MCRListed)),mcrSourceSummary(intel.Environment))
-	for _,src:=range intel.Profile.Sources{
-		status:="Indisponível"
-		if !src.Applicable {status="Não aplicável"} else if src.Available {status="Consultado"}
-		envSourceRow(&c,&y,src.Label,status,src.Detail)
-		if y<82{break}
-	}
 	envReportFooter(&c,page)
 	return c.b.String()
 }
@@ -316,13 +251,15 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 	envReportHeader(&c,title,"Metodologia, rastreabilidade e limitações",page)
 	y:=718.0
 	envSection(&c,&y,"METODOLOGIA")
-	method:="1) identificação do imóvel pelo CAR e geometria pública do SICAR; 2) perfil físico-ambiental automático com relevo, bioma e hidrografia; 3) consulta INPE/TerraBrasilis ao PRODES e, quando aplicável, DETER; 4) consulta de focos de fogo do Programa Queimadas; 5) MapBiomas Alerta, IBAMA/PAMGIA, FUNAI, ICMBio e MMA/MCR; 6) cruzamentos espaciais locais e organização das evidências sem inferir autoria ou regularidade jurídica."
+	method:="1) identificação do imóvel pela geometria pública do CAR; 2) identificação automática do bioma no ponto central do imóvel; 3) amostragem espacial de pontos internos ao CAR; 4) classificação desses pontos no ESA WorldCover 2021; 5) cálculo da participação percentual e da área estimada por classe; 6) manutenção das consultas automáticas MapBiomas Alerta, IBAMA/PAMGIA, FUNAI, ICMBio e MMA/MCR já existentes."
 	c.b.WriteString("0.15 0.23 0.19 rg\n")
 	y=c.wrapped(42,y,8,false,method,104,11)
 	y-=10
 
 	envSection(&c,&y,"FONTES")
 	for _,row:=range []struct{n,u string}{
+		{"ESA WorldCover 2021 v200",worldCoverSourceURL},
+		{"ESA WorldCover — serviço público de amostragem",worldCoverImageServer},
 		{"MapBiomas Alerta — API V2","https://plataforma.alerta.mapbiomas.org/api/v2/graphql"},
 		{"MapBiomas Alerta — metodologia",mapBiomasMethodologyURL},
 		{"SICAR — perímetro público do CAR",carWFSURL},
@@ -330,11 +267,6 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 		{"FUNAI — dados geoespaciais",funaiGeoURL},
 		{"ICMBio — dados geoespaciais",icmbioGeoURL},
 		{"MMA — atendimento ao Manual de Crédito Rural",environmentMCRURL},
-		{"IBGE — limites dos biomas",ibgeBiomeWFSURL},
-		{"ANA / SNIRH — hidrografia","https://portal1.snirh.gov.br/server/rest/services/dados_abertos"},
-		{"INPE / TerraBrasilis — PRODES e DETER","https://terrabrasilis.dpi.inpe.br/"},
-		{"INPE — Programa Queimadas","https://data.inpe.br/queimadas/dados-abertos/"},
-		{"AWS Open Data — Terrain Tiles","https://registry.opendata.aws/terrain-tiles/"},
 	}{
 		c.b.WriteString("0.08 0.30 0.21 rg\n");c.text(42,y,7.6,true,row.n)
 		c.b.WriteString("0.30 0.38 0.34 rg\n");y=c.wrapped(178,y,6.6,false,row.u,66,9);y-=6
@@ -343,14 +275,11 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 
 	envSection(&c,&y,"LIMITAÇÕES E SALVAGUARDAS")
 	limits:=[]string{
-		"A área somada de alertas pode conter sobreposição temporal/espacial entre eventos; não deve ser tratada automaticamente como área única desmatada.",
-		"Quando o MapBiomas informa cruzamentos com APP, Reserva Legal ou outras categorias, esses valores são exibidos como atributos da própria API e devem ser conferidos na fonte.",
-		"Cruzamentos geométricos do ViaVerdeCAR são auxiliares e dependem da precisão e atualidade das geometrias das fontes.",
-		"Alertas do MapBiomas são evidências de mudança de cobertura validadas pela metodologia da plataforma, mas não constituem por si só decisão administrativa, constatação de autoria ou juízo de legalidade.",
-		"PRODES mede supressão anual de vegetação nativa e DETER produz avisos operacionais; os produtos têm finalidades distintas e não devem ser tratados como declaração jurídica de irregularidade.",
-		"Focos de fogo são detecções por satélite e não equivalem automaticamente à área queimada, autoria ou infração.",
-		"Distâncias de proximidade são aproximações geométricas para triagem e não substituem levantamento geodésico ou análise oficial de faixa de influência.",
-		"Autorizações, licenças, termos, embargos, datas e situação cadastral devem ser conferidos no documento e órgão competente antes de qualquer conclusão técnica ou financeira.",
+		"O ESA WorldCover 2021 representa cobertura do solo observada por sensoriamento remoto e não comprova a cultura ou uso atual do imóvel.",
+		"As áreas por classe são estimadas pela proporção de amostras internas ao CAR e não substituem levantamento de campo, geoprocessamento cadastral ou medição oficial.",
+		"A classe de vegetação herbácea do WorldCover pode incluir pastagens e outras formações herbáceas; ela não deve ser interpretada automaticamente como pastagem produtiva.",
+		"O bioma é identificado automaticamente no ponto central do CAR para esta etapa; imóveis sobre limites de biomas exigem análise espacial mais detalhada.",
+		"Alertas do MapBiomas e cruzamentos territoriais são evidências para conferência e não constituem, por si só, decisão administrativa, autoria ou juízo de legalidade.",
 	}
 	for _,v:=range limits{y=c.wrapped(46,y,7.4,false,"• "+v,100,10);y-=3}
 
@@ -367,26 +296,23 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 
 func environmentalConclusionText(intel EnvironmentalIntelligenceResult,alerts []EnvironmentalAlertDetail)string{
 	s:=summarizeEnvironmentalEvidence(alerts)
-	if len(alerts)==0{
-		text:="A consulta não retornou alerta MapBiomas vinculado ao CAR no momento da análise."
+	text:=""
+	if len(alerts)==0 {
+		text="A consulta não retornou alerta MapBiomas vinculado ao CAR no momento da análise."
 		if !intel.MapBiomas.Connected {text="A consulta MapBiomas Alerta não estava autenticada nesta execução."}
-		if intel.Profile.PRODES.Available && intel.Profile.PRODES.FeatureCount>0 {
-			text+=fmt.Sprintf(" O PRODES retornou %d polígono(s), somando %.4f ha de interseção estimada com o CAR.",intel.Profile.PRODES.FeatureCount,intel.Profile.PRODES.AreaInCARHa)
-		}
-		if intel.Profile.Fire.Available && intel.Profile.Fire.FeatureCount>0 {
-			text+=fmt.Sprintf(" A camada pública de focos de fogo retornou %d ocorrência(s) dentro do CAR.",intel.Profile.Fire.FeatureCount)
-		}
-		text+=" O perfil físico-ambiental e as demais fontes públicas permanecem como elementos de triagem. Ausência de alerta não constitui certificado de regularidade ambiental."
-		return text
+	} else {
+		text=fmt.Sprintf("Foram identificados %d alerta(s) MapBiomas vinculados ao CAR, com %.4f ha somados como área estimada dentro do imóvel.",s.Alerts,s.AlertAreaInCARHa)
 	}
-	text:=fmt.Sprintf("Foram identificados %d alerta(s) MapBiomas vinculados ao CAR, com %.4f ha somados como área estimada dentro do imóvel.",s.Alerts,s.AlertAreaInCARHa)
+	if intel.Profile.BiomeAvailable {
+		text+=" O perfil territorial identificou o bioma "+intel.Profile.Biome+"."
+	}
+	if intel.Profile.LandCoverAvailable {
+		text+=fmt.Sprintf(" A cobertura dominante estimada pelo ESA WorldCover %d foi %s.",intel.Profile.LandCoverYear,intel.Profile.DominantLandCover)
+	}
 	if s.AlertsOverIBAMA>0||s.AlertsOverIndigenousLand>0||s.AlertsOverFederalUC>0{
 		text+=fmt.Sprintf(" Há alertas com interseção espacial estimada em camadas sensíveis: embargo IBAMA (%d), Terra Indígena (%d) e UC federal (%d).",s.AlertsOverIBAMA,s.AlertsOverIndigenousLand,s.AlertsOverFederalUC)
 	}
-	if s.HighAttentionAlerts>0{
-		text+=fmt.Sprintf(" %d alerta(s) receberam alta prioridade de conferência pelas regras objetivas descritas no relatório.",s.HighAttentionAlerts)
-	}
-	text+=" A conclusão jurídica ou de elegibilidade para crédito depende da conferência de autorizações, documentos, datas, situação dos registros e análise competente."
+	text+=" O resultado é uma triagem automática; ausência de alerta não constitui certificado de regularidade ambiental."
 	return text
 }
 
@@ -506,13 +432,10 @@ func dateBR(v string)string{
 	return v
 }
 
-func drawEnvironmentalEvidenceMap(c *pdfCanvas,car CARResult,profile EnvironmentalProfile,alerts []EnvironmentalAlertDetail,x,y,w,h float64){
+func drawEnvironmentalEvidenceMap(c *pdfCanvas,car CARResult,alerts []EnvironmentalAlertDetail,x,y,w,h float64){
 	type layer struct{label,geo,rgb string;width float64;bound bool}
 	layers:=[]layer{{"CAR",car.GeoJSON,"0.055 0.42 0.29",1.8,true}}
 	for _,a:=range alerts{if strings.TrimSpace(a.GeometryGeoJSON)!=""{layers=append(layers,layer{"Alerta "+a.AlertCode,a.GeometryGeoJSON,"0.78 0.16 0.12",1.2,false})}}
-	if strings.TrimSpace(profile.PRODES.GeoJSON)!=""{layers=append(layers,layer{"PRODES",profile.PRODES.GeoJSON,"0.55 0.27 0.07",1.0,false})}
-	if strings.TrimSpace(profile.DETER.GeoJSON)!=""{layers=append(layers,layer{"DETER",profile.DETER.GeoJSON,"0.85 0.45 0.04",1.0,false})}
-	if strings.TrimSpace(profile.Biome.GeoJSON)!=""{layers=append(layers,layer{"Bioma IBGE",profile.Biome.GeoJSON,"0.38 0.42 0.45",0.6,false})}
 	for _,e:=range car.Environment.IBAMAEmbargos{if strings.TrimSpace(e.GeoJSON)!=""{layers=append(layers,layer{"Embargo IBAMA",e.GeoJSON,"0.58 0.12 0.12",1,false})}}
 	type parsedLayer struct{label,rgb string;width float64;polys [][][][]float64;bound bool}
 	var parsed []parsedLayer
