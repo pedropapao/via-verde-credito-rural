@@ -58,9 +58,8 @@ func (a *App) ExportEnvironmentalEvidenceJSON(propertyID int64, force bool)(stri
 }
 
 func buildEnvironmentalTechnicalPDF(p Property,car CARResult,intel EnvironmentalIntelligenceResult,alertFilter string)[]byte{
-	// Usa no documento exatamente as camadas que participaram da inteligência
-	// ambiental desta execução, inclusive quando foram atualizadas manualmente.
-	car.Themes = intel.Themes
+	// O relatório usa apenas fontes obtidas automaticamente nesta execução.
+	car.Themes = SICARThemesSummary{}
 	car.Environment = intel.Environment
 	alerts:=intel.Alerts
 	title:="LAUDO TÉCNICO DE TRIAGEM AMBIENTAL"
@@ -100,10 +99,8 @@ func environmentalCoverPage(p Property,car CARResult,intel EnvironmentalIntellig
 	}
 	envMetricBox(&c,40,y-60,122,54,"Alertas MapBiomas",fmt.Sprintf("%d",s.Alerts),"vinculados ao CAR")
 	envMetricBox(&c,172,y-60,122,54,"Área dos alertas",fmtBR(s.AlertAreaInCARHa,2)+" ha","estimada dentro do CAR")
-	appValue, appDetail := environmentalThemeOverlapLabel(intel.Themes, "APP", s.APPOverlapHa)
-	rlValue, rlDetail := environmentalThemeOverlapLabel(intel.Themes, "RESERVA_LEGAL", s.RLOverlapHa)
-	envMetricBox(&c,304,y-60,122,54,"APP",appValue,appDetail)
-	envMetricBox(&c,436,y-60,119,54,"Reserva Legal",rlValue,rlDetail)
+	envMetricBox(&c,304,y-60,122,54,"Alta prioridade",fmt.Sprintf("%d",s.HighAttentionAlerts),"alerta(s) para conferência")
+	envMetricBox(&c,436,y-60,119,54,"Última detecção",dateBR(s.LatestDetection),"MapBiomas Alerta")
 	y-=76
 	envMetricBox(&c,40,y-60,122,54,"Embargo IBAMA",fmt.Sprintf("%d",s.AlertsOverIBAMA),"alerta(s) com interseção")
 	envMetricBox(&c,172,y-60,122,54,"Terra Indígena",fmt.Sprintf("%d",s.AlertsOverIndigenousLand),"alerta(s) com interseção")
@@ -143,8 +140,6 @@ func environmentalMapPage(p Property,car CARResult,intel EnvironmentalIntelligen
 	y:=350.0
 	envSection(&c,&y,"MATRIZ DE FONTES CONSULTADAS")
 	envSourceRow(&c,&y,"MapBiomas Alerta",sourceState(intel.MapBiomas.Connected,intel.MapBiomas.TotalAlerts),fmt.Sprintf("%d alerta(s); %s ha somados",intel.MapBiomas.TotalAlerts,fmtBR(intel.MapBiomas.TotalAreaHa,2)))
-	availableThemes := availableSICARThemeCount(intel.Themes)
-	envSourceRow(&c,&y,"SICAR — temas declarados",sourceState(availableThemes>0,0),themeSourceSummary(intel.Themes))
 	envSourceRow(&c,&y,"IBAMA / PAMGIA",sourceState(intel.Environment.IBAMAChecked,intel.Environment.IBAMAEmbargoCount),fmt.Sprintf("%d interseção(ões) com embargo no CAR",intel.Environment.IBAMAEmbargoCount))
 	envSourceRow(&c,&y,"FUNAI",sourceState(intel.Environment.FUNAIChecked,intel.Environment.IndigenousCount),fmt.Sprintf("%d interseção(ões) com Terra Indígena no CAR",intel.Environment.IndigenousCount))
 	envSourceRow(&c,&y,"ICMBio",sourceState(intel.Environment.ICMBioChecked,intel.Environment.FederalUCCount),fmt.Sprintf("%d interseção(ões) com UC federal no CAR",intel.Environment.FederalUCCount))
@@ -172,10 +167,6 @@ func environmentalAlertPage(p Property,car CARResult,intel EnvironmentalIntellig
 
 	y-=5
 	envSection(&c,&y,"CRUZAMENTOS NO IMÓVEL")
-	envCompactMetricState(&c,&y,"APP declarada",a.APPOverlapHa,sicarThemeAvailable(intel.Themes,"APP"),"SICAR × geometria do alerta")
-	envCompactMetricState(&c,&y,"Reserva Legal declarada",a.RLOverlapHa,sicarThemeAvailable(intel.Themes,"RESERVA_LEGAL"),"SICAR × geometria do alerta")
-	envCompactMetricState(&c,&y,"Vegetação nativa declarada",a.NativeOverlapHa,sicarThemeAvailable(intel.Themes,"VEGETACAO_NATIVA"),"SICAR × geometria do alerta")
-	envCompactMetricState(&c,&y,"Área consolidada declarada",a.ConsolidatedOverlapHa,sicarThemeAvailable(intel.Themes,"AREA_CONSOLIDADA"),"SICAR × geometria do alerta")
 	envCompactMetricState(&c,&y,"Embargo IBAMA",a.IBAMAOverlapHa,intel.Environment.IBAMAChecked,"PAMGIA × geometria do alerta")
 	envCompactMetricState(&c,&y,"Terra Indígena",a.IndigenousOverlapHa,intel.Environment.FUNAIChecked,"FUNAI × geometria do alerta")
 	envCompactMetricState(&c,&y,"UC federal",a.FederalUCOverlapHa,intel.Environment.ICMBioChecked,"ICMBio × geometria do alerta")
@@ -210,7 +201,7 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 	envReportHeader(&c,title,"Metodologia, rastreabilidade e limitações",4)
 	y:=718.0
 	envSection(&c,&y,"METODOLOGIA")
-	method:="1) identificação do imóvel pelo CAR e geometria pública do SICAR; 2) consulta autenticada à API V2 do MapBiomas Alerta para alertas vinculados ao CAR; 3) leitura das geometrias e atributos retornados; 4) cruzamento espacial local do alerta com APP, Reserva Legal, vegetação nativa e área consolidada declaradas no SICAR, quando disponíveis; 5) cruzamento com embargos IBAMA/PAMGIA, Terras Indígenas FUNAI e UCs federais ICMBio já obtidos para o imóvel; 6) organização dos achados em relatório rastreável, sem inferir autoria ou regularidade jurídica."
+	method:="1) identificação do imóvel pelo CAR e geometria pública do SICAR; 2) consulta autenticada à API V2 do MapBiomas Alerta para alertas vinculados ao CAR; 3) leitura das geometrias e atributos retornados, inclusive cruzamentos territoriais informados pela própria API; 4) cruzamento espacial local do alerta com embargos IBAMA/PAMGIA, Terras Indígenas FUNAI e UCs federais ICMBio; 5) conferência da lista pública MMA/MCR-PRODES; 6) organização dos achados em relatório rastreável, sem inferir autoria ou regularidade jurídica."
 	c.b.WriteString("0.15 0.23 0.19 rg\n")
 	y=c.wrapped(42,y,8,false,method,104,11)
 	y-=10
@@ -219,7 +210,7 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 	for _,row:=range []struct{n,u string}{
 		{"MapBiomas Alerta — API V2","https://plataforma.alerta.mapbiomas.org/api/v2/graphql"},
 		{"MapBiomas Alerta — metodologia",mapBiomasMethodologyURL},
-		{"SICAR / GeoServices","https://consulta.car.gov.br/geoservices"},
+		{"SICAR — perímetro público do CAR",carWFSURL},
 		{"IBAMA / PAMGIA","https://pamgia.ibama.gov.br/"},
 		{"FUNAI — dados geoespaciais",funaiGeoURL},
 		{"ICMBio — dados geoespaciais",icmbioGeoURL},
@@ -233,7 +224,7 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 	envSection(&c,&y,"LIMITAÇÕES E SALVAGUARDAS")
 	limits:=[]string{
 		"A área somada de alertas pode conter sobreposição temporal/espacial entre eventos; não deve ser tratada automaticamente como área única desmatada.",
-		"Temas APP, Reserva Legal, vegetação nativa e área consolidada são feições declaradas/publicadas no SICAR e podem estar em análise ou sujeitos a atualização.",
+		"Quando o MapBiomas informa cruzamentos com APP, Reserva Legal ou outras categorias, esses valores são exibidos como atributos da própria API e devem ser conferidos na fonte.",
 		"Cruzamentos geométricos do ViaVerdeCAR são auxiliares e dependem da precisão e atualidade das geometrias das fontes.",
 		"Alertas do MapBiomas são evidências de mudança de cobertura validadas pela metodologia da plataforma, mas não constituem por si só decisão administrativa, constatação de autoria ou juízo de legalidade.",
 		"Autorizações, licenças, termos, embargos, datas e situação cadastral devem ser conferidos no documento e órgão competente antes de qualquer conclusão técnica ou financeira.",
@@ -260,17 +251,11 @@ func environmentalConclusionText(intel EnvironmentalIntelligenceResult,alerts []
 		return "A consulta não retornou alerta MapBiomas vinculado ao CAR no momento da análise. Este resultado descreve a base consultada e não constitui certificado de regularidade ambiental nem substitui a verificação documental."
 	}
 	text:=fmt.Sprintf("Foram identificados %d alerta(s) MapBiomas vinculados ao CAR, com %.4f ha somados como área estimada dentro do imóvel.",s.Alerts,s.AlertAreaInCARHa)
-	if s.APPOverlapHa>0||s.RLOverlapHa>0{
-		text+=fmt.Sprintf(" Os cruzamentos locais indicaram %.4f ha sobre APP declarada e %.4f ha sobre Reserva Legal declarada.",s.APPOverlapHa,s.RLOverlapHa)
-	}
 	if s.AlertsOverIBAMA>0||s.AlertsOverIndigenousLand>0||s.AlertsOverFederalUC>0{
 		text+=fmt.Sprintf(" Há alertas com interseção espacial estimada em camadas sensíveis: embargo IBAMA (%d), Terra Indígena (%d) e UC federal (%d).",s.AlertsOverIBAMA,s.AlertsOverIndigenousLand,s.AlertsOverFederalUC)
 	}
 	if s.HighAttentionAlerts>0{
 		text+=fmt.Sprintf(" %d alerta(s) receberam alta prioridade de conferência pelas regras objetivas descritas no relatório.",s.HighAttentionAlerts)
-	}
-	if !sicarThemeAvailable(intel.Themes,"APP") || !sicarThemeAvailable(intel.Themes,"RESERVA_LEGAL") {
-		text+=" APP e/ou Reserva Legal não estavam disponíveis no SICAR nesta execução; nenhuma área zero foi presumida para essas camadas."
 	}
 	text+=" A conclusão jurídica ou de elegibilidade para crédito depende da conferência de autorizações, documentos, datas, situação dos registros e análise competente."
 	return text
@@ -396,9 +381,6 @@ func drawEnvironmentalEvidenceMap(c *pdfCanvas,car CARResult,alerts []Environmen
 	type layer struct{label,geo,rgb string;width float64;bound bool}
 	layers:=[]layer{{"CAR",car.GeoJSON,"0.055 0.42 0.29",1.8,true}}
 	for _,a:=range alerts{if strings.TrimSpace(a.GeometryGeoJSON)!=""{layers=append(layers,layer{"Alerta "+a.AlertCode,a.GeometryGeoJSON,"0.78 0.16 0.12",1.2,false})}}
-	for _,def:=range []struct{code,label,rgb string}{{"APP","APP","0.18 0.45 0.86"},{"RESERVA_LEGAL","Reserva Legal","0.08 0.34 0.18"}}{
-		if m,ok:=car.Themes.Themes[def.code];ok&&strings.TrimSpace(m.GeoJSON)!=""{layers=append(layers,layer{def.label,m.GeoJSON,def.rgb,.8,false})}
-	}
 	for _,e:=range car.Environment.IBAMAEmbargos{if strings.TrimSpace(e.GeoJSON)!=""{layers=append(layers,layer{"Embargo IBAMA",e.GeoJSON,"0.58 0.12 0.12",1,false})}}
 	type parsedLayer struct{label,rgb string;width float64;polys [][][][]float64;bound bool}
 	var parsed []parsedLayer
