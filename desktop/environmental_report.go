@@ -191,13 +191,24 @@ func environmentalProfilePage(p Property,car CARResult,intel EnvironmentalIntell
 	nearDetail:="IBAMA • FUNAI • ICMBio"
 	if profile.Nearby.Available {
 		best:=math.Inf(1);label:=""
-		if profile.Nearby.EmbargoFound && profile.Nearby.NearestEmbargoKm<best {best=profile.Nearby.NearestEmbargoKm;label="IBAMA"}
-		if profile.Nearby.IndigenousFound && profile.Nearby.NearestIndigenousKm<best {best=profile.Nearby.NearestIndigenousKm;label="Terra Indígena"}
-		if profile.Nearby.UCFound && profile.Nearby.NearestUCKm<best {best=profile.Nearby.NearestUCKm;label="UC federal"}
+		if profile.Nearby.EmbargoChecked && profile.Nearby.EmbargoFound && profile.Nearby.NearestEmbargoKm<best {best=profile.Nearby.NearestEmbargoKm;label="IBAMA"}
+		if profile.Nearby.IndigenousChecked && profile.Nearby.IndigenousFound && profile.Nearby.NearestIndigenousKm<best {best=profile.Nearby.NearestIndigenousKm;label="Terra Indígena"}
+		if profile.Nearby.UCChecked && profile.Nearby.UCFound && profile.Nearby.NearestUCKm<best {best=profile.Nearby.NearestUCKm;label="UC federal"}
+		checked:=0
+		if profile.Nearby.EmbargoChecked {checked++}
+		if profile.Nearby.IndigenousChecked {checked++}
+		if profile.Nearby.UCChecked {checked++}
 		if math.IsInf(best,1) {
-			nearValue=fmt.Sprintf("Nenhuma em %.0f km",profile.Nearby.SearchRadiusKm)
+			if checked==3 {
+				nearValue=fmt.Sprintf("Nenhuma em %.0f km",profile.Nearby.SearchRadiusKm)
+				nearDetail="IBAMA • FUNAI • ICMBio consultados"
+			} else {
+				nearValue="Nenhuma nas fontes consultadas"
+				nearDetail=fmt.Sprintf("%d/3 fonte(s) respondida(s)",checked)
+			}
 		} else {
 			nearValue=fmt.Sprintf("%.1f km",best);nearDetail="mais próxima: "+label
+			if checked<3 {nearDetail+=" • consulta parcial"}
 		}
 	}
 	envMetricBox(&c,40,y-60,122,54,"PRODES no CAR",prodesValue,prodesDetail)
