@@ -18,9 +18,13 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 const sicarGeoServicesBase = "https://consulta.car.gov.br/geoservices/estadosCSV"
+
+var errSICARManualValidationRequired = errors.New("a Base de Downloads do SICAR exige validação humana/CAPTCHA para liberar o shapefile")
 
 type SICARThemeMetric struct {
 	Code          string  `json:"code"`
@@ -138,14 +142,22 @@ func (a *App) analyzeSICARThemes(ctx context.Context, car, uf, municipalityCode,
 	close(ch)
 
 	success := 0
+	manualRequired := 0
 	for r := range ch {
 		if r.err != nil {
-			out.Warnings = append(out.Warnings, r.metric.Label+": "+r.err.Error())
+			if r.metric.Status == "manual_required" || errors.Is(r.err, errSICARManualValidationRequired) {
+				manualRequired++
+			} else {
+				out.Warnings = append(out.Warnings, r.metric.Label+": "+r.err.Error())
+			}
 			out.Themes[r.metric.Code] = r.metric
 			continue
 		}
 		success++
 		out.Themes[r.metric.Code] = r.metric
+	}
+	if manualRequired > 0 {
+		out.Warnings = append(out.Warnings, "Temas detalhados do SICAR: a Base de Downloads exige validação humana/CAPTCHA. Abra o portal oficial, baixe o ZIP do tema e importe-o no ViaVerdeCAR; não foi presumida área zero.")
 	}
 	out.Complete = success == len(sicarThemeDefinitions)
 	return out
@@ -155,8 +167,13 @@ func (a *App) analyzeSingleSICARTheme(ctx context.Context, car, uf, municipality
 	metric := SICARThemeMetric{Code: theme, Label: label, Method: "interseção espacial aproximada com pacote municipal público do SICAR", Status: "checking"}
 	zipPath, cacheStatus, cacheAge, err := a.ensureSICARThemeZipResilient(ctx, strings.ToUpper(uf), municipalityCode, theme)
 	if err != nil {
-		metric.Status = "unavailable"
-		metric.Error = err.Error()
+		if errors.Is(err, errSICARManualValidationRequired) {
+			metric.Status = "manual_required"
+			metric.Error = "Download oficial requer validação humana/CAPTCHA. Baixe o ZIP na Base de Downloads do SICAR e importe-o no ViaVerdeCAR."
+		} else {
+			metric.Status = "unavailable"
+			metric.Error = err.Error()
+		}
 		return metric, err
 	}
 	metric.SourceFile = zipPath
@@ -207,7 +224,9 @@ func (a *App) ensureSICARThemeZipResilient(ctx context.Context, uf, municipality
 	}
 
 	var downloadErr error
+	manualRequired := false
 	remoteThemes := sicarThemeRemoteCandidates(theme)
+downloadLoop:
 	for _, remoteTheme := range remoteThemes {
 		for attempt := 1; attempt <= 2; attempt++ {
 			err := a.downloadSICARThemeZipAs(ctx, uf, municipalityCode, remoteTheme, path)
@@ -221,8 +240,12 @@ func (a *App) ensureSICARThemeZipResilient(ctx context.Context, uf, municipality
 				return path, "online", age, nil
 			}
 			downloadErr = err
+			if errors.Is(err, errSICARManualValidationRequired) {
+				manualRequired = true
+				break downloadLoop
+			}
 			if ctx.Err() != nil {
-				break
+				break downloadLoop
 			}
 			if attempt < 2 {
 				select {
@@ -230,9 +253,6 @@ func (a *App) ensureSICARThemeZipResilient(ctx context.Context, uf, municipality
 				case <-time.After(1200 * time.Millisecond):
 				}
 			}
-		}
-		if ctx.Err() != nil {
-			break
 		}
 	}
 
@@ -247,6 +267,9 @@ func (a *App) ensureSICARThemeZipResilient(ctx context.Context, uf, municipality
 			}
 			return path, status, time.Since(st.ModTime()).Hours(), nil
 		}
+	}
+	if manualRequired {
+		return "", "", 0, errSICARManualValidationRequired
 	}
 	if downloadErr == nil {
 		downloadErr = errors.New("pacote público do SICAR indisponível")
@@ -291,6 +314,9 @@ func (a *App) downloadSICARThemeZipAs(ctx context.Context, uf, municipalityCode,
 	curlErr := downloadSICARThemeZipCurl(ctx, target, path)
 	if curlErr == nil {
 		return nil
+	}
+	if errors.Is(directErr, errSICARManualValidationRequired) && errors.Is(curlErr, errSICARManualValidationRequired) {
+		return errSICARManualValidationRequired
 	}
 	return fmt.Errorf("GeoServices não entregou pacote utilizável (HTTP nativo: %v; fallback Windows: %v)", directErr, curlErr)
 }
@@ -420,6 +446,9 @@ func validateSICARThemeDownload(path, contentType string) error {
 	}
 	head = head[:n]
 	if !hasZIPSignature(head) {
+		if sicarThemePayloadRequiresHumanValidation(head, contentType) {
+			return errSICARManualValidationRequired
+		}
 		desc := describeSICARThemePayload(head, contentType)
 		return fmt.Errorf("GeoServices respondeu conteúdo que não é ZIP (%s)", desc)
 	}
@@ -432,6 +461,14 @@ func hasZIPSignature(b []byte) bool {
 	}
 	return b[0] == 'P' && b[1] == 'K' &&
 		((b[2] == 3 && b[3] == 4) || (b[2] == 5 && b[3] == 6) || (b[2] == 7 && b[3] == 8))
+}
+
+func sicarThemePayloadRequiresHumanValidation(head []byte, contentType string) bool {
+	ct := strings.ToLower(strings.TrimSpace(contentType))
+	lower := strings.ToLower(strings.TrimSpace(string(head)))
+	return strings.Contains(ct, "text/html") ||
+		strings.Contains(lower, "<!doctype html") ||
+		strings.Contains(lower, "<html")
 }
 
 func describeSICARThemePayload(head []byte, contentType string) string {
@@ -472,6 +509,188 @@ func validSICARThemeZip(path string) error {
 		return errors.New("pacote não contém shapefile")
 	}
 	return nil
+}
+
+func (a *App) ImportSICARThemeZIP(propertyID int64, theme string) (SICARThemesSummary, error) {
+	theme = strings.ToUpper(strings.TrimSpace(theme))
+	label := ""
+	validTheme := false
+	for _, def := range sicarThemeDefinitions {
+		if def.Code == theme {
+			label = def.Label
+			validTheme = true
+			break
+		}
+	}
+	if !validTheme {
+		return SICARThemesSummary{}, errors.New("tema SICAR inválido")
+	}
+	if a == nil || a.ctx == nil {
+		return SICARThemesSummary{}, errors.New("aplicativo ainda não inicializado")
+	}
+
+	var car CARResult
+	var err error
+	if propertyID > 0 {
+		car, err = a.GetLatestCAR(propertyID)
+	} else {
+		var session CARSessionCache
+		session, err = a.GetLastCARSession()
+		if err == nil {
+			car = session.Result
+		}
+	}
+	if err != nil || !car.Found || strings.TrimSpace(car.GeoJSON) == "" {
+		return SICARThemesSummary{}, errors.New("consulte um CAR com geometria antes de importar o tema SICAR")
+	}
+
+	sourcePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Selecionar ZIP oficial — " + label,
+		Filters: []runtime.FileFilter{{DisplayName: "Arquivo ZIP do SICAR", Pattern: "*.zip"}},
+	})
+	if err != nil {
+		return SICARThemesSummary{}, err
+	}
+	if strings.TrimSpace(sourcePath) == "" {
+		return SICARThemesSummary{}, errors.New("importação cancelada")
+	}
+	if err := validSICARThemeZip(sourcePath); err != nil {
+		return SICARThemesSummary{}, fmt.Errorf("ZIP inválido: %w", err)
+	}
+	if !sicarThemeZipLooksCompatible(sourcePath, theme) {
+		return SICARThemesSummary{}, fmt.Errorf("o ZIP selecionado não parece corresponder ao tema %s; baixe esse tema na Base de Downloads do SICAR", label)
+	}
+
+	cacheDir := filepath.Join(a.dataDir, "cache", "sicar", car.MunicipalityCode)
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return SICARThemesSummary{}, err
+	}
+	dest := filepath.Join(cacheDir, strings.ToLower(theme)+".zip")
+	tmp := dest + ".import.part"
+	if err := copyFileAtomicCandidate(sourcePath, tmp); err != nil {
+		return SICARThemesSummary{}, err
+	}
+	if err := validSICARThemeZip(tmp); err != nil {
+		_ = os.Remove(tmp)
+		return SICARThemesSummary{}, err
+	}
+	_ = os.Remove(dest)
+	if err := os.Rename(tmp, dest); err != nil {
+		_ = os.Remove(tmp)
+		return SICARThemesSummary{}, err
+	}
+	marker := dest + ".manual"
+	markerText := fmt.Sprintf("imported_at=%s\nsource=%s\ntheme=%s\n", time.Now().Format(time.RFC3339), filepath.Base(sourcePath), theme)
+	_ = os.WriteFile(marker, []byte(markerText), 0o644)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	metric, err := a.analyzeSingleSICARTheme(ctx, car.CAR, car.UF, car.MunicipalityCode, car.GeoJSON, car.AreaHa, theme, label)
+	if err != nil {
+		return SICARThemesSummary{}, err
+	}
+	if car.Themes.Themes == nil {
+		car.Themes = SICARThemesSummary{
+			CheckedAt: time.Now().Format(time.RFC3339),
+			SourceURL: "https://consulta.car.gov.br/geoservices",
+			Municipio: car.MunicipalityCode,
+			UF: strings.ToUpper(strings.TrimSpace(car.UF)),
+			Themes: map[string]SICARThemeMetric{},
+		}
+	}
+	car.Themes.Themes[theme] = metric
+	car.Themes.CheckedAt = time.Now().Format(time.RFC3339)
+	car.Themes.Complete = true
+	for _, def := range sicarThemeDefinitions {
+		m, ok := car.Themes.Themes[def.Code]
+		if !ok || !m.Available {
+			car.Themes.Complete = false
+			break
+		}
+	}
+	car.Themes.Warnings = rebuildSICARThemeWarnings(car.Themes)
+
+	if propertyID > 0 && a.db != nil {
+		_, _ = a.db.Exec(`UPDATE properties SET last_car_json=?,updated_at=? WHERE id=?`, marshalJSON(car), time.Now().Format(time.RFC3339), propertyID)
+	}
+	if session, sessionErr := a.GetLastCARSession(); sessionErr == nil && strings.EqualFold(session.Result.CAR, car.CAR) {
+		_ = a.updateLastCARSessionResult(car)
+	}
+	_ = a.ClearEnvironmentalIntelligenceCache(car.CAR)
+	return car.Themes, nil
+}
+
+func copyFileAtomicCandidate(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	_, copyErr := io.Copy(out, io.LimitReader(in, 120<<20))
+	closeErr := out.Close()
+	if copyErr != nil {
+		_ = os.Remove(dst)
+		return copyErr
+	}
+	if closeErr != nil {
+		_ = os.Remove(dst)
+		return closeErr
+	}
+	return nil
+}
+
+func sicarThemeZipLooksCompatible(path, theme string) bool {
+	zr, err := zip.OpenReader(path)
+	if err != nil {
+		return false
+	}
+	defer zr.Close()
+	aliases := map[string][]string{
+		"APP": {"APP", "APPS", "PRESERVACAO_PERMANENTE"},
+		"RESERVA_LEGAL": {"RESERVA_LEGAL"},
+		"VEGETACAO_NATIVA": {"VEGETACAO_NATIVA", "REMANESCENTE_VEGETACAO"},
+		"AREA_CONSOLIDADA": {"AREA_CONSOLIDADA"},
+		"USO_RESTRITO": {"USO_RESTRITO"},
+		"SERVIDAO_ADMINISTRATIVA": {"SERVIDAO_ADMINISTRATIVA"},
+	}
+	for _, zf := range zr.File {
+		if !strings.HasSuffix(strings.ToLower(zf.Name), ".shp") {
+			continue
+		}
+		name := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(filepath.Base(zf.Name), "-", "_"), " ", "_"))
+		for _, alias := range aliases[theme] {
+			if strings.Contains(name, alias) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func rebuildSICARThemeWarnings(summary SICARThemesSummary) []string {
+	warnings := make([]string, 0)
+	manualRequired := 0
+	for _, def := range sicarThemeDefinitions {
+		m, ok := summary.Themes[def.Code]
+		if !ok || m.Available {
+			continue
+		}
+		if m.Status == "manual_required" {
+			manualRequired++
+			continue
+		}
+		if strings.TrimSpace(m.Error) != "" {
+			warnings = append(warnings, def.Label+": "+m.Error)
+		}
+	}
+	if manualRequired > 0 {
+		warnings = append(warnings, "Temas detalhados do SICAR: a Base de Downloads exige validação humana/CAPTCHA. Baixe os ZIPs oficiais dos temas faltantes e importe-os no ViaVerdeCAR.")
+	}
+	return warnings
 }
 
 func intersectThemeZipWithCAR(zipPath, carGeoJSON string, carAreaHa float64) (float64, int, string, error) {
