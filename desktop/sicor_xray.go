@@ -413,6 +413,7 @@ func downloadLargeFileCurl(ctx context.Context, targetURL, path string) error {
 		return errors.New("curl não encontrado")
 	}
 	cmd := exec.CommandContext(ctx, name, "-L", "--fail", "--silent", "--show-error", "--retry", "2", "--connect-timeout", "20", "-o", path, targetURL)
+	hideExternalProcessWindow(cmd)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		msg := strings.TrimSpace(string(out))
 		if msg == "" {
