@@ -152,32 +152,18 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 	if err != nil {
 		return EnvironmentalIntelligenceResult{}, err
 	}
-	// Migra em memória resultados antigos (1.8.0–1.8.2) que registravam HTML
-	// retornado pelo GeoServices apenas como "indisponível". A 1.8.3 passou a
-	// tratar esse cenário como fluxo de download oficial com validação humana.
-	car.Themes = normalizeLegacySICARThemes(car.Themes)
-
-	// "Atualizar análise" precisa refazer também os seis temas detalhados do
-	// SICAR. Na 1.8.0 o force invalidava apenas a inteligência ambiental, mas
-	// reutilizava APP/RL/etc. da consulta anterior.
-	themeRefreshWarning := ""
-	if force {
-		if refreshed, refreshErr := a.RetrySICARThemes(propertyID); refreshErr == nil {
-			car.Themes = refreshed
-		} else {
-			themeRefreshWarning = "Temas SICAR: nova tentativa não concluída: " + refreshErr.Error()
-		}
-	}
+	// A análise ambiental é intencionalmente automática. Os temas detalhados
+	// do SICAR que dependem de CAPTCHA/importação manual não participam mais
+	// do fluxo nem dos laudos.
+	car.Themes = SICARThemesSummary{}
 
 	cachePath := ""
 	if a != nil && a.dataDir != "" {
 		cachePath = filepath.Join(a.dataDir, "cache", "environmental_intelligence", safeFilePart(car.CAR)+".json")
 		if !force {
 			if cached, ok := loadEnvironmentalIntelligenceCache(cachePath, environmentalIntelligenceCacheAge); ok {
-				cached = normalizeLegacyEnvironmentalCache(cached)
+				cached = sanitizeEnvironmentalAutoOnly(cached)
 				cached.UsedCache = true
-				// Regrava somente o formato normalizado para que a migração seja
-				// persistente e não dependa de o usuário limpar cache manualmente.
 				_ = saveEnvironmentalIntelligenceCache(cachePath, cached)
 				return cached, nil
 			}
@@ -191,15 +177,11 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 		PropertyAreaHa: firstPositive(car.GeometryAreaHa, car.AreaHa),
 		GeneratedAt: time.Now().Format(time.RFC3339),
 		Environment: car.Environment,
-		Themes: car.Themes,
+		Themes: SICARThemesSummary{},
 		MapBiomasMethodURL: mapBiomasMethodologyURL,
 		MapBiomasAPIURL: mapBiomasAPIURL,
 		Interpretation: "Triagem técnica auxiliar baseada em fontes públicas e cruzamentos espaciais. A presença de alerta ou sobreposição não determina, por si só, infração, autoria, responsabilidade ou impedimento de crédito; exige conferência documental e, quando aplicável, análise por profissional habilitado e pelo órgão competente.",
 	}
-	if themeRefreshWarning != "" {
-		out.Warnings = append(out.Warnings, themeRefreshWarning)
-	}
-
 	mb, err := a.QueryMapBiomasCAR(car.CAR)
 	if err != nil {
 		out.Warnings = append(out.Warnings, "MapBiomas Alerta: "+err.Error())
@@ -239,8 +221,7 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 		out.Warnings = append(out.Warnings, "Nenhum alerta foi retornado para o CAR nesta consulta. Isso não equivale a certificado de regularidade ambiental.")
 	}
 	out.Warnings = append(out.Warnings, car.Environment.Warnings...)
-	out.Warnings = append(out.Warnings, car.Themes.Warnings...)
-	out.Warnings = uniqueStrings(out.Warnings)
+	out = sanitizeEnvironmentalAutoOnly(out)
 
 	if cachePath != "" {
 		if err := saveEnvironmentalIntelligenceCache(cachePath, out); err != nil {
@@ -558,6 +539,27 @@ func normalizeLegacyEnvironmentalCache(out EnvironmentalIntelligenceResult) Envi
 		clean = append(clean, w)
 	}
 	clean = append(clean, out.Themes.Warnings...)
+	out.Warnings = uniqueStrings(clean)
+	return out
+}
+
+func sanitizeEnvironmentalAutoOnly(out EnvironmentalIntelligenceResult) EnvironmentalIntelligenceResult {
+	out.Themes = SICARThemesSummary{}
+	clean := make([]string, 0, len(out.Warnings))
+	for _, w := range out.Warnings {
+		lw := strings.ToLower(strings.TrimSpace(w))
+		if lw == "" {
+			continue
+		}
+		if strings.Contains(lw, "tema") && strings.Contains(lw, "sicar") {
+			continue
+		}
+		if strings.Contains(lw, "geoservices") &&
+			(strings.Contains(lw, "zip") || strings.Contains(lw, "text/html") || strings.Contains(lw, "captcha")) {
+			continue
+		}
+		clean = append(clean, w)
+	}
 	out.Warnings = uniqueStrings(clean)
 	return out
 }
