@@ -342,6 +342,7 @@ func downloadSICARThemeZipCurl(ctx context.Context, target, path string) error {
 		"--output", tmp,
 		target,
 	)
+	hideExternalProcessWindow(cmd)
 	if err := cmd.Run(); err != nil {
 		_ = os.Remove(tmp)
 		if ee, ok := err.(*exec.ExitError); ok {
