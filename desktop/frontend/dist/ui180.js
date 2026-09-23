@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 1.8.0 — Inteligência Ambiental & Laudos */
+/* ViaVerdeCAR 1.8.1 — Inteligência Ambiental & Laudos resilientes */
 (function(){
   const g=id=>document.getElementById(id);
   const s180={car:'',data:null,loading:false,layer:null};
@@ -55,14 +55,15 @@
 
   function render180(r){
     const panel=g('environmentIntel180');if(!panel)return;
-    const s=r.summary||{},alerts=r.alerts||[],env=r.environment||{},mb=r.mapbiomas||{},warnings=r.warnings||[];
+    const s=r.summary||{},alerts=r.alerts||[],env=r.environment||{},mb=r.mapbiomas||{},warnings=r.warnings||[],themes=r.themes||{};
+    const appOK=themeAvailable180(themes,'APP'),rlOK=themeAvailable180(themes,'RESERVA_LEGAL');
     const badge=alerts.length?(s.high_attention_alerts?'Atenção técnica':alerts.length+' alerta(s)'):'Sem alertas retornados';
     panel.innerHTML='<div class="panel-title"><div><span class="eyebrow">AMBIENTAL • INTELIGÊNCIA E LAUDOS</span><h3>Diagnóstico técnico de evidências públicas</h3><p>Resultado específico do CAR '+esc180(r.car||'')+' • '+esc180((r.municipality||'')+' / '+(r.uf||''))+'</p></div><span class="status-badge '+(s.high_attention_alerts?'warning':alerts.length?'info':'ok')+'">'+esc180(badge)+'</span></div>'+
       '<div class="environment-metrics180">'+
         metric180('Alertas MapBiomas',s.alerts||0,(mb.connected?'API conectada':'API não conectada'))+
         metric180('Área de alertas no CAR',n180(s.alert_area_in_car_ha)+' ha','soma estimada das ocorrências')+
-        metric180('Sobre APP',n180(s.app_overlap_ha)+' ha',(s.alerts_over_app||0)+' alerta(s)')+
-        metric180('Sobre Reserva Legal',n180(s.rl_overlap_ha)+' ha',(s.alerts_over_rl||0)+' alerta(s)')+
+        metric180('Sobre APP',appOK?n180(s.app_overlap_ha)+' ha':'Indisponível',appOK?(s.alerts_over_app||0)+' alerta(s)':'tema SICAR não obtido')+
+        metric180('Sobre Reserva Legal',rlOK?n180(s.rl_overlap_ha)+' ha':'Indisponível',rlOK?(s.alerts_over_rl||0)+' alerta(s)':'tema SICAR não obtido')+
         metric180('Embargo IBAMA',s.alerts_over_ibama||0,'alerta(s) com interseção')+
         metric180('Alta prioridade',s.high_attention_alerts||0,'regra objetiva de conferência')+
       '</div>'+
@@ -74,8 +75,9 @@
         '<button class="btn ghost" id="openMapBiomasProperty180">Abrir imóvel no MapBiomas</button>'+
       '</div>'+
       (!hasProperty180()?'<div class="environment-note180">Para gerar laudos, vincule o CAR a um imóvel salvo. A análise pode ser visualizada normalmente em consulta avulsa.</div>':'')+
+      ((!appOK||!rlOK)?'<div class="environment-note180"><strong>Camadas SICAR incompletas.</strong> “Indisponível” significa que a fonte não foi obtida nesta execução; o ViaVerdeCAR não assume 0 ha.</div>':'')+
       evidenceMatrix180(r)+
-      '<div class="environment-alerts180">'+(alerts.length?alerts.map((a,i)=>alert180(a,i)).join(''):'<div class="environment-empty180">'+esc180(mb.message||'Nenhum alerta MapBiomas foi retornado nesta consulta.')+'<br><small>Ausência de alerta não equivale a certificado de regularidade ambiental.</small></div>')+'</div>'+
+      '<div class="environment-alerts180">'+(alerts.length?alerts.map((a,i)=>alert180(a,i,r)).join(''):'<div class="environment-empty180">'+esc180(mb.message||'Nenhum alerta MapBiomas foi retornado nesta consulta.')+'<br><small>Ausência de alerta não equivale a certificado de regularidade ambiental.</small></div>')+'</div>'+
       (warnings.length?'<details class="environment-warnings180"><summary>Limitações e ocorrências da consulta ('+warnings.length+')</summary>'+warnings.map(w=>'<div>• '+esc180(w)+'</div>').join('')+'</details>':'')+
       '<div class="environment-legal180"><strong>Interpretação técnica:</strong> '+esc180(r.interpretation||'Triagem auxiliar baseada em fontes públicas.')+'</div>';
 
@@ -90,14 +92,32 @@
   }
 
   function metric180(label,value,small){return '<div><span>'+esc180(label)+'</span><strong>'+esc180(String(value))+'</strong><small>'+esc180(small||'')+'</small></div>'}
+  function themeMetric180(themes,code){return themes?.themes?.[code]||null}
+  function themeAvailable180(themes,code){return !!themeMetric180(themes,code)?.available}
+  function themeStatus180(themes,code,label){
+    const m=themeMetric180(themes,code);
+    if(!m||!m.available)return label+': indisponível';
+    if(m.cache_status==='cache_stale')return label+': cache anterior';
+    if(m.cache_status==='manual')return label+': importado';
+    if(m.cache_status==='cache_fresh')return label+': cache recente';
+    return label+': consultado';
+  }
 
   function evidenceMatrix180(r){
     const env=r.environment||{},themes=r.themes||{},mb=r.mapbiomas||{};
     const available=Object.values(themes.themes||{}).filter(x=>x?.available).length;
+    const themeDetail=[
+      themeStatus180(themes,'APP','APP'),
+      themeStatus180(themes,'RESERVA_LEGAL','RL'),
+      themeStatus180(themes,'VEGETACAO_NATIVA','Vegetação'),
+      themeStatus180(themes,'AREA_CONSOLIDADA','Consolidada'),
+      themeStatus180(themes,'USO_RESTRITO','Uso restrito'),
+      themeStatus180(themes,'SERVIDAO_ADMINISTRATIVA','Servidão')
+    ].join(' • ');
     const row=(icon,name,status,detail,cls='')=>'<div class="environment-source180 '+cls+'"><span>'+icon+'</span><div><b>'+esc180(name)+'</b><small>'+esc180(detail)+'</small></div><strong>'+esc180(status)+'</strong></div>';
     return '<details class="environment-matrix180" open><summary>Matriz de evidências e fontes</summary><div>'+
       row('🛰️','MapBiomas Alerta',mb.connected?(mb.total_alerts||0)+' alerta(s)':'Não conectado',mb.message||'API V2')+
-      row('🌱','SICAR — temas',available+'/6','APP, Reserva Legal, vegetação nativa, área consolidada e demais temas')+
+      row('🌱','SICAR — temas',available+'/6',themeDetail,available<6?'warn':'')+
       row('⛔','IBAMA / PAMGIA',env.ibama_checked?(env.ibama_embargo_count||0)+' ocorrência(s)':'Indisponível','embargos com interseção no CAR',env.ibama_embargo_count?'warn':'')+
       row('🪶','FUNAI',env.funai_checked?(env.indigenous_count||0)+' ocorrência(s)':'Indisponível','Terras Indígenas com interseção no CAR',env.indigenous_count?'warn':'')+
       row('🏞️','ICMBio',env.icmbio_checked?(env.federal_uc_count||0)+' ocorrência(s)':'Indisponível','Unidades de Conservação federais',env.federal_uc_count?'warn':'')+
@@ -105,8 +125,10 @@
       '</div></details>';
   }
 
-  function alert180(a,i){
+  function alert180(a,i,r){
     const high=a.attention_level==='Alta prioridade de conferência';
+    const themes=r?.themes||{},env=r?.environment||{};
+    const appOK=themeAvailable180(themes,'APP'),rlOK=themeAvailable180(themes,'RESERVA_LEGAL');
     const overlap=[];
     if(Number(a.app_overlap_ha)>0)overlap.push('APP '+n180(a.app_overlap_ha,2)+' ha');
     if(Number(a.rl_overlap_ha)>0)overlap.push('RL '+n180(a.rl_overlap_ha,2)+' ha');
@@ -117,8 +139,8 @@
       '<div class="environment-alert-head180"><div><strong>Alerta '+esc180(a.alert_code||'—')+'</strong><small>'+date180(a.detected_at)+' • '+n180(a.area_ha,2)+' ha • '+esc180((a.sources||[]).join(', ')||'MapBiomas Alerta')+'</small></div><span class="status-badge '+(high?'warning':'info')+'">'+esc180(a.attention_level||'Conferir')+'</span></div>'+
       '<div class="environment-alert-grid180">'+
         metric180('Dentro do CAR',n180(a.alert_area_in_car_ha,2)+' ha',n180(a.alert_pct_of_car,2)+'% do imóvel')+
-        metric180('APP',n180(a.app_overlap_ha,2)+' ha','interseção calculada')+
-        metric180('Reserva Legal',n180(a.rl_overlap_ha,2)+' ha','interseção calculada')+
+        metric180('APP',appOK?n180(a.app_overlap_ha,2)+' ha':'Indisponível',appOK?'interseção calculada':'tema SICAR não obtido')+
+        metric180('Reserva Legal',rlOK?n180(a.rl_overlap_ha,2)+' ha':'Indisponível',rlOK?'interseção calculada':'tema SICAR não obtido')+
         metric180('Imagem antes',date180(a.image_before_at),'data informada')+
         metric180('Imagem depois',date180(a.image_after_at),'data informada')+
         metric180('Status',a.status_name||'Publicado',date180(a.published_at))+
@@ -159,7 +181,7 @@
   }
 
   function watch180(){
-    const install=()=>{try{attach180()}catch(e){try{console.error('ViaVerdeCAR 1.8.0 ambiental:',e)}catch(_){}}};
+    const install=()=>{try{attach180()}catch(e){try{console.error('ViaVerdeCAR 1.8.1 ambiental:',e)}catch(_){}}};
     install();
     const root=g('carTabXRay150')||document.body;
     new MutationObserver(()=>install()).observe(root,{childList:true,subtree:true});
