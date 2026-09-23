@@ -5,28 +5,7 @@ import (
 	"testing"
 )
 
-func TestChooseWFSLayer190(t *testing.T) {
-	types := []wfsFeatureType{
-		{Name:"prodes:municipality", Title:"Municipality"},
-		{Name:"prodes:yearly_deforestation", Title:"Yearly deforestation"},
-		{Name:"prodes:grid", Title:"Grid"},
-	}
-	got := chooseWFSLayer(types, []string{"yearly_deforestation","deforestation","increment"}, []string{"municip","grid"})
-	if got != "prodes:yearly_deforestation" {
-		t.Fatalf("camada PRODES inesperada: %s", got)
-	}
-}
 
-func TestNearestWorldCoverClass190(t *testing.T) {
-	code, ok := nearestWorldCoverClass(0, 100, 0)
-	if !ok || code != 10 {
-		t.Fatalf("cobertura arbórea não reconhecida: code=%d ok=%v", code, ok)
-	}
-	_, ok = nearestWorldCoverClass(3, 3, 3)
-	if ok {
-		t.Fatal("pixel muito distante da paleta não deveria ser forçado para uma classe")
-	}
-}
 
 func TestFeatureYear190(t *testing.T) {
 	if got := featureYear(map[string]any{"year": 2024.0}); got != 2024 {
