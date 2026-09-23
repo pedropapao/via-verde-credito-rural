@@ -493,6 +493,7 @@ func fetchCARWithCurl(ctx context.Context, target string) ([]byte, error) {
 		"--user-agent", "Mozilla/5.0 ViaVerdeCAR/1.0.1",
 		target,
 	)
+	hideExternalProcessWindow(cmd)
 	body, err := cmd.Output()
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {

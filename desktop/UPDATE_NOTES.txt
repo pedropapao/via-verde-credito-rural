@@ -1,3 +1,19 @@
+CAR 1.8.2: consultas silenciosas no Windows.
+
+INTERFACE
+• Consultas que precisam usar curl.exe em segundo plano não abrem mais janela de CMD.
+• O PowerShell do atualizador também é iniciado sem janela visível.
+• A correção cobre consulta CAR, temas ambientais do SICAR e downloads grandes do SICOR/BCB.
+
+IMPLEMENTAÇÃO
+• Processos auxiliares no Windows usam HideWindow e CREATE_NO_WINDOW.
+• Fora do Windows, a rotina é neutra para preservar testes e compatibilidade.
+• Não houve remoção dos fallbacks de rede; apenas a janela visual foi ocultada.
+
+PRESERVADO
+• Consultas CAR, Crédito Rural, Inteligência Financeira, Inteligência Ambiental, MapBiomas, temas SICAR, atualização automática e banco local permanecem com a mesma lógica.
+• Nenhuma migração destrutiva ou alteração de dados.
+
 PUBLICAÇÃO 1.8.1 REEMITIDA
 • Reprocessamento do canal automático de atualização após validação final da correção ambiental.
 

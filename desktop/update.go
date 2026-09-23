@@ -179,6 +179,7 @@ func (a *App) InstallUpdate(info UpdateInfo) (UpdateInstallResult, error) {
 		"-OldExe", oldExe,
 		"-LogFile", logPath,
 	)
+	hideExternalProcessWindow(cmd)
 	if err := cmd.Start(); err != nil {
 		return UpdateInstallResult{}, fmt.Errorf("não foi possível iniciar o atualizador: %w", err)
 	}
