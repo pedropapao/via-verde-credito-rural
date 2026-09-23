@@ -27,6 +27,7 @@
 .environment-profile-head180{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .environment-profile-head180>div{display:grid;gap:2px}.environment-profile-head180 h4{margin:0;font-size:1.02rem}.environment-profile-head180>small{color:var(--muted,#607168)}
 .environment-profile-grid180{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.environment-profile-grid-stage1{grid-template-columns:repeat(2,minmax(0,1fr))}
 .environment-profile-card180{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px;align-items:start;padding:11px;border:1px solid var(--line,#dbe4df);border-radius:13px;background:var(--panel,#fff)}
 .environment-profile-icon180{width:31px;height:31px;border-radius:9px;display:grid;place-items:center;background:rgba(42,111,77,.08)}
 .environment-profile-card180>div:last-child{display:grid;gap:2px;min-width:0}.environment-profile-card180 span{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted,#607168)}
@@ -41,3 +42,12 @@
 @media(max-width:1100px){.environment-profile-grid180{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:900px){.environment-profile-grid180{grid-template-columns:repeat(2,minmax(0,1fr))}.environment-profile-details180>div{grid-template-columns:1fr}}
 @media(max-width:620px){.environment-profile-grid180{grid-template-columns:1fr}.environment-profile-head180{flex-direction:column}}
+
+.environment-profile-note180{padding:9px 11px;border-radius:10px;background:rgba(42,111,77,.055);font-size:.72rem;color:var(--muted,#607168);line-height:1.4}
+.landcover-list190{display:grid!important;grid-template-columns:1fr!important;gap:9px!important}
+.landcover-row190{display:grid;gap:5px}
+.landcover-row-head190{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:.76rem}
+.landcover-row-head190 span{font-size:.72rem;text-transform:none;letter-spacing:0}
+.landcover-track190{height:8px;border-radius:999px;background:rgba(42,111,77,.08);overflow:hidden}
+.landcover-track190>div{height:100%;border-radius:999px;background:var(--accent,#2a6f4d)}
+@media(max-width:620px){.environment-profile-grid-stage1{grid-template-columns:1fr}}
