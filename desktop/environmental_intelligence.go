@@ -422,11 +422,14 @@ func environmentalLayerOverlap(alertGeo, layerGeo string) float64 {
 func environmentalAttention(a EnvironmentalAlertDetail,mcrListed bool)(string,[]string){
 	var reasons []string
 	high := false
-	if a.APPOverlapHa > 0 { high=true; reasons=append(reasons,fmt.Sprintf("interseção estimada com APP declarada: %.4f ha",a.APPOverlapHa)) }
-	if a.RLOverlapHa > 0 { high=true; reasons=append(reasons,fmt.Sprintf("interseção estimada com Reserva Legal declarada: %.4f ha",a.RLOverlapHa)) }
 	if a.IBAMAOverlapHa > 0 { high=true; reasons=append(reasons,fmt.Sprintf("interseção estimada com embargo IBAMA: %.4f ha",a.IBAMAOverlapHa)) }
 	if a.IndigenousOverlapHa > 0 { high=true; reasons=append(reasons,fmt.Sprintf("interseção estimada com Terra Indígena: %.4f ha",a.IndigenousOverlapHa)) }
 	if a.FederalUCOverlapHa > 0 { high=true; reasons=append(reasons,fmt.Sprintf("interseção estimada com UC federal: %.4f ha",a.FederalUCOverlapHa)) }
+	if a.MapBiomasPermanentProtectedAreaHa > 0 { high=true; reasons=append(reasons,fmt.Sprintf("o MapBiomas reporta %.4f ha de cruzamento com APP",a.MapBiomasPermanentProtectedAreaHa)) }
+	if a.MapBiomasLegalReserveAreaHa > 0 { high=true; reasons=append(reasons,fmt.Sprintf("o MapBiomas reporta %.4f ha de cruzamento com Reserva Legal",a.MapBiomasLegalReserveAreaHa)) }
+	if a.MapBiomasEmbargoAreaHa > 0 { high=true; reasons=append(reasons,fmt.Sprintf("o MapBiomas reporta %.4f ha de cruzamento com embargo/imóvel rural",a.MapBiomasEmbargoAreaHa)) }
+	if a.MapBiomasIndigenousAreaHa > 0 { high=true; reasons=append(reasons,fmt.Sprintf("o MapBiomas reporta %.4f ha de cruzamento com Terra Indígena",a.MapBiomasIndigenousAreaHa)) }
+	if a.MapBiomasConservationAreaHa > 0 { high=true; reasons=append(reasons,fmt.Sprintf("o MapBiomas reporta %.4f ha de cruzamento com Unidade de Conservação",a.MapBiomasConservationAreaHa)) }
 	if a.MapBiomasAuthorizedAreaHa > 0 { reasons=append(reasons,"o MapBiomas reporta cruzamento com área de autorização de supressão; conferir documento, vigência e polígono") }
 	if a.MapBiomasForestManagementAreaHa > 0 { reasons=append(reasons,"o MapBiomas reporta cruzamento com área de manejo florestal; conferir documentação") }
 	if mcrListed { high=true; reasons=append(reasons,"o CAR aparece na lista pública MMA/MCR-PRODES consultada") }
