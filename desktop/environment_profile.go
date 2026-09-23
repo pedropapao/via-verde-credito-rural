@@ -127,7 +127,7 @@ func (a *App) queryBiomeAtCAR(ctx context.Context, car CARResult) (string, error
 	}
 	lat, lon := carGeometryCenterFromGeoJSON(car.GeoJSON)
 	if lat == 0 && lon == 0 {
-		lat, lon = car.CentroidLat, car.CentroidLon
+		lat, lon = car.CenterLat, car.CenterLon
 	}
 	if lat == 0 && lon == 0 {
 		return "", errors.New("centróide do CAR indisponível")
