@@ -102,6 +102,7 @@
         profileCard180('🌿','Bioma',biomeText,p.biome_available?(p.biome_source||'MapBiomas Alerta'):'fonte não respondeu')+
         profileCard180('🛰️','Cobertura dominante',coverText,coverDetail)+
       '</div>'+
+      fireCard180(p.fire||{})+
       landCoverDetails180(p,classes)+
       '<div class="environment-profile-note180">A cobertura do solo é uma estimativa amostral baseada no ESA WorldCover 2021 (10 m). Ela descreve a cobertura observada pelo produto de sensoriamento remoto e não substitui levantamento de campo, cadastro ambiental ou identificação da cultura atual.</div>'+
       '</section>';
@@ -109,6 +110,28 @@
   }
 
   function profileCard180(icon,label,value,detail){return '<div class="environment-profile-card180"><div class="environment-profile-icon180">'+icon+'</div><div><span>'+esc180(label)+'</span><strong>'+esc180(value)+'</strong><small>'+esc180(detail||'')+'</small></div></div>'}
+
+  function fireCard180(f){
+    const status=String(f?.status||'consulta_nao_realizada');
+    let value='Consulta não realizada',detail=f?.warning||'Programa Queimadas/INPE';
+    if(status==='ocorrencia_encontrada'){
+      const n=Number(f?.feature_count||0);
+      value=n+' foco'+(n===1?' encontrado':'s encontrados');
+      const parts=[];
+      if(f?.last_detected_at)parts.push('Último '+date180(f.last_detected_at));
+      if(arr180(f?.satellites).length)parts.push(arr180(f.satellites).slice(0,2).join(', '));
+      detail=parts.join(' • ')||f?.window_label||'Programa Queimadas/INPE';
+    }else if(status==='sem_ocorrencia'){
+      value='0 focos encontrados';
+      detail=f?.window_label||'Programa Queimadas/INPE consultado';
+    }else if(status==='base_indisponivel'){
+      value='Base indisponível';
+      detail=f?.warning||'Programa Queimadas/INPE não respondeu';
+    }
+    return '<div class="environment-risk-title180"><strong>Focos de calor</strong><span>Programa Queimadas/INPE</span></div>'+
+      '<div class="environment-profile-grid180 environment-profile-grid-stage1">'+
+      profileCard180('🔥','Focos de calor',value,detail)+'</div>';
+  }
 
   function landCoverDetails180(p,classes){
     if(!p?.land_cover_available||!classes.length)return '';
