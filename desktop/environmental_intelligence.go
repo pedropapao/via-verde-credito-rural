@@ -196,7 +196,7 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 	extraWG.Add(1)
 	go func() {
 		defer extraWG.Done()
-		profile = buildEnvironmentalProfile(profileCtx, car)
+		profile = a.buildEnvironmentalProfile(profileCtx, car)
 	}()
 	if force || !environmentSummaryFresh(car.Environment, 3*time.Hour) {
 		extraWG.Add(1)
