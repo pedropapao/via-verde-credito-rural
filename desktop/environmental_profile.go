@@ -24,7 +24,7 @@ const (
 	ibgeBiomeLayer        = "CREN:lm_bioma_250"
 	terraBrasilisBaseURL  = "https://terrabrasilis.dpi.inpe.br/geoserver"
 	inpeFireWFSURL        = "https://terrabrasilis.dpi.inpe.br/queimadas/geoserver/ows"
-	anaHydroPartURL       = "https://portal1.snirh.gov.br/server/rest/services/dados_abertos/Hidrografia_Parte_%d/FeatureServer/0/query"
+	anaHydroURL           = "https://portal1.snirh.gov.br/server/rest/services/dados_abertos/Hidrografia/MapServer/0/query"
 	anaWaterBodyURL       = "https://portal1.snirh.gov.br/arcgis/rest/services/DADOSABERTOS/Massa_d%C3%A1gua/FeatureServer/0/query"
 	anaTelemetryURL       = "https://portal1.snirh.gov.br/server/rest/services/dados_abertos/Estacao_Telemetrica/FeatureServer/0/query"
 	worldCoverWMSURL      = "https://mapproxy.terrascope.be/mapproxy/service"
@@ -351,17 +351,14 @@ func queryHydrologyProfile(ctx context.Context, car CARResult) (HydrologyProfile
 	riverSeen := map[string]bool{}
 	nameSeen := map[string]bool{}
 	var riverFeatures []carGeoFeature
-	successParts := 0
 	var errs []string
-	for part := 1; part <= 5; part++ {
-		endpoint := fmt.Sprintf(anaHydroPartURL, part)
-		fc, err := queryArcGISByEnvelope(ctx, endpoint, minLon, minLat, maxLon, maxLat,
-			"COCURSODAG,COBACIA,NORIOCOMP,DEDOMINIAL,OBJECTID", 1000)
-		if err != nil {
-			errs = append(errs, fmt.Sprintf("parte %d: %v", part, err))
-			continue
-		}
-		successParts++
+	hydroOK := false
+	fc, hydroErr := queryArcGISByEnvelope(ctx, anaHydroURL, minLon, minLat, maxLon, maxLat,
+		"COCURSODAG,COBACIA,NORIOCOMP,DEDOMINIAL,OBJECTID", 1000)
+	if hydroErr != nil {
+		errs = append(errs, "hidrografia: "+hydroErr.Error())
+	} else {
+		hydroOK = true
 		for _, f := range fc.Features {
 			if !lineGeometryIntersectsCAR(f.Geometry, car.GeoJSON) {
 				continue
@@ -421,7 +418,7 @@ func queryHydrologyProfile(ctx context.Context, car CARResult) (HydrologyProfile
 		errs = append(errs, "estação telemétrica: "+stationErr.Error())
 	}
 
-	out.Available = successParts > 0 || waterErr == nil
+	out.Available = hydroOK || waterErr == nil
 	if !out.Available {
 		return out, errors.New(strings.Join(errs, " | "))
 	}
