@@ -232,15 +232,6 @@ func environmentalProfilePage(p Property,car CARResult,intel EnvironmentalIntell
 		}
 		y-=4
 	}
-	if profile.LandCover.Available && len(profile.LandCover.Classes)>0 && y>170 {
-		envSection(&c,&y,"COBERTURA DO SOLO — AMOSTRAGEM CARTOGRÁFICA")
-		limit:=len(profile.LandCover.Classes);if limit>6{limit=6}
-		for _,item:=range profile.LandCover.Classes[:limit] {
-			envRow(&c,&y,item.Label,fmt.Sprintf("%.1f%% das amostras (%d pontos)",item.SamplePct,item.Samples))
-		}
-		c.b.WriteString("0.35 0.42 0.39 rg\n")
-		y=c.wrapped(42,y,6.6,false,"Nota: WorldCover WMS é uma imagem RGB destinada à visualização; os percentuais acima são uma amostragem aproximada e não equivalem a cálculo raster oficial em hectares.",104,9)
-	}
 	envReportFooter(&c,page)
 	return c.b.String()
 }
@@ -325,7 +316,7 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 	envReportHeader(&c,title,"Metodologia, rastreabilidade e limitações",page)
 	y:=718.0
 	envSection(&c,&y,"METODOLOGIA")
-	method:="1) identificação do imóvel pelo CAR e geometria pública do SICAR; 2) perfil físico-ambiental automático com relevo, bioma, hidrografia e cobertura cartográfica; 3) consulta INPE/TerraBrasilis ao PRODES e, quando aplicável, DETER; 4) consulta de focos de fogo do Programa Queimadas; 5) MapBiomas Alerta, IBAMA/PAMGIA, FUNAI, ICMBio e MMA/MCR; 6) cruzamentos espaciais locais e organização das evidências sem inferir autoria ou regularidade jurídica."
+	method:="1) identificação do imóvel pelo CAR e geometria pública do SICAR; 2) perfil físico-ambiental automático com relevo, bioma e hidrografia; 3) consulta INPE/TerraBrasilis ao PRODES e, quando aplicável, DETER; 4) consulta de focos de fogo do Programa Queimadas; 5) MapBiomas Alerta, IBAMA/PAMGIA, FUNAI, ICMBio e MMA/MCR; 6) cruzamentos espaciais locais e organização das evidências sem inferir autoria ou regularidade jurídica."
 	c.b.WriteString("0.15 0.23 0.19 rg\n")
 	y=c.wrapped(42,y,8,false,method,104,11)
 	y-=10
@@ -344,7 +335,6 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 		{"INPE / TerraBrasilis — PRODES e DETER","https://terrabrasilis.dpi.inpe.br/"},
 		{"INPE — Programa Queimadas","https://data.inpe.br/queimadas/dados-abertos/"},
 		{"AWS Open Data — Terrain Tiles","https://registry.opendata.aws/terrain-tiles/"},
-		{"ESA WorldCover 2021","https://esa-worldcover.org/en/data-access"},
 	}{
 		c.b.WriteString("0.08 0.30 0.21 rg\n");c.text(42,y,7.6,true,row.n)
 		c.b.WriteString("0.30 0.38 0.34 rg\n");y=c.wrapped(178,y,6.6,false,row.u,66,9);y-=6
@@ -359,7 +349,6 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 		"Alertas do MapBiomas são evidências de mudança de cobertura validadas pela metodologia da plataforma, mas não constituem por si só decisão administrativa, constatação de autoria ou juízo de legalidade.",
 		"PRODES mede supressão anual de vegetação nativa e DETER produz avisos operacionais; os produtos têm finalidades distintas e não devem ser tratados como declaração jurídica de irregularidade.",
 		"Focos de fogo são detecções por satélite e não equivalem automaticamente à área queimada, autoria ou infração.",
-		"A cobertura WorldCover é apresentada por amostragem de imagem WMS RGB para contexto cartográfico; a própria ESA informa que o WMS não é produto analítico e, por isso, o ViaVerdeCAR não converte a amostra em hectares oficiais.",
 		"Distâncias de proximidade são aproximações geométricas para triagem e não substituem levantamento geodésico ou análise oficial de faixa de influência.",
 		"Autorizações, licenças, termos, embargos, datas e situação cadastral devem ser conferidos no documento e órgão competente antes de qualquer conclusão técnica ou financeira.",
 	}
