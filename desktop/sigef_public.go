@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"net/url"
 	"sort"
@@ -16,6 +17,7 @@ const (
 	sigefPublicPrimaryQueryURL  = "https://pamgia.ibama.gov.br/server/rest/services/BasesSincronizadas/lim_sigef_publico_incra_p/FeatureServer/0/query"
 	sigefPublicFallbackQueryURL = "https://pamgia.ibama.gov.br/server/rest/services/01_Publicacoes_Bases/lim_imovel_sigef_publico_a/FeatureServer/10/query"
 	sigefPublicSourceURL        = "https://pamgia.ibama.gov.br/server/rest/services/BasesSincronizadas/lim_sigef_publico_incra_p/FeatureServer/0"
+	sigefPublicUnavailableMessage = "Base pública do SIGEF/INCRA indisponível nesta tentativa. A ausência de resultado não significa ausência de parcela certificada. Tente atualizar a análise mais tarde."
 )
 
 type SIGEFParcel struct {
@@ -121,10 +123,8 @@ func querySIGEFPublic(ctx context.Context, carGeoJSON string) (SIGEFPublicResult
 		break
 	}
 	if !succeeded {
-		if len(sourceErrs) == 0 {
-			return out, errors.New("fonte pública do SIGEF não respondeu")
-		}
-		return out, errors.New("SIGEF público: " + strings.Join(sourceErrs, " | "))
+		out.Message = sigefPublicUnavailableMessage
+		return out, sigefPublicUnavailableError(sourceErrs)
 	}
 	out.Available = true
 	out.Parcels = parcels
@@ -154,6 +154,15 @@ func querySIGEFPublic(ctx context.Context, carGeoJSON string) (SIGEFPublicResult
 		out.Warnings = append(out.Warnings, "Há mais de uma parcela SIGEF pública intersectando o CAR; confira se o imóvel reúne parcelas distintas, cessões ou limites cadastrais diferentes.")
 	}
 	return out, nil
+}
+
+func sigefPublicUnavailableError(sourceErrs []string) error {
+	if len(sourceErrs) > 0 {
+		log.Printf("[SIGEF/INCRA] consulta pública indisponível: %s", strings.Join(sourceErrs, " | "))
+	} else {
+		log.Printf("[SIGEF/INCRA] consulta pública indisponível: nenhuma fonte respondeu")
+	}
+	return errors.New(sigefPublicUnavailableMessage)
 }
 
 func parseSIGEFPublicGeoJSON(body []byte, carRaw string) ([]SIGEFParcel, error) {
