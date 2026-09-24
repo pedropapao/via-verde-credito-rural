@@ -20,8 +20,8 @@ const (
 	hydrologyStatusNotRun      = "consulta_nao_realizada"
 
 	anaHydrologySource = "ANA/SNIRH — Base Hidrográfica Ottocodificada (BHO) e massas d'água"
-	anaHydrologyUnifiedURL = "https://portal1.snirh.gov.br/server/rest/services/dados_abertos/Hidrografia/FeatureServer/0/query"
-	anaWaterBodyURL = "https://portal1.snirh.gov.br/arcgis/rest/services/DADOSABERTOS/Massa_d%27%C3%A1gua/FeatureServer/0/query"
+	anaHydrologyUnifiedURL = "https://portal1.snirh.gov.br/server/rest/services/dados_abertos/Hidrografia/MapServer/0/query"
+	anaWaterBodyURL = "https://portal1.snirh.gov.br/arcgis/rest/services/DADOSABERTOS/Massa_d%C3%A1gua/FeatureServer/0/query"
 )
 
 var anaHydrologyPartURLs = []string{
