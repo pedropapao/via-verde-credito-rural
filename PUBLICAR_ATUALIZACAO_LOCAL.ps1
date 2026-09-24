@@ -83,12 +83,12 @@ if ($Build) {
     Write-Host "1/5 - Preparando dependencias e executando testes Go..." -ForegroundColor Cyan
     Push-Location $DesktopDir
     try {
-        & go mod tidy
+        & go mod download
         if ($LASTEXITCODE -ne 0) {
-            Fail "Nao foi possivel preparar as dependencias Go. Nenhuma atualizacao foi publicada."
+            Fail "Nao foi possivel baixar as dependencias Go. Nenhuma atualizacao foi publicada."
         }
 
-        & go test ./...
+        & go test -mod=mod ./...
         if ($LASTEXITCODE -ne 0) {
             Fail "Os testes falharam. Nenhuma atualizacao foi publicada."
         }
@@ -110,6 +110,10 @@ if ($Build) {
     }
     finally {
         Pop-Location
+        $GeneratedGoSum = Join-Path $DesktopDir "go.sum"
+        if (Test-Path -LiteralPath $GeneratedGoSum) {
+            Remove-Item -LiteralPath $GeneratedGoSum -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
