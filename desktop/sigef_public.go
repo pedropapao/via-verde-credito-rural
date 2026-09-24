@@ -76,15 +76,15 @@ func (a *App) QuerySIGEFPublic(propertyID int64) (SIGEFPublicResult, error) {
 	return querySIGEFPublic(ctx, car.GeoJSON)
 }
 
-func querySIGEFPublic(ctx context.Context, carGeoJSON string) (SIGEFPublicResult, error) {
+func querySIGEFPublic(ctx context.Context, carRaw string) (SIGEFPublicResult, error) {
 	out := SIGEFPublicResult{
 		CheckedAt: time.Now().Format(time.RFC3339),
 		SourceURL: sigefPublicSourceURL,
 	}
-	if strings.TrimSpace(carGeoJSON) == "" {
+	if strings.TrimSpace(carRaw) == "" {
 		return out, errors.New("geometria do CAR não informada")
 	}
-	minLon, minLat, maxLon, maxLat, ok := geoJSONBounds(carGeoJSON)
+	minLon, minLat, maxLon, maxLat, ok := geoJSONBounds(carRaw)
 	if !ok {
 		return out, errors.New("não foi possível calcular os limites do CAR")
 	}
@@ -125,7 +125,7 @@ func querySIGEFPublic(ctx context.Context, carGeoJSON string) (SIGEFPublicResult
 			sourceErrs = append(sourceErrs, marshalErr.Error())
 			continue
 		}
-		parsed, parseErr := parseSIGEFPublicGeoJSON(raw, carGeoJSON)
+		parsed, parseErr := parseSIGEFPublicGeoJSON(raw, carRaw)
 		if parseErr != nil {
 			sourceErrs = append(sourceErrs, parseErr.Error())
 			continue
