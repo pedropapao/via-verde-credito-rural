@@ -27,7 +27,36 @@ const (
 )
 
 var (
-	updateVersionPattern = regexp.MustCompile(`^\\d+\\.\\d+\\.\\d+$`)
+	updateVersionPattern = regexp.MustCompile(`^\d+\.\d+\.\d+package main
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"regexp"
+	"os"
+	"os/exec"
+	"path/filepath"
+	goruntime "runtime"
+	"strings"
+	"time"
+
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+)
+
+const (
+	updateManifestURL = "https://igrxqbroklfwujcwbiwh.supabase.co/functions/v1/via-verde-desktop-update?action=manifest"
+	updateAllowedHost = "igrxqbroklfwujcwbiwh.supabase.co"
+)
+
+var (
+	updateVersionPattern = )
 	updateSHA256Pattern  = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
 )
 
