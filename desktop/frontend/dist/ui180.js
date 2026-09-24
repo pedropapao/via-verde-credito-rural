@@ -51,13 +51,14 @@
   function render180(r){
     const panel=g('environmentIntel180');if(!panel)return;
     const s=r.summary||{},alerts=arr180(r.alerts),env=r.environment||{},mb=r.mapbiomas||{},warnings=arr180(r.warnings),p=r.profile||{};
+    const mapbiomasAvailable=mb.available===true;
     const badge=(s.high_attention_alerts||env.mcr_listed||env.ibama_embargo_count)?'Atenção técnica':alerts.length?alerts.length+' alerta(s)':'Perfil concluído';
     const hasMap=profileHasMap180(p)||alerts.some(a=>a.geometry_geojson);
     panel.innerHTML='<div class="panel-title"><div><span class="eyebrow">AMBIENTAL • PERFIL AUTOMÁTICO</span><h3>Raio X ambiental do imóvel</h3><p>CAR '+esc180(r.car||'')+' • '+esc180((r.municipality||'')+' / '+(r.uf||''))+'</p></div><span class="status-badge '+((s.high_attention_alerts||env.mcr_listed||env.ibama_embargo_count)?'warning':'ok')+'">'+esc180(badge)+'</span></div>'+
       profile180(r)+
       '<div class="environment-risk-title180"><strong>Evidências e restrições públicas</strong><span>Ocorrências localizadas nas fontes automáticas.</span></div>'+
       '<div class="environment-metrics180">'+
-        metric180('Alertas MapBiomas',s.alerts||0,(mb.connected?'API conectada':'API não conectada'))+
+        metric180('Alertas MapBiomas',mb.connected?(mapbiomasAvailable?(s.alerts||0):'Indisponível'):'Não conectado',mb.connected?(mapbiomasAvailable?'API consultada':'fonte sem resposta'):'API não conectada')+
         metric180('Área de alertas',n180(s.alert_area_in_car_ha)+' ha','estimada dentro do CAR')+
         metric180('Embargo IBAMA',env.ibama_embargo_count||0,'interseção(ões) no CAR')+
         metric180('Terra Indígena',env.indigenous_count||0,'interseção(ões) no CAR')+
@@ -73,7 +74,7 @@
       '</div>'+
       (!hasProperty180()?'<div class="environment-note180">Para gerar laudos, vincule o CAR a um imóvel salvo. O perfil pode ser consultado normalmente de forma avulsa.</div>':'')+
       evidenceMatrix180(r)+
-      '<div class="environment-alerts180">'+(alerts.length?alerts.map((a,i)=>alert180(a,i)).join(''):'<div class="environment-empty180"><strong>Nenhum alerta MapBiomas retornado.</strong><br><small>Isso não é certificado de regularidade; o perfil acima continua trazendo informações ambientais do imóvel.</small></div>')+'</div>'+
+      '<div class="environment-alerts180">'+(alerts.length?alerts.map((a,i)=>alert180(a,i)).join(''):(mb.connected&&!mapbiomasAvailable?'<div class="environment-empty180"><strong>MapBiomas Alerta indisponível nesta tentativa.</strong><br><small>A ausência de resultado não significa ausência de alertas. Tente atualizar a análise mais tarde.</small></div>':'<div class="environment-empty180"><strong>Nenhum alerta MapBiomas retornado.</strong><br><small>Isso não é certificado de regularidade; o perfil acima continua trazendo informações ambientais do imóvel.</small></div>'))+'</div>'+
       (warnings.length?'<details class="environment-warnings180"><summary>Limitações e ocorrências da consulta ('+warnings.length+')</summary>'+warnings.map(w=>'<div>• '+esc180(w)+'</div>').join('')+'</details>':'')+
       '<div class="environment-legal180"><strong>Interpretação técnica:</strong> '+esc180(r.interpretation||'Triagem auxiliar baseada em fontes públicas automáticas.')+'</div>';
 
@@ -147,7 +148,7 @@
     const rows=[
       row('🌿','Bioma',p.biome_available?'Identificado':'Indisponível',p.biome_available?(p.biome+' • '+(p.biome_source||'MapBiomas')):'fonte não respondeu',!p.biome_available?'warn':''),
       row('🛰️','ESA WorldCover 2021',p.land_cover_available?'Consultado':'Indisponível',p.land_cover_available?((p.land_cover_samples||0)+' amostras • 10 m'):'serviço público não respondeu',!p.land_cover_available?'warn':''),
-      row('🛰️','MapBiomas Alerta',mb.connected?(mb.total_alerts||0)+' alerta(s)':'Não conectado',mb.message||'API V2'),
+      row('🛰️','MapBiomas Alerta',mb.connected?(mb.available===true?(mb.total_alerts||0)+' alerta(s)':'Indisponível'):'Não conectado',mb.message||'API V2',mb.connected&&mb.available!==true?'warn':''),
       row('⛔','IBAMA / PAMGIA',env.ibama_checked?(env.ibama_embargo_count||0)+' ocorrência(s)':'Indisponível','embargos com interseção no CAR',env.ibama_embargo_count?'warn':''),
       row('🪶','FUNAI',env.funai_checked?(env.indigenous_count||0)+' ocorrência(s)':'Indisponível','Terras Indígenas com interseção no CAR',env.indigenous_count?'warn':''),
       row('🏞️','ICMBio',env.icmbio_checked?(env.federal_uc_count||0)+' ocorrência(s)':'Indisponível','Unidades de Conservação federais',env.federal_uc_count?'warn':''),
