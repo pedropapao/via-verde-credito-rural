@@ -593,14 +593,23 @@ func environmentalIntelligenceCacheUsable(out EnvironmentalIntelligenceResult) b
 		out.MapBiomas.TotalAlerts == 0 && !out.MapBiomas.Found {
 		return false
 	}
+	// Falha ou resultado parcial da ANA/SNIRH não deve ficar congelado no cache.
+	// A próxima análise tenta a fonte novamente.
+	if out.Profile.Hydrology.Status == hydrologyStatusUnavailable ||
+		(out.Profile.Hydrology.Status == hydrologyStatusFound &&
+			strings.TrimSpace(out.Profile.Hydrology.Warning) != "") {
+		return false
+	}
 	return true
 }
 
 func environmentalProfileHasData(p EnvironmentalProfile) bool {
-	// Exige o estado dos focos para invalidar caches antigos da Etapa 1,
-	// mesmo quando a fonte do INPE respondeu sem ocorrências.
+	// Exige os estados das etapas automáticas já incorporadas para que caches
+	// de versões anteriores não sejam tratados como análises atuais completas.
 	return strings.TrimSpace(p.Fire.Status) != "" &&
-		(p.BiomeAvailable || p.LandCoverAvailable || p.Fire.Status != fireStatusNotRun)
+		strings.TrimSpace(p.Hydrology.Status) != "" &&
+		(p.BiomeAvailable || p.LandCoverAvailable ||
+			p.Fire.Status != fireStatusNotRun || p.Hydrology.Status != hydrologyStatusNotRun)
 }
 
 func environmentSummaryFresh(e EnvironmentalSummary, maxAge time.Duration) bool {
