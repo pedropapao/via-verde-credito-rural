@@ -5,12 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 )
 
-const mapBiomasAlertGraphQL = "https://plataforma.alerta.mapbiomas.org/api/v2/graphql"
+const (
+	mapBiomasAlertGraphQL = "https://plataforma.alerta.mapbiomas.org/api/v2/graphql"
+	mapBiomasUnavailableMessage = "Base do MapBiomas Alerta indisponível nesta tentativa. A ausência de resultado não significa ausência de alertas. Tente atualizar a análise mais tarde."
+)
 
 type MapBiomasAlertStatus struct {
 	Connected bool   `json:"connected"`
@@ -31,6 +35,7 @@ type MapBiomasCARAlert struct {
 
 type MapBiomasCARSummary struct {
 	Connected    bool                `json:"connected"`
+	Available    bool                `json:"available"`
 	Found        bool                `json:"found"`
 	PropertyCode string              `json:"property_code"`
 	AreaHa       float64             `json:"area_ha"`
@@ -175,7 +180,11 @@ func (a *App) QueryMapBiomasCAR(car string) (MapBiomasCARSummary, error) {
 
 	resp, err := queryMapBiomasRuralProperty(token, car, "coordinates")
 	if err != nil {
-		return MapBiomasCARSummary{}, err
+		if isMapBiomasAuthError(err) {
+			return MapBiomasCARSummary{Connected: false, Available: false, Message: err.Error()}, err
+		}
+		friendly := mapBiomasUnavailableError(err)
+		return MapBiomasCARSummary{Connected: true, Available: false, Message: friendly.Error()}, friendly
 	}
 	if hasGraphQLErrorContaining(resp.Errors, "coordinates", "AlertData") {
 		// A documentação pública da V2 descreve ruralProperty.alerts como
@@ -185,14 +194,18 @@ func (a *App) QueryMapBiomasCAR(car string) (MapBiomasCARSummary, error) {
 		// consulta principal nem exigir intervenção do usuário.
 		resp, err = queryMapBiomasRuralProperty(token, car, "coordenates")
 		if err != nil {
-			return MapBiomasCARSummary{}, err
+			if isMapBiomasAuthError(err) {
+				return MapBiomasCARSummary{Connected: false, Available: false, Message: err.Error()}, err
+			}
+			friendly := mapBiomasUnavailableError(err)
+			return MapBiomasCARSummary{Connected: true, Available: false, Message: friendly.Error()}, friendly
 		}
 	}
 	if len(resp.Errors) > 0 {
 		return MapBiomasCARSummary{}, errors.New(joinGraphQLErrors(resp.Errors))
 	}
 
-	out := MapBiomasCARSummary{Connected: true}
+	out := MapBiomasCARSummary{Connected: true, Available: true}
 	if resp.Data.RuralProperty == nil {
 		out.Message = "CAR não localizado entre os imóveis cruzados com alertas na base consultada."
 		return out, nil
@@ -228,6 +241,25 @@ func (a *App) QueryMapBiomasCAR(car string) (MapBiomasCARSummary, error) {
 		out.Message = fmt.Sprintf("%d alerta(s) vinculado(s) ao imóvel na base MapBiomas Alerta.", out.TotalAlerts)
 	}
 	return out, nil
+}
+
+func isMapBiomasAuthError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "sessão mapbiomas alerta inválida") ||
+		strings.Contains(msg, "expirada") ||
+		strings.Contains(msg, "unauthorized")
+}
+
+func mapBiomasUnavailableError(cause error) error {
+	if cause != nil {
+		log.Printf("[MapBiomas Alerta] consulta indisponível: %v", cause)
+	} else {
+		log.Printf("[MapBiomas Alerta] consulta indisponível: serviço sem resposta")
+	}
+	return errors.New(mapBiomasUnavailableMessage)
 }
 
 func queryMapBiomasRuralProperty(token, car, coordinateField string) (mapBiomasRuralPropertyResponse, error) {
