@@ -84,18 +84,27 @@ func TestEnvironmentalProfileHasData190(t *testing.T) {
 	if environmentalProfileHasData(EnvironmentalProfile{LandCoverAvailable:true,DominantLandCover:"Cultivos anuais"}) {
 		t.Fatal("cache antigo do WorldCover sem focos não deve ser reutilizado")
 	}
-	if !environmentalProfileHasData(EnvironmentalProfile{
+	if environmentalProfileHasData(EnvironmentalProfile{
 		BiomeAvailable:true,
 		Biome:"Cerrado",
 		Fire:EnvironmentalFireProfile{Status:fireStatusNone,Checked:true,Available:true},
 	}) {
-		t.Fatal("perfil atual com consulta de focos concluída deveria ser válido")
+		t.Fatal("cache anterior à hidrografia não deve ser reutilizado")
+	}
+	if !environmentalProfileHasData(EnvironmentalProfile{
+		BiomeAvailable:true,
+		Biome:"Cerrado",
+		Fire:EnvironmentalFireProfile{Status:fireStatusNone,Checked:true,Available:true},
+		Hydrology:EnvironmentalHydrologyProfile{Status:hydrologyStatusNone,Checked:true,Available:true},
+	}) {
+		t.Fatal("perfil atual com focos e hidrografia concluídos deveria ser válido")
 	}
 	if !environmentalProfileHasData(EnvironmentalProfile{
 		LandCoverAvailable:true,
 		DominantLandCover:"Cultivos anuais",
 		Fire:EnvironmentalFireProfile{Status:fireStatusUnavailable},
+		Hydrology:EnvironmentalHydrologyProfile{Status:hydrologyStatusUnavailable,Checked:true},
 	}) {
-		t.Fatal("falha registrada da fonte de focos ainda identifica cache da versão atual")
+		t.Fatal("falhas registradas ainda devem identificar cache da versão atual")
 	}
 }
