@@ -1,3 +1,19 @@
+CAR 1.9.3: Confiabilidade do MapBiomas Alerta.
+
+CORREÇÃO
+• Timeouts e indisponibilidade temporária da API do MapBiomas Alerta deixam de expor URL, context deadline exceeded e detalhes técnicos de rede na interface.
+• Conta conectada e base disponível passam a ser estados distintos.
+• Quando a conta está conectada mas a API não responde, o Raio X e a Inteligência Ambiental mostram “Indisponível” em vez de 0 alertas.
+• A ausência de resultado por indisponibilidade não é apresentada como ausência de alertas.
+• O erro técnico completo continua registrado apenas no log para diagnóstico.
+• Cache ambiental de uma tentativa com MapBiomas indisponível não é reutilizado; a próxima análise tenta a API novamente.
+• O laudo ambiental também registra “Base indisponível” em vez de falso zero.
+
+PRESERVADO
+• Mesma API MapBiomas Alerta V2, autenticação e duas tentativas de consulta.
+• Nenhuma alteração destrutiva no banco SQLite, CAR, KML, clientes, imóveis ou histórico.
+• SIGEF/INCRA, Focos de calor INPE, Bioma, WorldCover, IBAMA/PAMGIA, FUNAI, ICMBio e MMA/MCR permanecem independentes.
+
 CAR 1.9.2: Confiabilidade do SIGEF/INCRA.
 
 CORREÇÃO
