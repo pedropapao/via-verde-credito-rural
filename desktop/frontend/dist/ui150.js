@@ -52,6 +52,7 @@
     const s=r.summary||{},sicor=r.sicor||{},sigef=r.sigef||{},mb=r.mapbiomas||{},car=r.car||{},env=car.environment||{},themes=car.themes?.themes||{};
     const operations=sicor.operations||[];
     const sigefAvailable=sigef.available===true;
+    const mapbiomasAvailable=mb.available===true;
     const themeAvailable=Object.values(themes).filter(x=>x?.available).length;
     const warningCount=(r.warnings||[]).length;
     const hero='<article class="panel xray-hero150"><div class="panel-title"><div><span class="eyebrow">RAIO X • '+esc(car.municipality||'')+' / '+esc(car.uf||'')+'</span><h3>'+esc(car.car||'')+'</h3><p>'+esc(sicor.scope||'Microdados públicos do SICOR e bases territoriais públicas.')+'</p></div><span class="status-badge '+(operations.length?'ok':'info')+'">'+(sicor.used_cache?'Cache local':'Atualizado')+'</span></div><div class="xray-metrics150">'+
@@ -60,7 +61,7 @@
       metric150('Glebas financiadas',s.financed_glebas||0,'geometria pública disponível')+
       metric150('Parcelas SIGEF',sigefAvailable?(s.sigef_parcels||0):'Indisponível',sigefAvailable?((s.sigef_registries||0)+' registro(s) publicado(s)'):'fonte pública sem resposta')+
       metric150('Conflitos c/ projeto',s.glebas_with_project_hit||0,'sobreposição > 0,5%')+
-      metric150('Alertas MapBiomas',s.mapbiomas_alerts||0,mb.connected?'consulta autenticada':'conta não conectada')+
+      metric150('Alertas MapBiomas',mb.connected?(mapbiomasAvailable?(s.mapbiomas_alerts||0):'Indisponível'):'Não conectado',mb.connected?(mapbiomasAvailable?'consulta concluída':'fonte sem resposta'):'conta não conectada')+
       metric150('Ocorrências ambientais',s.environmental_hits||0,'IBAMA/FUNAI/ICMBio/MCR')+
       '</div><div class="xray-actions150"><button class="btn primary" id="showSicorGlebas150" '+(!s.financed_glebas?'disabled':'')+'>Mostrar glebas financiadas</button><button class="btn primary" id="showSIGEF150" '+(!(sigef.parcels||[]).length?'disabled':'')+'>Mostrar SIGEF no mapa</button><button class="btn ghost" id="exportSicor150" '+(!operations.length?'disabled':'')+'>Exportar operações CSV</button><button class="btn ghost" id="refreshXRay150">Recalcular análise</button><button class="btn ghost" id="openMonitor150">Abrir Monitor MapBiomas</button></div><div class="xray-source150">Fonte principal do histórico individual: microdados públicos do SICOR/BCB. A ausência de operação ou gleba pública não prova inexistência de financiamento. O Monitor do Crédito Rural também informa que sua base representa o universo publicamente rastreável, não todo o crédito rural.</div></article>';
 
@@ -80,7 +81,7 @@
       envCard150('ICMBio • UCs',env.icmbio_checked?(env.federal_uc_count||0):'Indisponível',env.icmbio_checked?'consulta pública':'fonte sem resposta')+
       envCard150('MCR / Prodes',env.mcr_checked?(env.mcr_listed?'LISTADO':'NÃO LISTADO'):'Indisponível',env.mcr_checked?'lista pública consultada':'fonte sem resposta')+
       envCard150('Temas SICAR',themeAvailable+'/6','APP, RL, vegetação e demais temas declarados')+
-      envCard150('MapBiomas Alerta',mb.connected?(mb.total_alerts||0):'Não conectado',mb.message||'API MapBiomas Alerta')+
+      envCard150('MapBiomas Alerta',mb.connected?(mapbiomasAvailable?(mb.total_alerts||0):'Indisponível'):'Não conectado',mb.message||'API MapBiomas Alerta')+
       '</div></article>';
 
     const localHtml='<article class="panel xray-panel150"><div class="panel-title"><div><span class="eyebrow">PROJETO ATUAL</span><h3>Comparação com o que você está projetando</h3></div><span class="status-badge neutral">'+((r.areas||[]).length)+' área(s)</span></div><div class="xray-env-grid150">'+
