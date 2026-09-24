@@ -64,7 +64,7 @@ func TestSearchEverythingFindsLocalCPFAndProperty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	car := "MG-3106200-AAAAAAAA.AAAA.AAAA.AAAA.AAAA.AAAA.AAAA.AAAA"
+	car := "MG-3106200-AAAA.AAAA.AAAA.AAAA.AAAA.AAAA.AAAA.AAAA"
 	_, err = a.SaveProperty(Property{
 		ClientID: client.ID, Name: "Fazenda Teste", Municipality: "Belo Horizonte",
 		UF: "MG", Registry: "12345", CARNumber: car, DeclaredAreaHa: 12.5,
@@ -95,7 +95,7 @@ func TestSaveAnalyzedCARToClientReusesSessionAndCreatesKML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	car := "MG-3106200-BBBBBBBB.BBBB.BBBB.BBBB.BBBB.BBBB.BBBB.BBBB"
+	car := "MG-3106200-BBBB.BBBB.BBBB.BBBB.BBBB.BBBB.BBBB.BBBB"
 	geo := `{"type":"Feature","properties":{},"geometry":{"type":"Polygon","coordinates":[[[-46.0,-20.0],[-45.99,-20.0],[-45.99,-19.99],[-46.0,-19.99],[-46.0,-20.0]]]}}`
 	result := CARResult{
 		CAR: car, UF: "MG", Municipality: "Município Teste", PropertyName: "Fazenda Automática",
