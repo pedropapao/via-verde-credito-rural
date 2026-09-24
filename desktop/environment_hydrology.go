@@ -140,6 +140,12 @@ func queryHydrologyProfile(ctx context.Context, carRaw string) (EnvironmentalHyd
 		}
 	}
 
+	return finalizeHydrologyProfile(carRaw, riverCandidates, riverComplete, waterResult, partErrors)
+}
+
+func finalizeHydrologyProfile(carRaw string, riverCandidates []carGeoFeature, riverComplete bool,
+	waterResult hydrologyQueryResult, partErrors []string) (EnvironmentalHydrologyProfile, error) {
+	out := newEnvironmentalHydrologyProfile()
 	riverFeatures := make([]carGeoFeature, 0)
 	riverSeen := map[string]struct{}{}
 	nameSeen := map[string]struct{}{}
