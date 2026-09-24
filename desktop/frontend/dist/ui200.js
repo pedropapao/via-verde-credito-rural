@@ -203,11 +203,26 @@
         <div><span>Situação</span><strong>${e(car.status||'—')}</strong></div>
         <div><span>KML</span><strong>${car.auto_kml_path?'Gerado':'Geometria pronta'}</strong></div>
       </div>
+      ${!r.property_id && car.found ? saveLocalHTML200(car) : ''}
       <div class="vv-source-grid200">${src.map(sourceHTML).join('')}</div>
       ${warn.length?`<details class="vv-warnings200"><summary>Avisos e limitações (${warn.length})</summary>${warn.map(x=>'<div>• '+e(x)+'</div>').join('')}</details>`:''}
       <div class="vv-evidence-note200">“Sem ocorrência” só é exibido quando a respectiva fonte foi efetivamente consultada. Base indisponível, não configurada ou não consultada permanecem identificadas separadamente.</div>
     `;
     g('vvNewSearch200').onclick=()=>{g('vvSearch200').value='';g('vvSearch200').focus();box.classList.add('hidden')};
+    if(g('vvSaveLocal200'))g('vvSaveLocal200').onclick=async()=>{
+      const clientID=Number(g('vvSaveClient200')?.value)||0;
+      if(!clientID){toast('Selecione o cliente que deve receber este imóvel.',true);return}
+      const btn=g('vvSaveLocal200');btn.disabled=true;btn.textContent='Salvando…';
+      try{
+        const p=await api().SaveAnalyzedCARToClient(clientID,car.car);
+        await Promise.all([loadClients(),loadProperties(),loadDashboard()]);
+        r.property_id=p.id;r.matched_existing=!!p.id;
+        state.selectedProperty=state.properties.find(x=>x.id===p.id)||p;
+        toast('Imóvel salvo com CAR e KML automático.');
+        renderAutomation(r);
+      }catch(err){toast(String(err),true);btn.disabled=false;btn.textContent='Salvar imóvel'}
+    };
+    if(g('vvGoClients200'))g('vvGoClients200').onclick=()=>setView('clients');
     g('vvDossier200').onclick=async()=>{
       if(!r.property_id)return;
       try{
@@ -227,6 +242,12 @@
         state.car=car;renderCAR(car);if(car.geojson)drawGeoJSON('car',car.geojson);if(g('carInput'))g('carInput').value=car.car||'';
       }
     };
+  }
+
+  function saveLocalHTML200(car){
+    const clients=arr(state?.clients);
+    if(!clients.length)return '<div class="vv-save-local200"><div><strong>Consulta avulsa pronta</strong><span>Cadastre um cliente para vincular este imóvel sem redigitar os dados.</span></div><button class="btn ghost" id="vvGoClients200">Cadastrar cliente</button></div>';
+    return '<div class="vv-save-local200"><div><strong>Transformar esta consulta em imóvel cadastrado</strong><span>Escolha explicitamente o cliente. O ViaVerdeCAR reaproveita CAR, município, UF, área, geometria e KML — sem inferir titularidade.</span></div><select id="vvSaveClient200"><option value="">Selecione o cliente…</option>'+clients.map(x=>'<option value="'+Number(x.id)+'">'+e(x.name)+(x.cpf_cnpj?' • '+e(x.cpf_cnpj):'')+'</option>').join('')+'</select><button class="btn primary" id="vvSaveLocal200">Salvar imóvel</button></div>';
   }
 
   function sourceHTML(s){
