@@ -1,3 +1,19 @@
+CAR 1.9.4: Integridade de dados e histórico.
+
+CORREÇÃO
+• Indisponibilidade temporária de IBAMA, FUNAI, ICMBio ou MMA/MCR não é mais interpretada como mudança ambiental real.
+• Uma ocorrência conhecida não vira automaticamente “0” no histórico quando a fonte deixa de responder.
+• Mudanças ambientais só entram na comparação histórica quando a mesma fonte respondeu nas duas consultas comparadas.
+• A configuração SQLite passa a aplicar foreign_keys, busy_timeout e WAL em cada conexão criada pelo pool do banco.
+• A gravação de properties.last_car_json e car_checks passa a ocorrer na mesma transação.
+• Falha ao gravar o imóvel ou o histórico faz rollback completo; o aplicativo deixa de sinalizar sucesso silenciosamente.
+• Consulta repetida sem mudança continua sem criar histórico duplicado.
+
+PRESERVADO
+• Nenhuma tabela ou dado existente é apagado ou recriado.
+• Estrutura atual do banco e compatibilidade com os dados existentes permanecem preservadas.
+• CAR, KML, clientes, imóveis, áreas de projeto, rotas, SIGEF, MapBiomas, focos de calor e demais fontes ambientais não receberam novas funcionalidades nesta etapa.
+
 CAR 1.9.3: Confiabilidade do MapBiomas Alerta.
 
 CORREÇÃO
