@@ -1,0 +1,60 @@
+name: Publicar ViaVerdeCAR 1.9.5 validado
+
+on:
+  push:
+    branches: [desktop-v1-car-current]
+    paths:
+      - '.github/workflows/publish-195.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Baixar EXE validado
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl --fail-with-body --silent --show-error --location             --header "Authorization: Bearer $GH_TOKEN"             --header "Accept: application/vnd.github+json"             --header "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/pedropapao/via-verde-credito-rural/actions/artifacts/10809480733/zip"             --output artifact.zip
+          unzip -o artifact.zip
+          test -f ViaVerdeCAR.exe
+
+      - name: Conferir e publicar 1.9.5
+        env:
+          UPDATE_ENDPOINT: https://igrxqbroklfwujcwbiwh.supabase.co/functions/v1/via-verde-desktop-update
+          GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          EXE="ViaVerdeCAR.exe"
+          VERSION="1.9.5"
+          SHA="$(sha256sum "$EXE" | awk '{print $1}')"
+          SIZE="$(stat -c%s "$EXE")"
+          EXPECTED_SHA="9caf5d35fb984df243db7a363996bbb5fa9fef6b3280e96ee6f9278030a0f6ca"
+          EXPECTED_SIZE="16790528"
+
+          test "$SHA" = "$EXPECTED_SHA"
+          test "$SIZE" = "$EXPECTED_SIZE"
+
+          common_headers=(
+            --header "Authorization: Bearer $GITHUB_API_TOKEN"
+            --header "x-github-run-id: $GITHUB_RUN_ID"
+            --header "x-github-sha: $GITHUB_SHA"
+            --header "x-version: $VERSION"
+            --header "x-sha256: $SHA"
+            --header "x-size: $SIZE"
+          )
+
+          curl --fail-with-body --silent --show-error --retry 3 --retry-delay 2             --request POST "$UPDATE_ENDPOINT?action=prepare"             "${common_headers[@]}"             --output prepare.json
+          UPLOAD_URL="$(jq -r '.upload_url // empty' prepare.json)"
+          test -n "$UPLOAD_URL"
+
+          curl --fail-with-body --silent --show-error --retry 3 --retry-delay 2             --request PUT "$UPLOAD_URL"             --header "content-type: application/vnd.microsoft.portable-executable"             --header "cache-control: max-age=3600"             --header "x-upsert: true"             --data-binary "@$EXE"             --output /dev/null
+
+          jq -n --rawfile notes desktop/UPDATE_NOTES.txt '{notes: $notes}' > finalize.json
+          curl --fail-with-body --silent --show-error --retry 3 --retry-delay 2             --request POST "$UPDATE_ENDPOINT?action=finalize"             --header "content-type: application/json"             "${common_headers[@]}"             --data-binary "@finalize.json"             --output finalize-response.json
+          jq -e '.ok == true and .version == "1.9.5"' finalize-response.json
