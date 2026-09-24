@@ -230,7 +230,11 @@
         await Promise.all([loadClients(),loadProperties(),loadDashboard()]);
         r.property_id=p.id;r.matched_existing=!!p.id;
         state.selectedProperty=state.properties.find(x=>x.id===p.id)||p;
-        toast('Imóvel salvo com CAR e KML automático.');
+        try{
+          const latest=await api().GetLatestCAR(p.id);
+          if(latest?.car)r.car=latest;
+        }catch(_){}
+        toast('Imóvel salvo com CAR e KML SICAR automático.');
         renderAutomation(r);
       }catch(err){toast(String(err),true);btn.disabled=false;btn.textContent='Salvar imóvel'}
     };
