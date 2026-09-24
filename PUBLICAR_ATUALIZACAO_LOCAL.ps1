@@ -70,6 +70,30 @@ if (-not $SkipCleanCheck) {
     if ($LASTEXITCODE -ne 0) {
         Fail "Nao foi possivel conferir o estado do repositorio."
     }
+
+    if (-not [string]::IsNullOrWhiteSpace($status)) {
+        $lines = @($status -split "\r?\n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        $paths = @($lines | ForEach-Object {
+            if ($_.Length -ge 4) { $_.Substring(3).Trim() } else { $_.Trim() }
+        })
+        $knownGenerated = @("desktop/go.mod", "desktop/go.sum")
+        $onlyKnownGenerated = ($paths.Count -gt 0) -and (@($paths | Where-Object { $_ -notin $knownGenerated }).Count -eq 0)
+
+        if ($onlyKnownGenerated) {
+            Write-Host ""
+            Write-Host "Limpando arquivos de dependencias gerados pela tentativa anterior..." -ForegroundColor Yellow
+            & git -C $Root restore --worktree -- desktop/go.mod 2>$null
+            if ($LASTEXITCODE -ne 0) {
+                Fail "Nao foi possivel restaurar desktop/go.mod."
+            }
+            $GeneratedGoSum = Join-Path $DesktopDir "go.sum"
+            if (Test-Path -LiteralPath $GeneratedGoSum) {
+                Remove-Item -LiteralPath $GeneratedGoSum -Force -ErrorAction SilentlyContinue
+            }
+            $status = (& git -C $Root status --porcelain | Out-String).Trim()
+        }
+    }
+
     if (-not [string]::IsNullOrWhiteSpace($status)) {
         Write-Host ""
         Write-Host "Arquivos alterados ainda nao foram commitados:" -ForegroundColor Yellow
@@ -110,6 +134,7 @@ if ($Build) {
     }
     finally {
         Pop-Location
+        & git -C $Root restore --worktree -- desktop/go.mod 2>$null
         $GeneratedGoSum = Join-Path $DesktopDir "go.sum"
         if (Test-Path -LiteralPath $GeneratedGoSum) {
             Remove-Item -LiteralPath $GeneratedGoSum -Force -ErrorAction SilentlyContinue
