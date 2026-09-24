@@ -1,3 +1,19 @@
+CAR 1.9.5: Paginação confiável das fontes territoriais.
+
+CORREÇÃO
+• IBAMA/PAMGIA passa a consultar todos os lotes retornados pela busca espacial, em vez de limitar a análise ao primeiro conjunto de registros.
+• SIGEF/INCRA passa a usar contagem + paginação completa nas duas fontes públicas já existentes.
+• FUNAI e ICMBio passam a paginar resultados WFS com startIndex/maxFeatures.
+• Falha em página intermediária invalida a consulta daquela fonte; resultado parcial não pode ser classificado como zero ocorrência.
+• Resposta WFS que repete uma página completa é rejeitada como consulta incompleta, evitando loop e falso resultado.
+• ArcGIS exige que a quantidade recebida corresponda à contagem informada pela fonte antes de aceitar a consulta como completa.
+
+PRESERVADO
+• Os endpoints oficiais já usados pelo ViaVerdeCAR não foram trocados.
+• Nenhuma alteração no banco SQLite, CAR, KML, mapa, PDF, clientes, imóveis ou histórico.
+• A lógica espacial de interseção existente continua sendo usada após a coleta completa dos candidatos.
+• Indisponibilidade continua distinta de “sem ocorrência”.
+
 CAR 1.9.4: Integridade de dados e histórico.
 
 CORREÇÃO

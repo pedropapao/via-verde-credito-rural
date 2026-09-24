@@ -191,53 +191,26 @@ func queryIBAMAEmbargosSource(ctx context.Context, carRaw, endpoint string, curr
 	base.Set("spatialRel", "esriSpatialRelIntersects")
 	base.Set("f", "json")
 
-	// Primeiro pedimos somente a contagem. Para a situação mais comum (zero
-	// interseções) isto evita transferir geometrias e torna a triagem muito mais
-	// leve que a consulta anterior.
-	countParams := cloneURLValues(base)
-	countParams.Set("returnCountOnly", "true")
-	countBody, err := fetchEnvironmentalBody(ctx, endpoint+"?"+countParams.Encode(), "application/json")
+	// Primeiro pedimos a contagem e depois buscamos todos os lotes. O ArcGIS
+	// oficial suporta resultOffset/resultRecordCount; só classificamos zero
+	// quando a contagem respondeu e todas as páginas necessárias foram lidas.
+	count, err := queryArcGISCount(ctx, endpoint, base, fetchEnvironmentalBody)
 	if err != nil {
 		return nil, fmt.Errorf("PAMGIA %s: %w", ibamaSourceLabel(current), err)
 	}
-	var countResp struct {
-		Count int `json:"count"`
-		Error *struct {
-			Message string `json:"message"`
-			Details []string `json:"details"`
-		} `json:"error"`
-	}
-	if err := json.Unmarshal(countBody, &countResp); err != nil {
-		return nil, fmt.Errorf("PAMGIA %s retornou contagem inválida: %w", ibamaSourceLabel(current), err)
-	}
-	if countResp.Error != nil {
-		return nil, fmt.Errorf("PAMGIA %s: %s", ibamaSourceLabel(current), strings.TrimSpace(countResp.Error.Message))
-	}
-	if countResp.Count == 0 {
+	if count == 0 {
 		return []EmbargoFinding{}, nil
 	}
-
-	params := cloneURLValues(base)
-	if current {
-		params.Set("outFields", "num_tad,dat_embargo,sit_desmatamento,tipo_area,qtd_area_embargada,municipio,origem_geom,des_infracao")
-	} else {
-		params.Set("outFields", "numero_tad,data_tad,status_tad,sit_embarg,qtd_area_d,nom_munici,orgao,des_infrac")
+	outFields := "num_tad,dat_embargo,sit_desmatamento,tipo_area,qtd_area_embargada,municipio,origem_geom,des_infracao"
+	if !current {
+		outFields = "numero_tad,data_tad,status_tad,sit_embarg,qtd_area_d,nom_munici,orgao,des_infrac"
 	}
-	params.Set("returnGeometry", "true")
-	params.Set("outSR", "4326")
-	params.Set("resultRecordCount", "200")
-	params.Set("f", "geojson")
-
-	body, err := fetchEnvironmentalBody(ctx, endpoint+"?"+params.Encode(), "application/geo+json,application/json")
+	features, err := queryArcGISGeoJSONPages(ctx, endpoint, base, outFields, 200, count, fetchEnvironmentalBody)
 	if err != nil {
 		return nil, fmt.Errorf("PAMGIA %s: %w", ibamaSourceLabel(current), err)
 	}
-	var fc carGeoJSON
-	if err := json.Unmarshal(body, &fc); err != nil {
-		return nil, fmt.Errorf("PAMGIA %s retornou GeoJSON inválido: %w", ibamaSourceLabel(current), err)
-	}
-	out := make([]EmbargoFinding, 0, len(fc.Features))
-	for _, feature := range fc.Features {
+	out := make([]EmbargoFinding, 0, len(features))
+	for _, feature := range features {
 		raw, _ := json.Marshal(carGeoFeature{Type: "Feature", Properties: feature.Properties, Geometry: feature.Geometry})
 		intersection, carPct, _, err := estimateGeometryOverlap(carRaw, string(raw))
 		if err != nil || intersection <= 0.0001 {
@@ -343,18 +316,13 @@ func queryFUNAITerritories(ctx context.Context, carRaw string) ([]TerritoryFindi
 	params.Set("typeName", "Funai:tis_poligonais")
 	params.Set("outputFormat", "application/json")
 	params.Set("srsName", "EPSG:4326")
-	params.Set("maxFeatures", "100")
 	params.Set("bbox", fmt.Sprintf("%.8f,%.8f,%.8f,%.8f,EPSG:4326", minLon, minLat, maxLon, maxLat))
-	body, err := fetchCARBody(ctx, funaiWFSURL+"?"+params.Encode())
+	features, err := queryWFSGeoJSONPages(ctx, funaiWFSURL, params, 100, 50, fetchCARBody)
 	if err != nil {
 		return nil, err
 	}
-	var fc carGeoJSON
-	if err := json.Unmarshal(body, &fc); err != nil {
-		return nil, err
-	}
 	out := []TerritoryFinding{}
-	for _, feature := range fc.Features {
+	for _, feature := range features {
 		raw, _ := json.Marshal(carGeoFeature{Type: "Feature", Properties: feature.Properties, Geometry: feature.Geometry})
 		intersection, carPct, _, err := estimateGeometryOverlap(carRaw, string(raw))
 		if err != nil || intersection <= 0.0001 {
@@ -387,18 +355,13 @@ func queryICMBioFederalUCs(ctx context.Context, carRaw string) ([]UCFindings, er
 	params.Set("typeName", icmbioUCLayer)
 	params.Set("outputFormat", "application/json")
 	params.Set("srsName", "EPSG:4326")
-	params.Set("maxFeatures", "100")
 	params.Set("bbox", fmt.Sprintf("%.8f,%.8f,%.8f,%.8f,EPSG:4326", minLon, minLat, maxLon, maxLat))
-	body, err := fetchCARBody(ctx, icmbioWFSURL+"?"+params.Encode())
+	features, err := queryWFSGeoJSONPages(ctx, icmbioWFSURL, params, 100, 50, fetchCARBody)
 	if err != nil {
 		return nil, err
 	}
-	var fc carGeoJSON
-	if err := json.Unmarshal(body, &fc); err != nil {
-		return nil, err
-	}
 	out := []UCFindings{}
-	for _, feature := range fc.Features {
+	for _, feature := range features {
 		raw, _ := json.Marshal(carGeoFeature{Type: "Feature", Properties: feature.Properties, Geometry: feature.Geometry})
 		intersection, carPct, _, err := estimateGeometryOverlap(carRaw, string(raw))
 		if err != nil || intersection <= 0.0001 {
