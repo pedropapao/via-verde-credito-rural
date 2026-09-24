@@ -75,3 +75,30 @@ type err193 string
 func (e err193) Error() string { return string(e) }
 
 func assertErr193(s string) error { return err193(s) }
+
+
+func TestMapBiomasReportUnavailableIsNotZero193(t *testing.T) {
+	status, detail := mapBiomasReportState(MapBiomasCARSummary{
+		Connected: true,
+		Available: false,
+		Message: mapBiomasUnavailableMessage,
+	})
+	if status != "Base indisponível" {
+		t.Fatalf("status inesperado: %q", status)
+	}
+	if strings.Contains(detail, "0 alerta") {
+		t.Fatalf("indisponibilidade não pode ser apresentada como zero alertas: %q", detail)
+	}
+
+	conclusion := environmentalConclusionText(EnvironmentalIntelligenceResult{
+		MapBiomas: MapBiomasCARSummary{
+			Connected: true,
+			Available: false,
+			Message: mapBiomasUnavailableMessage,
+		},
+	}, nil)
+	if !strings.Contains(conclusion, "indisponível") ||
+		!strings.Contains(conclusion, "não significa ausência de alertas") {
+		t.Fatalf("conclusão deveria registrar indisponibilidade: %q", conclusion)
+	}
+}
