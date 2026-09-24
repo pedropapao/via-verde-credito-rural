@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -281,6 +282,87 @@ func (a *App) RunCARAutomation(input string, propertyID int64, force bool) (CARA
 	out.GeneratedAt = time.Now().Format(time.RFC3339)
 	out.Warnings = v2UniqueNonEmpty(out.Warnings)
 	return out, nil
+}
+
+// SaveAnalyzedCARToClient turns an ad-hoc CAR consultation into a permanent
+// property without repeating the public query when the current session matches.
+// It never infers ownership: the user explicitly chooses the local client.
+func (a *App) SaveAnalyzedCARToClient(clientID int64, car string) (Property, error) {
+	if a == nil || a.db == nil {
+		return Property{}, errors.New("banco local indisponível")
+	}
+	if clientID <= 0 {
+		return Property{}, errors.New("selecione um cliente para salvar o imóvel")
+	}
+	normalized, _, _, err := normalizeCAR(car)
+	if err != nil {
+		return Property{}, err
+	}
+	if existing, ok := a.findPropertyByCAR(normalized); ok {
+		return existing, nil
+	}
+
+	var clientExists int
+	if err := a.db.QueryRow(`SELECT COUNT(*) FROM clients WHERE id=?`, clientID).Scan(&clientExists); err != nil || clientExists == 0 {
+		return Property{}, errors.New("cliente não localizado na base local")
+	}
+
+	var result CARResult
+	if cache, cacheErr := a.GetLastCARSession(); cacheErr == nil && strings.EqualFold(strings.TrimSpace(cache.Result.CAR), normalized) {
+		result = cache.Result
+	} else {
+		result, err = a.AnalyzePropertyCAR(0, normalized)
+		if err != nil {
+			return Property{}, err
+		}
+	}
+	if !result.Found {
+		return Property{}, errors.New("o CAR não foi localizado na camada pública; nada foi salvo")
+	}
+
+	name := strings.TrimSpace(result.PropertyName)
+	if name == "" && strings.TrimSpace(result.Municipality) != "" {
+		name = "Imóvel - " + strings.TrimSpace(result.Municipality)
+	}
+	if name == "" {
+		name = "Imóvel CAR"
+	}
+	area := result.AreaHa
+	if area <= 0 {
+		area = result.GeometryAreaHa
+	}
+
+	saved, err := a.SaveProperty(Property{
+		ClientID:       clientID,
+		Name:           name,
+		Municipality:   strings.TrimSpace(result.Municipality),
+		UF:             strings.ToUpper(strings.TrimSpace(result.UF)),
+		CARNumber:      normalized,
+		DeclaredAreaHa: area,
+	})
+	if err != nil {
+		return Property{}, err
+	}
+
+	// Persist the already obtained geometry/KML and snapshot. If KML writing
+	// fails, the property remains valid and the failure is recorded in checks.
+	if result.HasGeometry && strings.TrimSpace(result.GeoJSON) != "" {
+		var feature carGeoFeature
+		if jsonErr := json.Unmarshal([]byte(result.GeoJSON), &feature); jsonErr == nil && carGeometryUsable(feature.Geometry) {
+			if kmlPath, kmlErr := a.saveAutomaticCARKML(saved, result, feature.Geometry); kmlErr == nil {
+				result.AutoKMLPath = kmlPath
+				saved.KMLPath = kmlPath
+				_, _ = a.db.Exec(`UPDATE properties SET kml_path=?,updated_at=? WHERE id=?`, kmlPath, time.Now().Format(time.RFC3339), saved.ID)
+			} else {
+				result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "KML automático", Detail: "O imóvel foi salvo, mas o KML não pôde ser gravado: " + kmlErr.Error()})
+			}
+		}
+	}
+	if err := a.persistCARAnalysis(saved.ID, normalized, &result); err != nil {
+		return Property{}, fmt.Errorf("imóvel salvo, mas o histórico do CAR não pôde ser registrado: %w", err)
+	}
+	a.saveLastCARSession(result)
+	return a.GetProperty(saved.ID)
 }
 
 func (a *App) findPropertyByCAR(car string) (Property, bool) {
