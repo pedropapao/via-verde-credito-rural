@@ -93,7 +93,13 @@ func fetchOfficialUpdateManifest(ctx context.Context) (UpdateManifest, error) {
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion)
-	resp, err := (&http.Client{Timeout: 15 * time.Second}).Do(req)
+	client := &http.Client{
+		Timeout: 15 * time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return UpdateManifest{}, fmt.Errorf("manifesto de atualização indisponível: %w", err)
 	}
@@ -138,6 +144,15 @@ func validateOfficialUpdateManifest(m UpdateManifest) error {
 	if err := validateOfficialUpdateURL(m.DownloadURL); err != nil {
 		return err
 	}
+	u, _ := neturl.Parse(strings.TrimSpace(m.DownloadURL))
+	expectedName := "ViaVerdeCAR-" + safeVersionFilename(strings.TrimSpace(m.Version)) + ".exe"
+	actualName := u.Path
+	if idx := strings.LastIndex(actualName, "/"); idx >= 0 {
+		actualName = actualName[idx+1:]
+	}
+	if actualName != expectedName {
+		return errors.New("arquivo do manifesto não corresponde à versão declarada")
+	}
 	return nil
 }
 
@@ -148,6 +163,9 @@ func validateOfficialUpdateURL(raw string) error {
 	}
 	if !strings.EqualFold(u.Hostname(), updateDownloadHost) {
 		return errors.New("origem da atualização não autorizada")
+	}
+	if port := u.Port(); port != "" && port != "443" {
+		return errors.New("porta da atualização não autorizada")
 	}
 	path := u.EscapedPath()
 	if !strings.HasPrefix(path, updateDownloadPathRoot) &&
@@ -283,7 +301,13 @@ func downloadUpdateFile(ctx context.Context, url, target string, expectedSize in
 		return err
 	}
 	req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion)
-	resp, err := (&http.Client{Timeout: 5 * time.Minute}).Do(req)
+	client := &http.Client{
+		Timeout: 5 * time.Minute,
+		CheckRedirect: func(req *http.Request, _ []*http.Request) error {
+			return validateOfficialUpdateURL(req.URL.String())
+		},
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("falha ao baixar atualização: %w", err)
 	}
