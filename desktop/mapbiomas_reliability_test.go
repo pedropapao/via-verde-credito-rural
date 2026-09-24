@@ -34,6 +34,11 @@ func TestEnvironmentalCacheRejectsUnavailableMapBiomas193(t *testing.T) {
 				Checked: true,
 				Available: true,
 			},
+			Hydrology: EnvironmentalHydrologyProfile{
+				Status: hydrologyStatusNone,
+				Checked: true,
+				Available: true,
+			},
 		},
 		MapBiomas: MapBiomasCARSummary{
 			Connected: true,
