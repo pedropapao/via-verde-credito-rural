@@ -165,7 +165,7 @@ $Headers = @{
 try {
     Write-Host ""
     Write-Host "3/5 - Solicitando canal seguro de upload..." -ForegroundColor Cyan
-    $Prepare = Invoke-RestMethod -Method Post -Uri "$Endpoint?action=prepare" -Headers $Headers -TimeoutSec 60
+    $Prepare = Invoke-RestMethod -Method Post -Uri "${Endpoint}?action=prepare" -Headers $Headers -TimeoutSec 60
     if (-not $Prepare.ok -or [string]::IsNullOrWhiteSpace([string]$Prepare.upload_url)) {
         Fail "O servidor nao autorizou o upload."
     }
@@ -178,14 +178,14 @@ try {
     Invoke-WebRequest -Method Put -Uri ([string]$Prepare.upload_url) -InFile $ExePath -ContentType "application/vnd.microsoft.portable-executable" -Headers $UploadHeaders -TimeoutSec 600 | Out-Null
 
     $Body = @{ notes = $Notes } | ConvertTo-Json -Compress
-    $Finalize = Invoke-RestMethod -Method Post -Uri "$Endpoint?action=finalize" -Headers $Headers -ContentType "application/json" -Body $Body -TimeoutSec 60
+    $Finalize = Invoke-RestMethod -Method Post -Uri "${Endpoint}?action=finalize" -Headers $Headers -ContentType "application/json" -Body $Body -TimeoutSec 60
 
     if (-not $Finalize.ok -or [string]$Finalize.version -ne $Version) {
         Fail "O servidor nao confirmou a publicacao da versao $Version."
     }
 
     Write-Host "5/5 - Conferindo manifesto publicado..." -ForegroundColor Cyan
-    $Manifest = Invoke-RestMethod -Method Get -Uri "$Endpoint?action=manifest" -TimeoutSec 60
+    $Manifest = Invoke-RestMethod -Method Get -Uri "${Endpoint}?action=manifest" -TimeoutSec 60
 
     if ([string]$Manifest.version -ne $Version) {
         Fail "Manifesto retornou versao diferente: $($Manifest.version)"
