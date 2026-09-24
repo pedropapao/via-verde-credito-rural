@@ -101,28 +101,33 @@ func (a *App) openDatabase() error {
 		}
 	}
 	dbPath := filepath.Join(a.dataDir, "viaverde.db")
-	db, err := sql.Open("sqlite", dbPath)
+	db, err := openSQLiteDatabase(dbPath)
 	if err != nil {
-		return err
-	}
-	if err := configureSQLite(db); err != nil {
-		db.Close()
 		return err
 	}
 	a.db = db
 	return a.migrate()
 }
 
-func configureSQLite(db *sql.DB) error {
-	if db == nil {
-		return errors.New("banco local indisponível")
+func openSQLiteDatabase(path string) (*sql.DB, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return nil, errors.New("caminho do banco local indisponível")
 	}
-	// Os PRAGMAs abaixo são por conexão no SQLite. Manter uma única conexão
-	// garante que foreign_keys e busy_timeout continuem valendo em todo o app.
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-	_, err := db.Exec(`PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;`)
-	return err
+	// modernc.org/sqlite aplica estes parâmetros a cada conexão criada pelo
+	// pool. Isso preserva foreign_keys e busy_timeout sem serializar todas as
+	// leituras em uma única conexão.
+	dsn := "file:" + filepath.ToSlash(path) +
+		"?_foreign_keys=on&_busy_timeout=5000&_journal_mode=WAL"
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
 }
 
 func (a *App) migrate() error {
