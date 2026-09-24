@@ -39,6 +39,7 @@ type EnvironmentalProfile struct {
 	DominantLandCover string                        `json:"dominant_land_cover"`
 	LandCoverClasses  []EnvironmentalLandCoverClass `json:"land_cover_classes"`
 	Fire              EnvironmentalFireProfile       `json:"fire"`
+	Hydrology         EnvironmentalHydrologyProfile  `json:"hydrology"`
 	Warnings          []string                      `json:"warnings"`
 }
 
@@ -73,6 +74,7 @@ func (a *App) buildEnvironmentalProfile(ctx context.Context, car CARResult) Envi
 		LandCoverSource: "ESA WorldCover 2021 v200 — serviço público ArcGIS",
 		LandCoverYear:   worldCoverYear,
 		Fire:            newEnvironmentalFireProfile(),
+		Hydrology:       newEnvironmentalHydrologyProfile(),
 	}
 	if strings.TrimSpace(car.GeoJSON) == "" {
 		out.Warnings = append(out.Warnings, "Perfil ambiental: geometria do CAR indisponível.")
@@ -92,9 +94,14 @@ func (a *App) buildEnvironmentalProfile(ctx context.Context, car CARResult) Envi
 		profile EnvironmentalFireProfile
 		err     error
 	}
+	type hydrologyResult struct {
+		profile EnvironmentalHydrologyProfile
+		err     error
+	}
 	biomeCh := make(chan biomeResult, 1)
 	coverCh := make(chan coverResult, 1)
 	fireCh := make(chan fireResult, 1)
+	hydrologyCh := make(chan hydrologyResult, 1)
 
 	go func() {
 		name, err := a.queryBiomeAtCAR(ctx, car)
@@ -107,6 +114,10 @@ func (a *App) buildEnvironmentalProfile(ctx context.Context, car CARResult) Envi
 	go func() {
 		profile, err := queryFireProfile(ctx, car.GeoJSON)
 		fireCh <- fireResult{profile: profile, err: err}
+	}()
+	go func() {
+		profile, err := queryHydrologyProfile(ctx, car.GeoJSON)
+		hydrologyCh <- hydrologyResult{profile: profile, err: err}
 	}()
 
 	b := <-biomeCh
@@ -133,6 +144,14 @@ func (a *App) buildEnvironmentalProfile(ctx context.Context, car CARResult) Envi
 	out.Fire = fire.profile
 	if fire.err != nil {
 		out.Warnings = append(out.Warnings, "Focos de calor: "+fire.err.Error())
+	}
+
+	hydrology := <-hydrologyCh
+	out.Hydrology = hydrology.profile
+	if hydrology.err != nil {
+		out.Warnings = append(out.Warnings, "Hidrografia: "+hydrology.err.Error())
+	} else if strings.TrimSpace(hydrology.profile.Warning) != "" {
+		out.Warnings = append(out.Warnings, "Hidrografia: "+hydrology.profile.Warning)
 	}
 	return out
 }
