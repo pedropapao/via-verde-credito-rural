@@ -105,12 +105,24 @@ func (a *App) openDatabase() error {
 	if err != nil {
 		return err
 	}
-	if _, err := db.Exec(`PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;`); err != nil {
+	if err := configureSQLite(db); err != nil {
 		db.Close()
 		return err
 	}
 	a.db = db
 	return a.migrate()
+}
+
+func configureSQLite(db *sql.DB) error {
+	if db == nil {
+		return errors.New("banco local indisponível")
+	}
+	// Os PRAGMAs abaixo são por conexão no SQLite. Manter uma única conexão
+	// garante que foreign_keys e busy_timeout continuem valendo em todo o app.
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	_, err := db.Exec(`PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;`)
+	return err
 }
 
 func (a *App) migrate() error {
