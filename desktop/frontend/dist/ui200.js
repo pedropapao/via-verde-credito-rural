@@ -45,6 +45,18 @@
       if(ev.key==='Enter'){ev.preventDefault();search(true)}
     });
     g('vvSearchBtn200').onclick=()=>search(true);
+    if(!window.__vvCentralHotkey200){
+      window.__vvCentralHotkey200=true;
+      document.addEventListener('keydown',ev=>{
+        const tag=String(ev.target?.tagName||'').toLowerCase();
+        const typing=tag==='input'||tag==='textarea'||tag==='select'||ev.target?.isContentEditable;
+        if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='k'){
+          ev.preventDefault();setView('dashboard');setTimeout(()=>g('vvSearch200')?.focus(),60);
+        }else if(ev.key==='/'&&!typing){
+          ev.preventDefault();setView('dashboard');setTimeout(()=>g('vvSearch200')?.focus(),60);
+        }
+      });
+    }
 
     installCarAction();
   }
