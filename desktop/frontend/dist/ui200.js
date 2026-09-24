@@ -31,6 +31,7 @@
         </div>
         <div id="vvSearchPanel200" class="vv-search-panel200 hidden"></div>
         <div id="vvAutomation200" class="vv-automation200 hidden"></div>
+        <div id="vvRecent200" class="vv-recent200 hidden"></div>
       </section>
     `);
 
@@ -59,6 +60,8 @@
     }
 
     installCarAction();
+    setTimeout(renderRecent200,700);
+    setTimeout(renderRecent200,1600);
   }
 
   function installCarAction(){
@@ -73,6 +76,23 @@
       run(car,state?.selectedProperty?.id||0,true);
     };
     wrap.prepend(b);
+  }
+
+  function renderRecent200(){
+    const box=g('vvRecent200');
+    if(!box)return;
+    const props=arr(state?.properties).slice().sort((a,b)=>String(b.updated_at||'').localeCompare(String(a.updated_at||''))).slice(0,4);
+    if(!props.length){box.className='vv-recent200 hidden';box.innerHTML='';return}
+    box.className='vv-recent200';
+    box.innerHTML='<div class="vv-recent-head200"><div><span class="eyebrow">ACESSO RÁPIDO</span><strong>Imóveis recentes</strong></div><button class="text-btn" id="vvAllProperties200">Ver cadastros</button></div><div class="vv-recent-grid200">'+props.map((p,i)=>{
+      const place=[p.municipality,p.uf].filter(Boolean).join(' / ');
+      return '<article class="vv-recent-card200" data-recent200="'+i+'"><div><span>'+(p.car_number?'CAR vinculado':'Sem CAR')+'</span><strong>'+e(p.name||'Imóvel')+'</strong><small>'+e([p.client_name,place].filter(Boolean).join(' • ')||'Cadastro local')+'</small></div><div class="vv-recent-meta200">'+(p.declared_area_ha?'<b>'+n(p.declared_area_ha,2)+' ha</b>':'<b>Área —</b>')+'<button class="btn ghost">Abrir</button></div></article>';
+    }).join('')+'</div>';
+    g('vvAllProperties200').onclick=()=>setView('clients');
+    box.querySelectorAll('[data-recent200]').forEach(el=>el.onclick=async()=>{
+      const p=props[Number(el.dataset.recent200)];if(!p)return;
+      setView('car');if(g('carPropertySelect'))g('carPropertySelect').value=String(p.id);await selectCarProperty(p.id);
+    });
   }
 
   async function search(runDirect){
@@ -181,6 +201,7 @@
       clearInterval(tick);
       renderAutomation(r);
       await Promise.all([loadProperties(),loadDashboard()]);
+      renderRecent200();
       if(r?.car?.car){
         state.car=r.car;renderCAR(r.car);
         if(r.car.geojson)drawGeoJSON('car',r.car.geojson);
@@ -228,6 +249,7 @@
       try{
         const p=await api().SaveAnalyzedCARToClient(clientID,car.car);
         await Promise.all([loadClients(),loadProperties(),loadDashboard()]);
+        renderRecent200();
         r.property_id=p.id;r.matched_existing=!!p.id;
         state.selectedProperty=state.properties.find(x=>x.id===p.id)||p;
         try{
