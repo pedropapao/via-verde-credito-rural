@@ -166,7 +166,7 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 		if !force {
 			if cached, ok := loadEnvironmentalIntelligenceCache(cachePath, environmentalIntelligenceCacheAge); ok {
 				cached = sanitizeEnvironmentalAutoOnly(cached)
-				if environmentalProfileHasData(cached.Profile) {
+				if environmentalIntelligenceCacheUsable(cached) {
 					cached.UsedCache = true
 					_ = saveEnvironmentalIntelligenceCache(cachePath, cached)
 					return cached, nil
@@ -333,7 +333,10 @@ func (a *App) queryMapBiomasEnvironmentalDetails(car string) ([]EnvironmentalAle
 		Variables: map[string]any{"carCodes":[]string{car}, "carCode":car},
 	}, &resp)
 	if err != nil {
-		return nil, err
+		if isMapBiomasAuthError(err) {
+			return nil, err
+		}
+		return nil, mapBiomasUnavailableError(err)
 	}
 	if len(resp.Errors) > 0 {
 		return nil, errors.New(joinGraphQLErrors(resp.Errors))
@@ -578,6 +581,19 @@ func normalizeLegacyEnvironmentalCache(out EnvironmentalIntelligenceResult) Envi
 	clean = append(clean, out.Themes.Warnings...)
 	out.Warnings = uniqueStrings(clean)
 	return out
+}
+
+func environmentalIntelligenceCacheUsable(out EnvironmentalIntelligenceResult) bool {
+	if !environmentalProfileHasData(out.Profile) {
+		return false
+	}
+	// Não reutiliza cache de uma tentativa em que a conta estava conectada,
+	// mas a API do MapBiomas não respondeu. Na próxima abertura, tenta de novo.
+	if out.MapBiomas.Connected && !out.MapBiomas.Available &&
+		out.MapBiomas.TotalAlerts == 0 && !out.MapBiomas.Found {
+		return false
+	}
+	return true
 }
 
 func environmentalProfileHasData(p EnvironmentalProfile) bool {
