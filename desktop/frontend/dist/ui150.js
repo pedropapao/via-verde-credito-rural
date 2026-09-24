@@ -51,13 +51,14 @@
     const box=q('xrayWorkspace150');if(!box)return;
     const s=r.summary||{},sicor=r.sicor||{},sigef=r.sigef||{},mb=r.mapbiomas||{},car=r.car||{},env=car.environment||{},themes=car.themes?.themes||{};
     const operations=sicor.operations||[];
+    const sigefAvailable=sigef.available===true;
     const themeAvailable=Object.values(themes).filter(x=>x?.available).length;
     const warningCount=(r.warnings||[]).length;
     const hero='<article class="panel xray-hero150"><div class="panel-title"><div><span class="eyebrow">RAIO X • '+esc(car.municipality||'')+' / '+esc(car.uf||'')+'</span><h3>'+esc(car.car||'')+'</h3><p>'+esc(sicor.scope||'Microdados públicos do SICOR e bases territoriais públicas.')+'</p></div><span class="status-badge '+(operations.length?'ok':'info')+'">'+(sicor.used_cache?'Cache local':'Atualizado')+'</span></div><div class="xray-metrics150">'+
       metric150('Operações públicas',s.public_credit_operations||0,(sicor.destination_count||0)+' destinação(ões) vinculada(s)')+
       metric150('Crédito identificado','R$ '+money150(s.public_credit_value||0),'soma das destinações localizadas')+
       metric150('Glebas financiadas',s.financed_glebas||0,'geometria pública disponível')+
-      metric150('Parcelas SIGEF',s.sigef_parcels||0,(s.sigef_registries||0)+' registro(s) publicado(s)')+
+      metric150('Parcelas SIGEF',sigefAvailable?(s.sigef_parcels||0):'Indisponível',sigefAvailable?((s.sigef_registries||0)+' registro(s) publicado(s)'):'fonte pública sem resposta')+
       metric150('Conflitos c/ projeto',s.glebas_with_project_hit||0,'sobreposição > 0,5%')+
       metric150('Alertas MapBiomas',s.mapbiomas_alerts||0,mb.connected?'consulta autenticada':'conta não conectada')+
       metric150('Ocorrências ambientais',s.environmental_hits||0,'IBAMA/FUNAI/ICMBio/MCR')+
@@ -66,10 +67,10 @@
     const sigefParcels=sigef.parcels||[];
     const sigefCards=sigefParcels.length?sigefParcels.map((p,i)=>sigefCard150(p,i)).join(''):'<div class="xray-empty150">'+esc(sigef.message||'Nenhuma parcela SIGEF pública localizada por interseção espacial. Isso não prova ausência de matrícula ou registro imobiliário.')+'</div>';
     const sigefHtml='<article class="panel xray-panel150 sigef-panel150"><div class="panel-title"><div><span class="eyebrow">FUNDIÁRIO • SIGEF/INCRA</span><h3>Parcelas certificadas que cruzam o CAR</h3><p>Consulta espacial automática na camada pública do SIGEF. Registro/matrícula só é exibido quando publicado pela própria fonte.</p></div><span class="status-badge '+(sigef.available?(sigefParcels.length?'ok':'info'):'warning')+'">'+(sigef.available?sigefParcels.length+' parcela(s)':'Indisponível')+'</span></div><div class="sigef-summary150">'+
-      envCard150('Parcelas encontradas',sigef.parcel_count||0,'interseção espacial com o CAR')+
-      envCard150('Registros publicados',sigef.registry_count||0,'campo registro_m da fonte')+
-      envCard150('Melhor cobertura do CAR',(sigef.best_car_coverage_pct||0)?fmt(sigef.best_car_coverage_pct,1)+'%':'—','percentual do CAR dentro da parcela')+
-      envCard150('Diferença de área',(sigef.parcel_count||0)?fmt(sigef.best_area_difference_ha||0,2)+' ha':'—','melhor coincidência espacial')+
+      envCard150('Parcelas encontradas',sigefAvailable?(sigef.parcel_count||0):'Indisponível',sigefAvailable?'interseção espacial com o CAR':'fonte pública sem resposta')+
+      envCard150('Registros publicados',sigefAvailable?(sigef.registry_count||0):'Indisponível',sigefAvailable?'campo registro_m da fonte':'fonte pública sem resposta')+
+      envCard150('Melhor cobertura do CAR',sigefAvailable?((sigef.best_car_coverage_pct||0)?fmt(sigef.best_car_coverage_pct,1)+'%':'—'):'Indisponível',sigefAvailable?'percentual do CAR dentro da parcela':'fonte pública sem resposta')+
+      envCard150('Diferença de área',sigefAvailable?((sigef.parcel_count||0)?fmt(sigef.best_area_difference_ha||0,2)+' ha':'—'):'Indisponível',sigefAvailable?'melhor coincidência espacial':'fonte pública sem resposta')+
       '</div><div class="sigef-list150">'+sigefCards+'</div><div class="xray-source150">'+esc(sigef.message||'A consulta fundiária é auxiliar e não substitui matrícula/certidão do Registro de Imóveis.')+' A ausência de parcela SIGEF não prova ausência de matrícula.</div></article>';
 
     const operationHtml=operations.length?operations.map((op,i)=>operationCard150(op,i)).join(''):'<div class="xray-empty150">Nenhuma operação pública foi localizada para este CAR nos arquivos processados. Isso não significa que o imóvel nunca tenha recebido financiamento.</div>';
