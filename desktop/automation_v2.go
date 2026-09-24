@@ -74,7 +74,7 @@ func (a *App) SearchEverything(query string) (UniversalSearchResult, error) {
 		return out, nil
 	}
 
-	mode, normalized, valid := classifyUnifiedQuery(q)
+	mode, normalized, valid := v2ClassifyUnifiedQuery(q)
 	out.Mode, out.Normalized, out.Valid = mode, normalized, valid
 	if mode == "car" && valid {
 		out.CanAnalyzeCAR = true
@@ -109,20 +109,20 @@ func (a *App) SearchEverything(query string) (UniversalSearchResult, error) {
 		clientByID[c.ID] = c
 	}
 
-	needle := normalizedSearchText(q)
-	docNeedle := digitsOnly(q)
+	needle := v2NormalizedSearchText(q)
+	docNeedle := v2DigitsOnly(q)
 	seenProperty := map[int64]bool{}
 	seenClient := map[int64]bool{}
 
 	for _, p := range properties {
 		c := clientByID[p.ClientID]
-		searchable := normalizedSearchText(strings.Join([]string{
+		searchable := v2NormalizedSearchText(strings.Join([]string{
 			c.Name, c.CPFCNPJ, c.Phone, p.Name, p.Municipality, p.UF,
 			p.Registry, p.CARNumber,
 		}, " "))
 		match := strings.Contains(searchable, needle)
 		if docNeedle != "" && (mode == "cpf" || mode == "cnpj") {
-			match = strings.Contains(digitsOnly(c.CPFCNPJ), docNeedle)
+			match = strings.Contains(v2DigitsOnly(c.CPFCNPJ), docNeedle)
 		}
 		if mode == "car" && valid {
 			car, _, _, _ := normalizeCAR(q)
@@ -132,8 +132,8 @@ func (a *App) SearchEverything(query string) (UniversalSearchResult, error) {
 			continue
 		}
 		out.Hits = append(out.Hits, UniversalSearchHit{
-			Kind: "property", Title: firstNonEmpty(p.Name, "Imóvel sem nome"),
-			Subtitle: strings.TrimSpace(strings.Join(nonEmpty([]string{c.Name, joinPlace(p.Municipality, p.UF)}), " • ")),
+			Kind: "property", Title: v2FirstNonEmpty(p.Name, "Imóvel sem nome"),
+			Subtitle: strings.TrimSpace(strings.Join(v2NonEmpty([]string{c.Name, v2JoinPlace(p.Municipality, p.UF)}), " • ")),
 			ClientID: p.ClientID, PropertyID: p.ID, ClientName: c.Name, PropertyName: p.Name,
 			CPFCNPJ: c.CPFCNPJ, CAR: p.CARNumber, Registry: p.Registry,
 			Municipality: p.Municipality, UF: p.UF, AreaHa: p.DeclaredAreaHa,
@@ -150,16 +150,16 @@ func (a *App) SearchEverything(query string) (UniversalSearchResult, error) {
 			if seenClient[c.ID] {
 				continue
 			}
-			searchable := normalizedSearchText(strings.Join([]string{c.Name, c.CPFCNPJ, c.Phone}, " "))
+			searchable := v2NormalizedSearchText(strings.Join([]string{c.Name, c.CPFCNPJ, c.Phone}, " "))
 			match := strings.Contains(searchable, needle)
 			if docNeedle != "" && (mode == "cpf" || mode == "cnpj") {
-				match = strings.Contains(digitsOnly(c.CPFCNPJ), docNeedle)
+				match = strings.Contains(v2DigitsOnly(c.CPFCNPJ), docNeedle)
 			}
 			if !match {
 				continue
 			}
 			out.Hits = append(out.Hits, UniversalSearchHit{
-				Kind: "client", Title: c.Name, Subtitle: firstNonEmpty(c.CPFCNPJ, "Cliente local"),
+				Kind: "client", Title: c.Name, Subtitle: v2FirstNonEmpty(c.CPFCNPJ, "Cliente local"),
 				ClientID: c.ID, ClientName: c.Name, CPFCNPJ: c.CPFCNPJ,
 			})
 			if len(out.Hits) >= 30 {
@@ -279,7 +279,7 @@ func (a *App) RunCARAutomation(input string, propertyID int64, force bool) (CARA
 	out.OverallStatus = automationOverallStatus(out)
 	out.ExecutiveSummary = automationExecutiveSummary(out, time.Since(started))
 	out.GeneratedAt = time.Now().Format(time.RFC3339)
-	out.Warnings = uniqueNonEmpty(out.Warnings)
+	out.Warnings = v2UniqueNonEmpty(out.Warnings)
 	return out, nil
 }
 
@@ -389,9 +389,9 @@ func automationSources(out CARAutomationResult) []AutomationSourceStatus {
 	}
 	mbs := AutomationSourceStatus{Key: "mapbiomas", Label: "MapBiomas Alerta", Count: mb.TotalAlerts}
 	if !mb.Connected {
-		mbs.Status, mbs.Detail = "not_configured", firstNonEmpty(mb.Message, "Conta MapBiomas Alerta não conectada.")
+		mbs.Status, mbs.Detail = "not_configured", v2FirstNonEmpty(mb.Message, "Conta MapBiomas Alerta não conectada.")
 	} else if !mb.Available {
-		mbs.Status, mbs.Detail = "unavailable", firstNonEmpty(mb.Message, "Base indisponível nesta execução.")
+		mbs.Status, mbs.Detail = "unavailable", v2FirstNonEmpty(mb.Message, "Base indisponível nesta execução.")
 	} else if mb.TotalAlerts > 0 {
 		mbs.Status, mbs.Detail = "hit", fmt.Sprintf("%d alerta(s) retornado(s).", mb.TotalAlerts)
 	} else {
@@ -402,7 +402,7 @@ func automationSources(out CARAutomationResult) []AutomationSourceStatus {
 	fire := out.Environmental.Profile.Fire
 	fs := AutomationSourceStatus{Key: "inpe_fire", Label: "INPE • Focos de calor", Count: fire.FeatureCount, SourceURL: fire.SourceURL}
 	if !fire.Checked || !fire.Available {
-		fs.Status, fs.Detail = "unavailable", firstNonEmpty(fire.Warning, "Base não confirmada nesta execução.")
+		fs.Status, fs.Detail = "unavailable", v2FirstNonEmpty(fire.Warning, "Base não confirmada nesta execução.")
 	} else if fire.FeatureCount > 0 {
 		fs.Status, fs.Detail = "hit", fmt.Sprintf("%d foco(s) encontrado(s) na janela consultada.", fire.FeatureCount)
 	} else {
@@ -413,7 +413,7 @@ func automationSources(out CARAutomationResult) []AutomationSourceStatus {
 	sigef := out.XRay.SIGEF
 	ss := AutomationSourceStatus{Key: "sigef", Label: "SIGEF / INCRA", Count: sigef.ParcelCount, SourceURL: sigef.SourceURL}
 	if !sigef.Available {
-		ss.Status, ss.Detail = "unavailable", firstNonEmpty(sigef.Message, "Base não confirmada nesta execução.")
+		ss.Status, ss.Detail = "unavailable", v2FirstNonEmpty(sigef.Message, "Base não confirmada nesta execução.")
 	} else if sigef.ParcelCount > 0 {
 		ss.Status, ss.Detail = "hit", fmt.Sprintf("%d parcela(s) pública(s) com relação espacial analisada.", sigef.ParcelCount)
 	} else {
@@ -469,7 +469,7 @@ func automationExecutiveSummary(out CARAutomationResult, elapsed time.Duration) 
 		parts = append(parts, fmt.Sprintf("CAR %s localizado", car.CAR))
 	}
 	if car.Municipality != "" {
-		parts = append(parts, joinPlace(car.Municipality, car.UF))
+		parts = append(parts, v2JoinPlace(car.Municipality, car.UF))
 	}
 	if car.AreaHa > 0 {
 		parts = append(parts, fmt.Sprintf("%.2f ha", car.AreaHa))
@@ -499,22 +499,22 @@ func automationExecutiveSummary(out CARAutomationResult, elapsed time.Duration) 
 	return summary
 }
 
-func classifyUnifiedQuery(v string) (mode, normalized string, valid bool) {
+func v2ClassifyUnifiedQuery(v string) (mode, normalized string, valid bool) {
 	if car, _, _, err := normalizeCAR(v); err == nil {
 		return "car", car, true
 	}
-	digits := digitsOnly(v)
+	digits := v2DigitsOnly(v)
 	switch len(digits) {
 	case 11:
-		return "cpf", digits, validCPF(digits)
+		return "cpf", digits, v2ValidCPF(digits)
 	case 14:
-		return "cnpj", digits, validCNPJ(digits)
+		return "cnpj", digits, v2ValidCNPJ(digits)
 	default:
-		return "text", normalizedSearchText(v), true
+		return "text", v2NormalizedSearchText(v), true
 	}
 }
 
-func digitsOnly(v string) string {
+func v2DigitsOnly(v string) string {
 	var b strings.Builder
 	for _, r := range v {
 		if unicode.IsDigit(r) {
@@ -524,9 +524,9 @@ func digitsOnly(v string) string {
 	return b.String()
 }
 
-func validCPF(v string) bool {
-	v = digitsOnly(v)
-	if len(v) != 11 || allSame(v) {
+func v2ValidCPF(v string) bool {
+	v = v2DigitsOnly(v)
+	if len(v) != 11 || v2AllSame(v) {
 		return false
 	}
 	sum := 0
@@ -551,9 +551,9 @@ func validCPF(v string) bool {
 	return d == int(v[10]-'0')
 }
 
-func validCNPJ(v string) bool {
-	v = digitsOnly(v)
-	if len(v) != 14 || allSame(v) {
+func v2ValidCNPJ(v string) bool {
+	v = v2DigitsOnly(v)
+	if len(v) != 14 || v2AllSame(v) {
 		return false
 	}
 	calc := func(base string, weights []int) int {
@@ -575,7 +575,7 @@ func validCNPJ(v string) bool {
 	return d2 == int(v[13]-'0')
 }
 
-func allSame(v string) bool {
+func v2AllSame(v string) bool {
 	if len(v) < 2 {
 		return true
 	}
@@ -587,7 +587,7 @@ func allSame(v string) bool {
 	return true
 }
 
-func normalizedSearchText(v string) string {
+func v2NormalizedSearchText(v string) string {
 	v = strings.ToLower(strings.TrimSpace(v))
 	repl := strings.NewReplacer(
 		"á", "a", "à", "a", "ã", "a", "â", "a", "ä", "a",
@@ -599,7 +599,7 @@ func normalizedSearchText(v string) string {
 	return strings.Join(strings.Fields(repl.Replace(v)), " ")
 }
 
-func firstNonEmpty(values ...string) string {
+func v2FirstNonEmpty(values ...string) string {
 	for _, v := range values {
 		if strings.TrimSpace(v) != "" {
 			return strings.TrimSpace(v)
@@ -608,7 +608,7 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-func nonEmpty(values []string) []string {
+func v2NonEmpty(values []string) []string {
 	out := make([]string, 0, len(values))
 	for _, v := range values {
 		if strings.TrimSpace(v) != "" {
@@ -618,7 +618,7 @@ func nonEmpty(values []string) []string {
 	return out
 }
 
-func joinPlace(city, uf string) string {
+func v2JoinPlace(city, uf string) string {
 	if strings.TrimSpace(city) == "" {
 		return strings.TrimSpace(uf)
 	}
@@ -628,7 +628,7 @@ func joinPlace(city, uf string) string {
 	return strings.TrimSpace(city) + " / " + strings.ToUpper(strings.TrimSpace(uf))
 }
 
-func uniqueNonEmpty(values []string) []string {
+func v2UniqueNonEmpty(values []string) []string {
 	seen := map[string]bool{}
 	out := []string{}
 	for _, v := range values {
