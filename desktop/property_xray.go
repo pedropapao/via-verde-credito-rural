@@ -123,7 +123,14 @@ func (a *App) BuildPropertyXRay(propertyID int64, force bool) (PropertyXRay, err
 	}
 	if sigef.e != nil {
 		out.Warnings = append(out.Warnings, "SIGEF/INCRA: "+sigef.e.Error())
-		out.SIGEF = SIGEFPublicResult{SourceURL: sigefPublicSourceURL, Message: "Fonte pública do SIGEF indisponível nesta tentativa."}
+		out.SIGEF = sigef.v
+		out.SIGEF.Available = false
+		if strings.TrimSpace(out.SIGEF.SourceURL) == "" {
+			out.SIGEF.SourceURL = sigefPublicSourceURL
+		}
+		if strings.TrimSpace(out.SIGEF.Message) == "" {
+			out.SIGEF.Message = sigefPublicUnavailableMessage
+		}
 	} else {
 		out.SIGEF = sigef.v
 	}

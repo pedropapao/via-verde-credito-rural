@@ -1,3 +1,17 @@
+CAR 1.9.2: Confiabilidade do SIGEF/INCRA.
+
+CORREÇÃO
+• Falhas de rede, timeout e indisponibilidade temporária do serviço público do SIGEF/INCRA deixam de expor mensagens técnicas extensas na interface.
+• O erro completo continua registrado apenas no log técnico para diagnóstico.
+• Quando a fonte não responde, o Raio X mostra “Indisponível” em vez de apresentar 0 parcelas ou 0 registros.
+• A mensagem informa explicitamente que ausência de resultado por indisponibilidade não significa ausência de parcela certificada.
+• As mesmas fontes públicas e o mesmo cruzamento espacial do SIGEF foram preservados.
+
+PRESERVADO
+• Nenhuma alteração no banco SQLite, CAR, KML, clientes, imóveis, histórico ou geometrias.
+• Consultas SIGEF que respondem normalmente continuam com o mesmo fluxo e os mesmos dados.
+• Focos de calor INPE, Bioma, WorldCover, MapBiomas Alerta, IBAMA/PAMGIA, FUNAI, ICMBio e MMA/MCR foram preservados.
+
 CAR 1.9.1: Focos de calor — Programa Queimadas/INPE.
 
 NOVIDADE
