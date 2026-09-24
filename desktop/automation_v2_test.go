@@ -1,6 +1,11 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+)
 
 func TestClassifyUnifiedQueryCPF(t *testing.T) {
 	mode, normalized, valid := v2ClassifyUnifiedQuery("529.982.247-25")
@@ -29,5 +34,102 @@ func TestNormalizedSearchText(t *testing.T) {
 	got := v2NormalizedSearchText("  São Sebastião   do Paraíso ")
 	if got != "sao sebastiao do paraiso" {
 		t.Fatalf("normalização inesperada: %q", got)
+	}
+}
+
+
+func newV2AutomationTestApp(t *testing.T) *App {
+	t.Helper()
+	dir := t.TempDir()
+	db, err := openSQLiteDatabase(filepath.Join(dir, "viaverde-test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	a := &App{db: db, dataDir: dir}
+	for _, name := range []string{"properties", "cache", "backups", "updates"} {
+		if err := os.MkdirAll(filepath.Join(dir, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := a.migrate(); err != nil {
+		t.Fatal(err)
+	}
+	return a
+}
+
+func TestSearchEverythingFindsLocalCPFAndProperty(t *testing.T) {
+	a := newV2AutomationTestApp(t)
+	client, err := a.SaveClient(Client{Name: "Produtor Teste", CPFCNPJ: "529.982.247-25"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	car := "MG-3106200-AAAAAAAA.AAAA.AAAA.AAAA.AAAA.AAAA.AAAA.AAAA"
+	_, err = a.SaveProperty(Property{
+		ClientID: client.ID, Name: "Fazenda Teste", Municipality: "Belo Horizonte",
+		UF: "MG", Registry: "12345", CARNumber: car, DeclaredAreaHa: 12.5,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	byCPF, err := a.SearchEverything("529.982.247-25")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(byCPF.Hits) == 0 || byCPF.Hits[0].PropertyName != "Fazenda Teste" {
+		t.Fatalf("busca por CPF não encontrou imóvel: %#v", byCPF.Hits)
+	}
+	byRegistry, err := a.SearchEverything("12345")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(byRegistry.Hits) == 0 || byRegistry.Hits[0].CAR != car {
+		t.Fatalf("busca por matrícula não encontrou CAR: %#v", byRegistry.Hits)
+	}
+}
+
+func TestSaveAnalyzedCARToClientReusesSessionAndCreatesKML(t *testing.T) {
+	a := newV2AutomationTestApp(t)
+	client, err := a.SaveClient(Client{Name: "Cliente CAR"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	car := "MG-3106200-BBBBBBBB.BBBB.BBBB.BBBB.BBBB.BBBB.BBBB.BBBB"
+	geo := `{"type":"Feature","properties":{},"geometry":{"type":"Polygon","coordinates":[[[-46.0,-20.0],[-45.99,-20.0],[-45.99,-19.99],[-46.0,-19.99],[-46.0,-20.0]]]}}`
+	result := CARResult{
+		CAR: car, UF: "MG", Municipality: "Município Teste", PropertyName: "Fazenda Automática",
+		AreaHa: 10.25, GeometryAreaHa: 10.25, Found: true, HasGeometry: true, GeoJSON: geo,
+		CheckedAt: time.Now().Format(time.RFC3339),
+	}
+	a.saveLastCARSession(result)
+
+	p, err := a.SaveAnalyzedCARToClient(client.ID, car)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Name != "Fazenda Automática" || p.CARNumber != car {
+		t.Fatalf("imóvel automático inesperado: %#v", p)
+	}
+	if p.KMLPath == "" {
+		t.Fatal("KML automático não foi associado ao imóvel")
+	}
+	if _, err := os.Stat(p.KMLPath); err != nil {
+		t.Fatalf("KML automático não existe: %v", err)
+	}
+	history, err := a.GetCARHistory(p.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(history) != 1 {
+		t.Fatalf("histórico esperado=1, obtido=%d", len(history))
+	}
+
+	again, err := a.SaveAnalyzedCARToClient(client.ID, car)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.ID != p.ID {
+		t.Fatalf("CAR duplicou imóvel: primeiro=%d segundo=%d", p.ID, again.ID)
 	}
 }
