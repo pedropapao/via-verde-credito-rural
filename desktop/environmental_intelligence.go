@@ -213,11 +213,13 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 	mb, err := a.QueryMapBiomasCAR(car.CAR)
 	if err != nil {
 		out.Warnings = append(out.Warnings, "MapBiomas Alerta: "+err.Error())
-		mb = MapBiomasCARSummary{Connected:a.GetMapBiomasAlertStatus().Connected, Message:err.Error()}
+		if strings.TrimSpace(mb.Message) == "" {
+			mb.Message = err.Error()
+		}
 	}
 	out.MapBiomas = mb
 
-	if mb.Connected && mb.TotalAlerts > 0 {
+	if mb.Connected && mb.Available && mb.TotalAlerts > 0 {
 		details, detailErr := a.queryMapBiomasEnvironmentalDetails(car.CAR)
 		if detailErr != nil {
 			out.Warnings = append(out.Warnings, "Detalhamento MapBiomas: "+detailErr.Error())
@@ -249,7 +251,7 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 	if !mb.Connected {
 		out.Warnings = append(out.Warnings, "MapBiomas Alerta não está conectado; a análise profissional de alertas fica limitada às demais camadas públicas já carregadas.")
 	}
-	if len(out.Alerts) == 0 && mb.Connected {
+	if len(out.Alerts) == 0 && mb.Connected && mb.Available {
 		out.Warnings = append(out.Warnings, "Nenhum alerta foi retornado para o CAR nesta consulta. Isso não equivale a certificado de regularidade ambiental.")
 	}
 	out.Warnings = append(out.Warnings, refreshedEnv.Warnings...)
