@@ -3,3 +3,5 @@ bin/
 *.log
 .DS_Store
 .vscode/.ropeproject/
+desktop/build/
+desktop/frontend/wailsjs/
