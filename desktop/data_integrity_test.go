@@ -207,4 +207,20 @@ func TestPersistCARAnalysisCommitsPropertyAndHistoryTogether194(t *testing.T) {
 	if strings.TrimSpace(propertyRaw) == "" || checks != 1 {
 		t.Fatalf("gravação transacional incompleta: last_car_json=%q checks=%d", propertyRaw, checks)
 	}
+
+	repeat := result
+	repeat.CheckedAt = time.Now().Add(time.Minute).Format(time.RFC3339)
+	repeat.SnapshotSaved = false
+	if err := app.persistCARAnalysis(1, repeat.CAR, &repeat); err != nil {
+		t.Fatal(err)
+	}
+	if repeat.SnapshotSaved {
+		t.Fatal("consulta repetida sem mudança não deveria criar novo snapshot")
+	}
+	if err := db.QueryRow("SELECT COUNT(*) FROM car_checks WHERE property_id=1").Scan(&checks); err != nil {
+		t.Fatal(err)
+	}
+	if checks != 1 {
+		t.Fatalf("consulta repetida criou histórico duplicado: %d registros", checks)
+	}
 }
