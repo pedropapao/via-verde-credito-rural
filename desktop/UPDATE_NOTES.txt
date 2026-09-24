@@ -8,3 +8,8 @@ ViaVerdeCAR 2.0.0 — Central Automática do Imóvel Rural
 • Novo botão “Analisar tudo” na área de CAR.
 • Índices SQLite adicionais para CPF/CNPJ, matrícula e município, via migração não destrutiva.
 • Mantidos os módulos existentes de CAR, KML, IBAMA, FUNAI, ICMBio, MCR/PRODES, MapBiomas, INPE, SIGEF, SICOR, mapa, relatórios e histórico sem duplicação.
+
+• Uma consulta avulsa de CAR pode ser vinculada a um cliente existente em um clique, reaproveitando os dados públicos e gerando o KML SICAR sem ocupar o campo reservado ao KML externo do cliente.
+• O atualizador agora reconsulta e valida o manifesto oficial no backend antes de instalar: versão, canal, host Supabase autorizado, caminho, tamanho e SHA-256.
+• Leaflet externo passa a ser carregado com Subresource Integrity (SRI).
+• O pipeline Windows valida todos os JavaScripts antes de compilar o EXE.
