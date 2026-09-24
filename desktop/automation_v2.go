@@ -182,7 +182,7 @@ func (a *App) SearchEverything(query string) (UniversalSearchResult, error) {
 // rural-credit analyses. Failures remain isolated and are returned explicitly.
 func (a *App) RunCARAutomation(input string, propertyID int64, force bool) (CARAutomationResult, error) {
 	started := time.Now()
-	out := CARAutomationResult{Input: strings.TrimSpace(input)}
+	out := CARAutomationResult{Input: strings.TrimSpace(input), GeneratedAt: time.Now().Format(time.RFC3339)}
 	car, _, _, err := normalizeCAR(input)
 	if err != nil {
 		return out, err
@@ -363,6 +363,9 @@ func automationSources(out CARAutomationResult) []AutomationSourceStatus {
 	sources = append(sources, kmlStatus)
 
 	env := out.Environmental.Environment
+	if !env.IBAMAChecked && !env.FUNAIChecked && !env.ICMBioChecked && !env.MCRChecked {
+		env = out.CAR.Environment
+	}
 	sources = append(sources,
 		envSource("ibama", "IBAMA • Embargos", env.IBAMAChecked, env.IBAMAEmbargoCount, env.IBAMASourceURL),
 		envSource("funai", "FUNAI • Terras Indígenas", env.FUNAIChecked, env.IndigenousCount, env.FUNAISourceURL),
@@ -381,6 +384,9 @@ func automationSources(out CARAutomationResult) []AutomationSourceStatus {
 	sources = append(sources, mcr)
 
 	mb := out.Environmental.MapBiomas
+	if !mb.Connected && !mb.Available && strings.TrimSpace(mb.Message) == "" {
+		mb = out.XRay.MapBiomas
+	}
 	mbs := AutomationSourceStatus{Key: "mapbiomas", Label: "MapBiomas Alerta", Count: mb.TotalAlerts}
 	if !mb.Connected {
 		mbs.Status, mbs.Detail = "not_configured", firstNonEmpty(mb.Message, "Conta MapBiomas Alerta não conectada.")
@@ -417,7 +423,7 @@ func automationSources(out CARAutomationResult) []AutomationSourceStatus {
 
 	sicor := out.XRay.SICOR
 	cs := AutomationSourceStatus{Key: "sicor", Label: "SICOR • Crédito Rural", Count: sicor.OperationCount, SourceURL: sicor.SourceURL}
-	if strings.TrimSpace(sicor.GeneratedAt) == "" && len(sicor.Warnings) > 0 {
+	if strings.TrimSpace(sicor.GeneratedAt) == "" {
 		cs.Status, cs.Detail = "unavailable", "Consulta ficou parcial; confira os avisos da base."
 	} else if sicor.OperationCount > 0 {
 		cs.Status, cs.Detail = "hit", fmt.Sprintf("%d operação(ões) pública(s) associada(s) à análise territorial.", sicor.OperationCount)
@@ -444,7 +450,7 @@ func automationOverallStatus(out CARAutomationResult) string {
 	if !out.CAR.Found {
 		return "not_found"
 	}
-	partial := len(out.Warnings) > 0
+	partial := false
 	for _, s := range out.Sources {
 		if s.Status == "unavailable" || s.Status == "not_configured" {
 			partial = true
