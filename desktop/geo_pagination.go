@@ -13,12 +13,14 @@ import (
 type pagedHTTPFetcher func(context.Context, string, string) ([]byte, error)
 type pagedSimpleFetcher func(context.Context, string) ([]byte, error)
 
+type arcGISQueryError struct {
+	Code    int
+	Message string
+	Details []string
+}
+
 type arcGISQueryErrorEnvelope struct {
-	Error *struct {
-		Code    int
-		Message string
-		Details []string
-	}
+	Error *arcGISQueryError
 }
 
 func queryArcGISCount(ctx context.Context, endpoint string, base url.Values, fetch pagedHTTPFetcher) (int, error) {
@@ -34,7 +36,7 @@ func queryArcGISCount(ctx context.Context, endpoint string, base url.Values, fet
 	}
 	var resp struct {
 		Count int
-		arcGISQueryErrorEnvelope
+		Error *arcGISQueryError
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return 0, fmt.Errorf("contagem ArcGIS inválida: %w", err)
@@ -86,8 +88,8 @@ func queryArcGISGeoJSONPages(ctx context.Context, endpoint string, base url.Valu
 		}
 		out = append(out, fc.Features...)
 	}
-	if len(out) < expectedCount {
-		return nil, fmt.Errorf("paginação ArcGIS incompleta: %d de %d registros", len(out), expectedCount)
+	if len(out) != expectedCount {
+		return nil, fmt.Errorf("paginação ArcGIS inconsistente: recebeu %d de %d registros esperados", len(out), expectedCount)
 	}
 	return out, nil
 }
