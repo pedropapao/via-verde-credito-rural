@@ -350,9 +350,10 @@ func (a *App) SaveAnalyzedCARToClient(clientID int64, car string) (Property, err
 		var feature carGeoFeature
 		if jsonErr := json.Unmarshal([]byte(result.GeoJSON), &feature); jsonErr == nil && carGeometryUsable(feature.Geometry) {
 			if kmlPath, kmlErr := a.saveAutomaticCARKML(saved, result, feature.Geometry); kmlErr == nil {
+				// AutoKMLPath é o perímetro público SICAR. KMLPath continua
+				// reservado ao KML externo/do cliente para não comparar o CAR
+				// contra ele mesmo.
 				result.AutoKMLPath = kmlPath
-				saved.KMLPath = kmlPath
-				_, _ = a.db.Exec(`UPDATE properties SET kml_path=?,updated_at=? WHERE id=?`, kmlPath, time.Now().Format(time.RFC3339), saved.ID)
 			} else {
 				result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "KML automático", Detail: "O imóvel foi salvo, mas o KML não pôde ser gravado: " + kmlErr.Error()})
 			}
