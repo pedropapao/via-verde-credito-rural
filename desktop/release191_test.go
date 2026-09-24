@@ -15,7 +15,7 @@ func TestReleaseVersion200(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(b), `"productVersion": "2.0.0"`) {
-		t.Fatal("wails.json não está alinhado com a versão 1.9.5")
+		t.Fatal("wails.json não está alinhado com a versão 2.0.0")
 	}
 }
 
