@@ -13,14 +13,14 @@ import (
 type pagedHTTPFetcher func(context.Context, string, string) ([]byte, error)
 type pagedSimpleFetcher func(context.Context, string) ([]byte, error)
 
-type arcGISQueryError struct {
+type arcGISQueryErrorData struct {
 	Code    int
 	Message string
 	Details []string
 }
 
 type arcGISQueryErrorEnvelope struct {
-	Error *arcGISQueryError
+	Error *arcGISQueryErrorData
 }
 
 func queryArcGISCount(ctx context.Context, endpoint string, base url.Values, fetch pagedHTTPFetcher) (int, error) {
@@ -36,7 +36,7 @@ func queryArcGISCount(ctx context.Context, endpoint string, base url.Values, fet
 	}
 	var resp struct {
 		Count int
-		Error *arcGISQueryError
+		Error *arcGISQueryErrorData
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return 0, fmt.Errorf("contagem ArcGIS inválida: %w", err)
