@@ -88,6 +88,12 @@ func TestValidateOfficialUpdateManifest196(t *testing.T) {
 	if err := validateOfficialUpdateManifest(bad); err == nil {
 		t.Fatal("versão fora do formato x.y.z deveria ser rejeitada")
 	}
+
+	bad = valid
+	bad.DownloadURL = "https://igrxqbroklfwujcwbiwh.supabase.co/storage/v1/object/sign/via-verde-files/desktop-updates/ViaVerdeCAR-9.9.9.exe?token=abc"
+	if err := validateOfficialUpdateManifest(bad); err == nil {
+		t.Fatal("arquivo incompatível com a versão do manifesto deveria ser rejeitado")
+	}
 }
 
 func TestValidateOfficialUpdateURL196(t *testing.T) {
@@ -105,6 +111,7 @@ func TestValidateOfficialUpdateURL196(t *testing.T) {
 		"https://evil.example/storage/v1/object/sign/via-verde-files/desktop-updates/x.exe",
 		"https://igrxqbroklfwujcwbiwh.supabase.co/storage/v1/object/sign/via-verde-files/desktop-updates/x.zip",
 		"https://user:pass@igrxqbroklfwujcwbiwh.supabase.co/storage/v1/object/sign/via-verde-files/desktop-updates/x.exe",
+		"https://igrxqbroklfwujcwbiwh.supabase.co:8443/storage/v1/object/sign/via-verde-files/desktop-updates/x.exe",
 	}
 	for _, raw := range rejected {
 		if err := validateOfficialUpdateURL(raw); err == nil {
