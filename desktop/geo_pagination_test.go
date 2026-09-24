@@ -20,7 +20,7 @@ func TestArcGISPaginationReadsAllPages195(t *testing.T) {
 		}
 		q := u.Query()
 		if q.Get("returnCountOnly") == "true" {
-			return []byte("{\\\"count\\\":450}"), nil
+			return []byte("{\"count\":450}"), nil
 		}
 		offset, _ := strconv.Atoi(q.Get("resultOffset"))
 		limit, _ := strconv.Atoi(q.Get("resultRecordCount"))
