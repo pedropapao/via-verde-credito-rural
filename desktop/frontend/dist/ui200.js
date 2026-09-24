@@ -194,7 +194,7 @@
       <div class="vv-result-head200">
         <div><span class="eyebrow">RESUMO EXECUTIVO AUTOMÁTICO</span><h3>${e(car.property_name||'Imóvel rural')} <span class="vv-pill200 ${e(r.overall_status)}">${e(overall)}</span></h3>
           <p>${e(r.executive_summary||'')}</p></div>
-        <div class="vv-result-actions200"><button class="btn ghost" id="vvNewSearch200">Nova busca</button><button class="btn primary" id="vvOpenMap200">Abrir imóvel e mapa</button></div>
+        <div class="vv-result-actions200"><button class="btn ghost" id="vvNewSearch200">Nova busca</button><button class="btn ghost" id="vvDossier200" ${!r.property_id?'disabled':''}>Gerar dossiê</button><button class="btn primary" id="vvOpenMap200">Abrir imóvel e mapa</button></div>
       </div>
       <div class="vv-property-strip200">
         <div><span>CAR</span><strong>${e(car.car||'—')}</strong></div>
@@ -208,6 +208,16 @@
       <div class="vv-evidence-note200">“Sem ocorrência” só é exibido quando a respectiva fonte foi efetivamente consultada. Base indisponível, não configurada ou não consultada permanecem identificadas separadamente.</div>
     `;
     g('vvNewSearch200').onclick=()=>{g('vvSearch200').value='';g('vvSearch200').focus();box.classList.add('hidden')};
+    g('vvDossier200').onclick=async()=>{
+      if(!r.property_id)return;
+      try{
+        setView('car');
+        if(g('carPropertySelect'))g('carPropertySelect').value=String(r.property_id);
+        await selectCarProperty(r.property_id);
+        if(r.car?.car){state.car=r.car;renderCAR(r.car);if(r.car.geojson)drawGeoJSON('car',r.car.geojson)}
+        await exportPackage();
+      }catch(err){toast(String(err),true)}
+    };
     g('vvOpenMap200').onclick=async()=>{
       setView('car');
       if(r.property_id){
