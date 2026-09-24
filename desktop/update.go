@@ -27,54 +27,8 @@ const (
 )
 
 var (
-	updateVersionPattern = regexp.MustCompile(`^\\d+\\.\\d+\\.\\d+package main
-
-import (
-	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"regexp"
-	"os"
-	"os/exec"
-	"path/filepath"
-	goruntime "runtime"
-	"strings"
-	"time"
-
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
-)
-
-)
-	updateSHA256Pattern  = regexp.MustCompile(`^[a-fA-F0-9]{64}package main
-
-import (
-	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"regexp"
-	"os"
-	"os/exec"
-	"path/filepath"
-	goruntime "runtime"
-	"strings"
-	"time"
-
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
-)
-
-)
+	updateVersionPattern = regexp.MustCompile(`^\\d+\\.\\d+\\.\\d+$`)
+	updateSHA256Pattern  = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
 )
 
 type UpdateManifest struct {
@@ -103,7 +57,6 @@ type UpdateInstallResult struct {
 	Started bool   `json:"started"`
 	Message string `json:"message"`
 }
-
 
 var errNoPublishedUpdate = errors.New("nenhuma atualização publicada")
 
@@ -222,8 +175,8 @@ func (a *App) InstallUpdate(info UpdateInfo) (UpdateInstallResult, error) {
 		return UpdateInstallResult{}, errors.New("não há versão mais nova para instalar")
 	}
 
-	// A instalação usa exclusivamente o manifesto obtido novamente pelo backend.
-	// Valores vindos da interface não são usados para decidir URL, hash ou tamanho.
+	// O backend reconsulta o manifesto oficial no instante da instalação.
+	// URL, SHA-256 e tamanho recebidos da interface nunca são confiados.
 	info.AvailableVersion = manifest.Version
 	info.DownloadURL = manifest.DownloadURL
 	info.SHA256 = strings.ToLower(strings.TrimSpace(manifest.SHA256))
