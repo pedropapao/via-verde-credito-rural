@@ -124,16 +124,20 @@ func compareCARHistoryJSON(olderRaw, newerRaw string) []string {
 	if oldR.GeoJSON != "" && newR.GeoJSON != "" && oldR.GeoJSON != newR.GeoJSON {
 		changes = append(changes, "Geometria pública alterada")
 	}
-	if oldR.Environment.IBAMAEmbargoCount != newR.Environment.IBAMAEmbargoCount {
+	if oldR.Environment.IBAMAChecked && newR.Environment.IBAMAChecked &&
+		oldR.Environment.IBAMAEmbargoCount != newR.Environment.IBAMAEmbargoCount {
 		changes = append(changes, fmt.Sprintf("Embargos IBAMA: %d → %d", oldR.Environment.IBAMAEmbargoCount, newR.Environment.IBAMAEmbargoCount))
 	}
-	if oldR.Environment.IndigenousCount != newR.Environment.IndigenousCount {
+	if oldR.Environment.FUNAIChecked && newR.Environment.FUNAIChecked &&
+		oldR.Environment.IndigenousCount != newR.Environment.IndigenousCount {
 		changes = append(changes, fmt.Sprintf("Interseções FUNAI: %d → %d", oldR.Environment.IndigenousCount, newR.Environment.IndigenousCount))
 	}
-	if oldR.Environment.FederalUCCount != newR.Environment.FederalUCCount {
+	if oldR.Environment.ICMBioChecked && newR.Environment.ICMBioChecked &&
+		oldR.Environment.FederalUCCount != newR.Environment.FederalUCCount {
 		changes = append(changes, fmt.Sprintf("UCs federais: %d → %d", oldR.Environment.FederalUCCount, newR.Environment.FederalUCCount))
 	}
-	if oldR.Environment.MCRListed != newR.Environment.MCRListed {
+	if oldR.Environment.MCRChecked && newR.Environment.MCRChecked &&
+		oldR.Environment.MCRListed != newR.Environment.MCRListed {
 		changes = append(changes, fmt.Sprintf("Lista MMA/MCR: %t → %t", oldR.Environment.MCRListed, newR.Environment.MCRListed))
 	}
 	for _, code := range []string{"APP", "RESERVA_LEGAL", "VEGETACAO_NATIVA", "AREA_CONSOLIDADA"} {
