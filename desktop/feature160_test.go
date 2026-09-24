@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -51,5 +52,44 @@ func TestSIGEFComparisonLevels(t *testing.T) {
 	setSIGEFComparison(&p)
 	if p.ComparisonLevel != "intersection" {
 		t.Fatalf("esperava interseção limitada, obteve %+v", p)
+	}
+}
+
+
+func TestSIGEFUnavailableErrorIsUserFriendly192(t *testing.T) {
+	err := sigefPublicUnavailableError([]string{
+		`cliente nativo falhou (Get "https://pamgia.ibama.gov.br/server/rest/services/...": context deadline exceeded)`,
+		`fallback do Windows falhou (curl: (28) Operation timed out after 20015 milliseconds)`,
+	})
+	if err == nil {
+		t.Fatal("esperava erro amigável de indisponibilidade")
+	}
+	got := err.Error()
+	if got != sigefPublicUnavailableMessage {
+		t.Fatalf("mensagem inesperada: %q", got)
+	}
+	for _, technical := range []string{"https://", "context deadline exceeded", "curl", "20015"} {
+		if strings.Contains(strings.ToLower(got), strings.ToLower(technical)) {
+			t.Fatalf("mensagem do usuário expôs detalhe técnico %q: %s", technical, got)
+		}
+	}
+}
+
+func TestSIGEFUnavailableUIIsNotZero192(t *testing.T) {
+	b, err := os.ReadFile("frontend/dist/ui150.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	js := string(b)
+	required := []string{
+		"const sigefAvailable=sigef.available===true;",
+		"sigefAvailable?(s.sigef_parcels||0):'Indisponível'",
+		"sigefAvailable?(sigef.parcel_count||0):'Indisponível'",
+		"fonte pública sem resposta",
+	}
+	for _, want := range required {
+		if !strings.Contains(js, want) {
+			t.Fatalf("ui150.js não contém proteção SIGEF %q", want)
+		}
 	}
 }
