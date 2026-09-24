@@ -111,10 +111,17 @@ func TestSaveAnalyzedCARToClientReusesSessionAndCreatesKML(t *testing.T) {
 	if p.Name != "Fazenda Automática" || p.CARNumber != car {
 		t.Fatalf("imóvel automático inesperado: %#v", p)
 	}
-	if p.KMLPath == "" {
-		t.Fatal("KML automático não foi associado ao imóvel")
+	if p.KMLPath != "" {
+		t.Fatal("KML SICAR automático não pode ocupar o campo de KML externo")
 	}
-	if _, err := os.Stat(p.KMLPath); err != nil {
+	latest, err := a.GetLatestCAR(p.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if latest.AutoKMLPath == "" {
+		t.Fatal("KML SICAR automático não foi registrado no resultado do CAR")
+	}
+	if _, err := os.Stat(latest.AutoKMLPath); err != nil {
 		t.Fatalf("KML automático não existe: %v", err)
 	}
 	history, err := a.GetCARHistory(p.ID)
