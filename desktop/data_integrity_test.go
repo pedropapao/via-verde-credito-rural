@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"strings"
 	"testing"
@@ -46,34 +47,51 @@ func TestEnvironmentalUnavailableDoesNotCreateFalseHistory194(t *testing.T) {
 	}
 }
 
-func TestConfigureSQLiteKeepsForeignKeysAndSingleConnection194(t *testing.T) {
-	db, err := sql.Open("sqlite", t.TempDir()+"/integrity.db")
+func TestSQLitePragmasApplyToEveryPooledConnection194(t *testing.T) {
+	db, err := openSQLiteDatabase(t.TempDir() + "/integrity.db")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	db.SetMaxOpenConns(4)
 
-	if err := configureSQLite(db); err != nil {
+	ctx := context.Background()
+	conn1, err := db.Conn(ctx)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if got := db.Stats().MaxOpenConnections; got != 1 {
-		t.Fatalf("esperava uma única conexão SQLite, recebeu %d", got)
-	}
-
-	var foreignKeys, busyTimeout int
-	if err := db.QueryRow("PRAGMA foreign_keys").Scan(&foreignKeys); err != nil {
+	defer conn1.Close()
+	conn2, err := db.Conn(ctx)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.QueryRow("PRAGMA busy_timeout").Scan(&busyTimeout); err != nil {
-		t.Fatal(err)
-	}
-	if foreignKeys != 1 {
-		t.Fatalf("foreign_keys deveria estar ativo, recebeu %d", foreignKeys)
-	}
-	if busyTimeout < 5000 {
-		t.Fatalf("busy_timeout deveria ser >= 5000 ms, recebeu %d", busyTimeout)
+	defer conn2.Close()
+
+	for i, conn := range []*sql.Conn{conn1, conn2} {
+		var foreignKeys, busyTimeout int
+		var journalMode string
+		if err := conn.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&foreignKeys); err != nil {
+			t.Fatal(err)
+		}
+		if err := conn.QueryRowContext(ctx, "PRAGMA busy_timeout").Scan(&busyTimeout); err != nil {
+			t.Fatal(err)
+		}
+		if err := conn.QueryRowContext(ctx, "PRAGMA journal_mode").Scan(&journalMode); err != nil {
+			t.Fatal(err)
+		}
+		if foreignKeys != 1 {
+			t.Fatalf("conexão %d sem foreign_keys: %d", i+1, foreignKeys)
+		}
+		if busyTimeout < 5000 {
+			t.Fatalf("conexão %d com busy_timeout insuficiente: %d", i+1, busyTimeout)
+		}
+		if !strings.EqualFold(journalMode, "wal") {
+			t.Fatalf("conexão %d fora de WAL: %q", i+1, journalMode)
+		}
 	}
 
+	conn2.Close()
+	conn1.Close()
 	if _, err := db.Exec(`
 		CREATE TABLE parent(id INTEGER PRIMARY KEY);
 		CREATE TABLE child(
@@ -97,14 +115,11 @@ func TestConfigureSQLiteKeepsForeignKeysAndSingleConnection194(t *testing.T) {
 }
 
 func TestPersistCARAnalysisRollsBackWhenHistoryInsertFails194(t *testing.T) {
-	db, err := sql.Open("sqlite", t.TempDir()+"/rollback.db")
+	db, err := openSQLiteDatabase(t.TempDir() + "/rollback.db")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if err := configureSQLite(db); err != nil {
-		t.Fatal(err)
-	}
 
 	// car_checks é propositalmente incompleta: a leitura do histórico funciona,
 	// mas o INSERT completo falha depois do UPDATE de properties.
@@ -149,14 +164,11 @@ func TestPersistCARAnalysisRollsBackWhenHistoryInsertFails194(t *testing.T) {
 }
 
 func TestPersistCARAnalysisCommitsPropertyAndHistoryTogether194(t *testing.T) {
-	db, err := sql.Open("sqlite", t.TempDir()+"/commit.db")
+	db, err := openSQLiteDatabase(t.TempDir() + "/commit.db")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if err := configureSQLite(db); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := db.Exec(`
 		CREATE TABLE properties(
 			id INTEGER PRIMARY KEY,
