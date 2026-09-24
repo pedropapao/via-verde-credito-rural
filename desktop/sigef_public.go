@@ -93,24 +93,36 @@ func querySIGEFPublic(ctx context.Context, carGeoJSON string) (SIGEFPublicResult
 	var sourceErrs []string
 	succeeded := false
 	for _, endpoint := range []string{sigefPublicPrimaryQueryURL, sigefPublicFallbackQueryURL} {
-		params := url.Values{}
-		params.Set("where", "1=1")
-		params.Set("geometry", fmt.Sprintf("%.8f,%.8f,%.8f,%.8f", minLon, minLat, maxLon, maxLat))
-		params.Set("geometryType", "esriGeometryEnvelope")
-		params.Set("inSR", "4326")
-		params.Set("spatialRel", "esriSpatialRelIntersects")
-		params.Set("outFields", "parcela_co,rt,art,situacao_i,codigo_imo,data_submi,data_aprov,status,nome_area,registro_m,registro_d,municipio_,uf_id")
-		params.Set("returnGeometry", "true")
-		params.Set("outSR", "4326")
-		params.Set("resultRecordCount", "200")
-		params.Set("f", "geojson")
+		base := url.Values{}
+		base.Set("where", "1=1")
+		base.Set("geometry", fmt.Sprintf("%.8f,%.8f,%.8f,%.8f", minLon, minLat, maxLon, maxLat))
+		base.Set("geometryType", "esriGeometryEnvelope")
+		base.Set("inSR", "4326")
+		base.Set("spatialRel", "esriSpatialRelIntersects")
 
-		raw, err := fetchEnvironmentalBody(ctx, endpoint+"?"+params.Encode(), "application/geo+json,application/json")
+		count, err := queryArcGISCount(ctx, endpoint, base, fetchEnvironmentalBody)
 		if err != nil {
 			sourceErrs = append(sourceErrs, err.Error())
 			if ctx.Err() != nil {
 				break
 			}
+			continue
+		}
+		features, err := queryArcGISGeoJSONPages(
+			ctx, endpoint, base,
+			"parcela_co,rt,art,situacao_i,codigo_imo,data_submi,data_aprov,status,nome_area,registro_m,registro_d,municipio_,uf_id",
+			200, count, fetchEnvironmentalBody,
+		)
+		if err != nil {
+			sourceErrs = append(sourceErrs, err.Error())
+			if ctx.Err() != nil {
+				break
+			}
+			continue
+		}
+		raw, marshalErr := json.Marshal(carGeoJSON{Type: "FeatureCollection", Features: features})
+		if marshalErr != nil {
+			sourceErrs = append(sourceErrs, marshalErr.Error())
 			continue
 		}
 		parsed, parseErr := parseSIGEFPublicGeoJSON(raw, carGeoJSON)
