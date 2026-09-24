@@ -1,0 +1,238 @@
+package main
+
+import (
+	"context"
+	"database/sql"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestEnvironmentalUnavailableDoesNotCreateFalseHistory194(t *testing.T) {
+	oldR := CARResult{
+		CAR: "MG-3100000-AAAA.BBBB.CCCC.DDDD.EEEE.FFFF.0000.1111",
+		Status: "Ativo",
+		AreaHa: 50,
+		Environment: EnvironmentalSummary{
+			IBAMAChecked:      true,
+			IBAMAEmbargoCount: 1,
+			FUNAIChecked:      true,
+			IndigenousCount:   0,
+			ICMBioChecked:     true,
+			FederalUCCount:    0,
+			MCRChecked:        true,
+			MCRListed:         false,
+		},
+	}
+	current := oldR
+	current.Environment.IBAMAChecked = false
+	current.Environment.IBAMAEmbargoCount = 0
+
+	if carResultMateriallyChanged(marshalJSON(oldR), current) {
+		t.Fatal("indisponibilidade do IBAMA não pode virar mudança material 1 → 0")
+	}
+	changes := strings.Join(compareCARHistoryJSON(marshalJSON(oldR), marshalJSON(current)), " | ")
+	if strings.Contains(changes, "Embargos IBAMA") {
+		t.Fatalf("histórico registrou falso desaparecimento do embargo: %s", changes)
+	}
+
+	current = oldR
+	current.Environment.IBAMAEmbargoCount = 0
+	if !carResultMateriallyChanged(marshalJSON(oldR), current) {
+		t.Fatal("mudança 1 → 0 com IBAMA consultado nas duas execuções deve ser material")
+	}
+	changes = strings.Join(compareCARHistoryJSON(marshalJSON(oldR), marshalJSON(current)), " | ")
+	if !strings.Contains(changes, "Embargos IBAMA: 1 → 0") {
+		t.Fatalf("mudança ambiental confirmada não apareceu no histórico: %s", changes)
+	}
+}
+
+func TestSQLitePragmasApplyToEveryPooledConnection194(t *testing.T) {
+	db, err := openSQLiteDatabase(t.TempDir() + "/integrity.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(4)
+
+	ctx := context.Background()
+	conn1, err := db.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn1.Close()
+	conn2, err := db.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn2.Close()
+
+	for i, conn := range []*sql.Conn{conn1, conn2} {
+		var foreignKeys, busyTimeout int
+		var journalMode string
+		if err := conn.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&foreignKeys); err != nil {
+			t.Fatal(err)
+		}
+		if err := conn.QueryRowContext(ctx, "PRAGMA busy_timeout").Scan(&busyTimeout); err != nil {
+			t.Fatal(err)
+		}
+		if err := conn.QueryRowContext(ctx, "PRAGMA journal_mode").Scan(&journalMode); err != nil {
+			t.Fatal(err)
+		}
+		if foreignKeys != 1 {
+			t.Fatalf("conexão %d sem foreign_keys: %d", i+1, foreignKeys)
+		}
+		if busyTimeout < 5000 {
+			t.Fatalf("conexão %d com busy_timeout insuficiente: %d", i+1, busyTimeout)
+		}
+		if !strings.EqualFold(journalMode, "wal") {
+			t.Fatalf("conexão %d fora de WAL: %q", i+1, journalMode)
+		}
+	}
+
+	conn2.Close()
+	conn1.Close()
+	if _, err := db.Exec(`
+		CREATE TABLE parent(id INTEGER PRIMARY KEY);
+		CREATE TABLE child(
+			id INTEGER PRIMARY KEY,
+			parent_id INTEGER NOT NULL,
+			FOREIGN KEY(parent_id) REFERENCES parent(id) ON DELETE CASCADE
+		);
+		INSERT INTO parent(id) VALUES(1);
+		INSERT INTO child(id,parent_id) VALUES(1,1);
+		DELETE FROM parent WHERE id=1;
+	`); err != nil {
+		t.Fatal(err)
+	}
+	var children int
+	if err := db.QueryRow("SELECT COUNT(*) FROM child").Scan(&children); err != nil {
+		t.Fatal(err)
+	}
+	if children != 0 {
+		t.Fatalf("ON DELETE CASCADE não funcionou; sobraram %d registro(s)", children)
+	}
+}
+
+func TestPersistCARAnalysisRollsBackWhenHistoryInsertFails194(t *testing.T) {
+	db, err := openSQLiteDatabase(t.TempDir() + "/rollback.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	// car_checks é propositalmente incompleta: a leitura do histórico funciona,
+	// mas o INSERT completo falha depois do UPDATE de properties.
+	if _, err := db.Exec(`
+		CREATE TABLE properties(
+			id INTEGER PRIMARY KEY,
+			car_number TEXT NOT NULL DEFAULT '',
+			last_car_json TEXT NOT NULL DEFAULT '',
+			updated_at TEXT NOT NULL DEFAULT ''
+		);
+		CREATE TABLE car_checks(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			property_id INTEGER NOT NULL,
+			checked_at TEXT NOT NULL DEFAULT '',
+			result_json TEXT NOT NULL DEFAULT ''
+		);
+		INSERT INTO properties(id,car_number,last_car_json,updated_at)
+		VALUES(1,'CAR-ANTIGO','ORIGINAL','2026-09-24T00:00:00Z');
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	app := &App{db: db}
+	result := CARResult{
+		CAR:       "MG-3100000-AAAA.BBBB.CCCC.DDDD.EEEE.FFFF.0000.1111",
+		Found:     true,
+		Status:    "Ativo",
+		CheckedAt: time.Now().Format(time.RFC3339),
+	}
+	err = app.persistCARAnalysis(1, result.CAR, &result)
+	if err == nil {
+		t.Fatal("esperava falha no INSERT do histórico")
+	}
+
+	var carNumber, lastRaw string
+	if err := db.QueryRow("SELECT car_number,last_car_json FROM properties WHERE id=1").Scan(&carNumber, &lastRaw); err != nil {
+		t.Fatal(err)
+	}
+	if carNumber != "CAR-ANTIGO" || lastRaw != "ORIGINAL" {
+		t.Fatalf("UPDATE deveria ter sido revertido; car=%q last=%q", carNumber, lastRaw)
+	}
+}
+
+func TestPersistCARAnalysisCommitsPropertyAndHistoryTogether194(t *testing.T) {
+	db, err := openSQLiteDatabase(t.TempDir() + "/commit.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`
+		CREATE TABLE properties(
+			id INTEGER PRIMARY KEY,
+			car_number TEXT NOT NULL DEFAULT '',
+			last_car_json TEXT NOT NULL DEFAULT '',
+			updated_at TEXT NOT NULL DEFAULT ''
+		);
+		CREATE TABLE car_checks(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			property_id INTEGER NOT NULL,
+			car_number TEXT NOT NULL,
+			checked_at TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT '',
+			condition_text TEXT NOT NULL DEFAULT '',
+			area_ha REAL NOT NULL DEFAULT 0,
+			municipality TEXT NOT NULL DEFAULT '',
+			geometry_json TEXT NOT NULL DEFAULT '',
+			result_json TEXT NOT NULL DEFAULT ''
+		);
+		INSERT INTO properties(id) VALUES(1);
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	app := &App{db: db}
+	result := CARResult{
+		CAR:       "MG-3100000-AAAA.BBBB.CCCC.DDDD.EEEE.FFFF.0000.1111",
+		Found:     true,
+		Status:    "Ativo",
+		AreaHa:    42.5,
+		CheckedAt: time.Now().Format(time.RFC3339),
+	}
+	if err := app.persistCARAnalysis(1, result.CAR, &result); err != nil {
+		t.Fatal(err)
+	}
+	if !result.SnapshotSaved {
+		t.Fatal("primeira consulta deveria criar snapshot")
+	}
+
+	var propertyRaw string
+	var checks int
+	if err := db.QueryRow("SELECT last_car_json FROM properties WHERE id=1").Scan(&propertyRaw); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow("SELECT COUNT(*) FROM car_checks WHERE property_id=1").Scan(&checks); err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(propertyRaw) == "" || checks != 1 {
+		t.Fatalf("gravação transacional incompleta: last_car_json=%q checks=%d", propertyRaw, checks)
+	}
+
+	repeat := result
+	repeat.CheckedAt = time.Now().Add(time.Minute).Format(time.RFC3339)
+	repeat.SnapshotSaved = false
+	if err := app.persistCARAnalysis(1, repeat.CAR, &repeat); err != nil {
+		t.Fatal(err)
+	}
+	if repeat.SnapshotSaved {
+		t.Fatal("consulta repetida sem mudança não deveria criar novo snapshot")
+	}
+	if err := db.QueryRow("SELECT COUNT(*) FROM car_checks WHERE property_id=1").Scan(&checks); err != nil {
+		t.Fatal(err)
+	}
+	if checks != 1 {
+		t.Fatalf("consulta repetida criou histórico duplicado: %d registros", checks)
+	}
+}

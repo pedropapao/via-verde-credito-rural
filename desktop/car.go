@@ -263,21 +263,80 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 			result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "CAR já usado", Detail: "Este número também está vinculado a outro imóvel no cadastro local."})
 		}
 
-		var previousRaw string
-		_ = a.db.QueryRow(`SELECT result_json FROM car_checks WHERE property_id=? ORDER BY checked_at DESC,id DESC LIMIT 1`, propertyID).Scan(&previousRaw)
-		result.SnapshotSaved = strings.TrimSpace(previousRaw) == "" || carResultMateriallyChanged(previousRaw, result)
-		blob := marshalJSON(result)
-		_, _ = a.db.Exec(`UPDATE properties SET car_number=?,last_car_json=?,updated_at=? WHERE id=?`, car, blob, time.Now().Format(time.RFC3339), propertyID)
-		if result.SnapshotSaved {
-			_, _ = a.db.Exec(`INSERT INTO car_checks(property_id,car_number,checked_at,status,condition_text,area_ha,municipality,geometry_json,result_json) VALUES(?,?,?,?,?,?,?,?,?)`, propertyID, car, result.CheckedAt, result.Status, result.Condition, result.AreaHa, result.Municipality, result.GeoJSON, blob)
-		} else {
-			result.Checks = append(result.Checks, QualityCheck{Level: "ok", Title: "Histórico sem duplicação", Detail: "A consulta não alterou o CAR; nenhum registro repetido foi criado."})
+		if err := a.persistCARAnalysis(propertyID, car, &result); err != nil {
+			result.Checks = append(result.Checks, QualityCheck{Level: "error", Title: "Gravação local", Detail: "A consulta foi concluída, mas o resultado não pôde ser salvo no banco local: " + err.Error()})
+			return result, fmt.Errorf("consulta concluída, mas não foi possível salvar o resultado local: %w", err)
 		}
 	}
 	if result.Found && result.HasGeometry {
 		a.saveLastCARSession(result)
 	}
 	return result, nil
+}
+
+func (a *App) persistCARAnalysis(propertyID int64, car string, result *CARResult) error {
+	if a == nil || a.db == nil {
+		return errors.New("banco local indisponível")
+	}
+	if propertyID <= 0 || result == nil {
+		return errors.New("resultado de CAR inválido")
+	}
+
+	tx, err := a.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var previousRaw string
+	if err := tx.QueryRow(`
+		SELECT COALESCE((
+			SELECT result_json FROM car_checks
+			WHERE property_id=?
+			ORDER BY checked_at DESC,id DESC
+			LIMIT 1
+		), '')
+	`, propertyID).Scan(&previousRaw); err != nil {
+		return fmt.Errorf("não foi possível ler o histórico anterior: %w", err)
+	}
+
+	result.SnapshotSaved = strings.TrimSpace(previousRaw) == "" || carResultMateriallyChanged(previousRaw, *result)
+	if !result.SnapshotSaved {
+		result.Checks = append(result.Checks, QualityCheck{
+			Level: "ok", Title: "Histórico sem duplicação",
+			Detail: "A consulta não alterou o CAR; nenhum registro repetido foi criado.",
+		})
+	}
+	blob := marshalJSON(*result)
+
+	res, err := tx.Exec(`
+		UPDATE properties
+		SET car_number=?,last_car_json=?,updated_at=?
+		WHERE id=?
+	`, car, blob, time.Now().Format(time.RFC3339), propertyID)
+	if err != nil {
+		return fmt.Errorf("não foi possível atualizar o imóvel: %w", err)
+	}
+	if rows, err := res.RowsAffected(); err == nil && rows == 0 {
+		return errors.New("imóvel não localizado para gravação")
+	}
+
+	if result.SnapshotSaved {
+		if _, err := tx.Exec(`
+			INSERT INTO car_checks(
+				property_id,car_number,checked_at,status,condition_text,
+				area_ha,municipality,geometry_json,result_json
+			) VALUES(?,?,?,?,?,?,?,?,?)
+		`, propertyID, car, result.CheckedAt, result.Status, result.Condition,
+			result.AreaHa, result.Municipality, result.GeoJSON, blob); err != nil {
+			return fmt.Errorf("não foi possível registrar o histórico do CAR: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("não foi possível confirmar a gravação do CAR: %w", err)
+	}
+	return nil
 }
 
 func samePlace(a, b string) bool {

@@ -85,10 +85,7 @@ func carResultMateriallyChanged(previousRaw string, current CARResult) bool {
 	if geometryFingerprint(previous.GeoJSON) != geometryFingerprint(current.GeoJSON) {
 		return true
 	}
-	if previous.Environment.IBAMAEmbargoCount != current.Environment.IBAMAEmbargoCount ||
-		previous.Environment.IndigenousCount != current.Environment.IndigenousCount ||
-		previous.Environment.FederalUCCount != current.Environment.FederalUCCount ||
-		previous.Environment.MCRListed != current.Environment.MCRListed {
+	if environmentalEvidenceChanged(previous.Environment, current.Environment) {
 		return true
 	}
 	for _, code := range []string{"APP", "RESERVA_LEGAL", "VEGETACAO_NATIVA", "AREA_CONSOLIDADA", "USO_RESTRITO", "SERVIDAO_ADMINISTRATIVA"} {
@@ -97,6 +94,28 @@ func carResultMateriallyChanged(previousRaw string, current CARResult) bool {
 		if oldOK != newOK || oldM.Available != newM.Available || absFloat(oldM.AreaHa-newM.AreaHa) > 0.01 {
 			return true
 		}
+	}
+	return false
+}
+
+func environmentalEvidenceChanged(previous, current EnvironmentalSummary) bool {
+	// Disponibilidade da fonte não é mudança ambiental. Só comparamos valores
+	// quando a mesma fonte respondeu nas duas consultas.
+	if previous.IBAMAChecked && current.IBAMAChecked &&
+		previous.IBAMAEmbargoCount != current.IBAMAEmbargoCount {
+		return true
+	}
+	if previous.FUNAIChecked && current.FUNAIChecked &&
+		previous.IndigenousCount != current.IndigenousCount {
+		return true
+	}
+	if previous.ICMBioChecked && current.ICMBioChecked &&
+		previous.FederalUCCount != current.FederalUCCount {
+		return true
+	}
+	if previous.MCRChecked && current.MCRChecked &&
+		previous.MCRListed != current.MCRListed {
+		return true
 	}
 	return false
 }
