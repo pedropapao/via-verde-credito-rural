@@ -166,7 +166,7 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 		if !force {
 			if cached, ok := loadEnvironmentalIntelligenceCache(cachePath, environmentalIntelligenceCacheAge); ok {
 				cached = sanitizeEnvironmentalAutoOnly(cached)
-				if environmentalProfileHasData(cached.Profile) {
+				if environmentalIntelligenceCacheUsable(cached) {
 					cached.UsedCache = true
 					_ = saveEnvironmentalIntelligenceCache(cachePath, cached)
 					return cached, nil
@@ -213,11 +213,13 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 	mb, err := a.QueryMapBiomasCAR(car.CAR)
 	if err != nil {
 		out.Warnings = append(out.Warnings, "MapBiomas Alerta: "+err.Error())
-		mb = MapBiomasCARSummary{Connected:a.GetMapBiomasAlertStatus().Connected, Message:err.Error()}
+		if strings.TrimSpace(mb.Message) == "" {
+			mb.Message = err.Error()
+		}
 	}
 	out.MapBiomas = mb
 
-	if mb.Connected && mb.TotalAlerts > 0 {
+	if mb.Connected && mb.Available && mb.TotalAlerts > 0 {
 		details, detailErr := a.queryMapBiomasEnvironmentalDetails(car.CAR)
 		if detailErr != nil {
 			out.Warnings = append(out.Warnings, "Detalhamento MapBiomas: "+detailErr.Error())
@@ -249,7 +251,7 @@ func (a *App) GetEnvironmentalIntelligence(propertyID int64, force bool) (Enviro
 	if !mb.Connected {
 		out.Warnings = append(out.Warnings, "MapBiomas Alerta não está conectado; a análise profissional de alertas fica limitada às demais camadas públicas já carregadas.")
 	}
-	if len(out.Alerts) == 0 && mb.Connected {
+	if len(out.Alerts) == 0 && mb.Connected && mb.Available {
 		out.Warnings = append(out.Warnings, "Nenhum alerta foi retornado para o CAR nesta consulta. Isso não equivale a certificado de regularidade ambiental.")
 	}
 	out.Warnings = append(out.Warnings, refreshedEnv.Warnings...)
@@ -331,7 +333,10 @@ func (a *App) queryMapBiomasEnvironmentalDetails(car string) ([]EnvironmentalAle
 		Variables: map[string]any{"carCodes":[]string{car}, "carCode":car},
 	}, &resp)
 	if err != nil {
-		return nil, err
+		if isMapBiomasAuthError(err) {
+			return nil, err
+		}
+		return nil, mapBiomasUnavailableError(err)
 	}
 	if len(resp.Errors) > 0 {
 		return nil, errors.New(joinGraphQLErrors(resp.Errors))
@@ -576,6 +581,19 @@ func normalizeLegacyEnvironmentalCache(out EnvironmentalIntelligenceResult) Envi
 	clean = append(clean, out.Themes.Warnings...)
 	out.Warnings = uniqueStrings(clean)
 	return out
+}
+
+func environmentalIntelligenceCacheUsable(out EnvironmentalIntelligenceResult) bool {
+	if !environmentalProfileHasData(out.Profile) {
+		return false
+	}
+	// Não reutiliza cache de uma tentativa em que a conta estava conectada,
+	// mas a API do MapBiomas não respondeu. Na próxima abertura, tenta de novo.
+	if out.MapBiomas.Connected && !out.MapBiomas.Available &&
+		out.MapBiomas.TotalAlerts == 0 && !out.MapBiomas.Found {
+		return false
+	}
+	return true
 }
 
 func environmentalProfileHasData(p EnvironmentalProfile) bool {

@@ -236,7 +236,8 @@ func environmentalMapPage(p Property,car CARResult,intel EnvironmentalIntelligen
 	envSourceRow(&c,&y,"ESA WorldCover",coverStatus,coverDetail)
 	fireStatus,fireValue,fireDetail:=environmentalFireReportStatus(intel.Profile.Fire)
 	envSourceRow(&c,&y,"INPE / Programa Queimadas",fireStatus,fireValue+" • "+fireDetail)
-	envSourceRow(&c,&y,"MapBiomas Alerta",sourceState(intel.MapBiomas.Connected,intel.MapBiomas.TotalAlerts),fmt.Sprintf("%d alerta(s); %s ha somados",intel.MapBiomas.TotalAlerts,fmtBR(intel.MapBiomas.TotalAreaHa,2)))
+	mbStatus,mbDetail:=mapBiomasReportState(intel.MapBiomas)
+	envSourceRow(&c,&y,"MapBiomas Alerta",mbStatus,mbDetail)
 	envSourceRow(&c,&y,"IBAMA / PAMGIA",sourceState(intel.Environment.IBAMAChecked,intel.Environment.IBAMAEmbargoCount),fmt.Sprintf("%d interseção(ões) com embargo no CAR",intel.Environment.IBAMAEmbargoCount))
 	envSourceRow(&c,&y,"FUNAI",sourceState(intel.Environment.FUNAIChecked,intel.Environment.IndigenousCount),fmt.Sprintf("%d interseção(ões) com Terra Indígena no CAR",intel.Environment.IndigenousCount))
 	envSourceRow(&c,&y,"ICMBio",sourceState(intel.Environment.ICMBioChecked,intel.Environment.FederalUCCount),fmt.Sprintf("%d interseção(ões) com UC federal no CAR",intel.Environment.FederalUCCount))
@@ -344,12 +345,25 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 	return c.b.String()
 }
 
+func mapBiomasReportState(m MapBiomasCARSummary)(string,string){
+	if !m.Connected {
+		return "Não conectado",firstNonEmptyText(m.Message,"Conta MapBiomas Alerta não conectada.")
+	}
+	if !m.Available {
+		return "Base indisponível",firstNonEmptyText(m.Message,mapBiomasUnavailableMessage)
+	}
+	return sourceState(true,m.TotalAlerts),fmt.Sprintf("%d alerta(s); %s ha somados",m.TotalAlerts,fmtBR(m.TotalAreaHa,2))
+}
+
 func environmentalConclusionText(intel EnvironmentalIntelligenceResult,alerts []EnvironmentalAlertDetail)string{
 	s:=summarizeEnvironmentalEvidence(alerts)
 	text:=""
-	if len(alerts)==0 {
+	if !intel.MapBiomas.Connected {
+		text="A consulta MapBiomas Alerta não estava autenticada nesta execução."
+	} else if !intel.MapBiomas.Available {
+		text="A base do MapBiomas Alerta ficou indisponível nesta execução; a ausência de resultado não significa ausência de alertas."
+	} else if len(alerts)==0 {
 		text="A consulta não retornou alerta MapBiomas vinculado ao CAR no momento da análise."
-		if !intel.MapBiomas.Connected {text="A consulta MapBiomas Alerta não estava autenticada nesta execução."}
 	} else {
 		text=fmt.Sprintf("Foram identificados %d alerta(s) MapBiomas vinculados ao CAR, com %.4f ha somados como área estimada dentro do imóvel.",s.Alerts,s.AlertAreaInCARHa)
 	}

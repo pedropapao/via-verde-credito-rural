@@ -117,7 +117,10 @@ func (a *App) BuildPropertyXRay(propertyID int64, force bool) (PropertyXRay, err
 	}
 	if alerts.e != nil {
 		out.Warnings = append(out.Warnings, "MapBiomas Alerta: "+alerts.e.Error())
-		out.MapBiomas = MapBiomasCARSummary{Connected: a.GetMapBiomasAlertStatus().Connected, Message: alerts.e.Error()}
+		out.MapBiomas = alerts.v
+		if strings.TrimSpace(out.MapBiomas.Message) == "" {
+			out.MapBiomas.Message = alerts.e.Error()
+		}
 	} else {
 		out.MapBiomas = alerts.v
 	}
