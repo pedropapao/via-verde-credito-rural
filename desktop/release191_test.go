@@ -6,15 +6,15 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion195(t *testing.T) {
-	if AppVersion != "1.9.5" {
+func TestReleaseVersion200(t *testing.T) {
+	if AppVersion != "2.0.0" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "1.9.5"`) {
+	if !strings.Contains(string(b), `"productVersion": "2.0.0"`) {
 		t.Fatal("wails.json não está alinhado com a versão 1.9.5")
 	}
 }
