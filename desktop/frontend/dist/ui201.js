@@ -66,7 +66,7 @@
         ['car','⌖','Mapa','map-layout'],
         ['car','▤','Relatórios','report-panel'],
         ['car','□','Dossiês','report-panel'],
-      ].map((x,i)=>'<button class="nav-item '+(i===0?'active':'')+'" data-vv-view201="'+x[0]+'" data-vv-section201="'+x[3]+'"><span>'+x[1]+'</span> '+x[2]+'</button>').join('');
+      ].map((x,i)=>'<button class="nav-item '+(i===0?'active':'')+'" data-view="'+x[0]+'" data-vv-view201="'+x[0]+'" data-vv-section201="'+x[3]+'"><span>'+x[1]+'</span> '+x[2]+'</button>').join('');
       nav.querySelectorAll('[data-vv-view201]').forEach(b=>b.onclick=()=>{
         const view=b.dataset.vvView201;
         document.querySelectorAll('.sidebar .nav-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');
