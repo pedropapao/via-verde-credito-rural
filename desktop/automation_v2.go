@@ -68,9 +68,10 @@ type CARAutomationResult struct {
 	OverallStatus     string                         `json:"overall_status"`
 	ExecutiveSummary  string                         `json:"executive_summary"`
 	CAR               CARResult                      `json:"car"`
-	XRay              PropertyXRay                   `json:"xray"`
+	XRay              PropertyXRay                    `json:"xray"`
 	Environmental     EnvironmentalIntelligenceResult `json:"environmental"`
-	Sources           []AutomationSourceStatus       `json:"sources"`
+	BCB               BCBPublicContext                `json:"bcb"`
+	Sources           []AutomationSourceStatus        `json:"sources"`
 	Warnings          []string                       `json:"warnings"`
 }
 
@@ -246,11 +247,16 @@ func (a *App) RunCARAutomation(input string, propertyID int64, force bool) (CARA
 		v EnvironmentalIntelligenceResult
 		e error
 	}
+	type bcbResp struct {
+		v BCBPublicContext
+		e error
+	}
 	xrayCh := make(chan xrayResp, 1)
 	envCh := make(chan envResp, 1)
+	bcbCh := make(chan bcbResp, 1)
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 	go func() {
 		defer wg.Done()
 		defer func() {
@@ -271,9 +277,19 @@ func (a *App) RunCARAutomation(input string, propertyID int64, force bool) (CARA
 		v, e := a.GetEnvironmentalIntelligence(propertyID, force)
 		envCh <- envResp{v: v, e: e}
 	}()
+	go func() {
+		defer wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				bcbCh <- bcbResp{e: fmt.Errorf("falha isolada no contexto público BCB: %v", r)}
+			}
+		}()
+		v, e := a.GetBCBPublicContext(propertyID, force)
+		bcbCh <- bcbResp{v: v, e: e}
+	}()
 	wg.Wait()
 
-	xr, ev := <-xrayCh, <-envCh
+	xr, ev, bc := <-xrayCh, <-envCh, <-bcbCh
 	if xr.e != nil {
 		out.Warnings = append(out.Warnings, "Raio X: "+xr.e.Error())
 	} else {
@@ -286,6 +302,11 @@ func (a *App) RunCARAutomation(input string, propertyID int64, force bool) (CARA
 		out.Environmental = ev.v
 		out.Warnings = append(out.Warnings, ev.v.Warnings...)
 	}
+	out.BCB = bc.v
+	if bc.e != nil {
+		out.Warnings = append(out.Warnings, "Banco Central: "+bc.e.Error())
+	}
+	out.Warnings = append(out.Warnings, bc.v.Warnings...)
 
 	out.Sources = automationSources(out)
 	out.OverallStatus = automationOverallStatus(out)
@@ -540,6 +561,17 @@ func automationSources(out CARAutomationResult) []AutomationSourceStatus {
 		cs.Status, cs.Detail = "ok", "Nenhuma operação retornada no recorte analisado."
 	}
 	sources = append(sources, cs)
+
+	for _, b := range out.BCB.Sources {
+		status := strings.TrimSpace(b.Status)
+		if status == "" || status == "pending" {
+			status = "unavailable"
+		}
+		sources = append(sources, AutomationSourceStatus{
+			Key: "bcb_" + b.Key, Label: "BCB • " + b.Label,
+			Status: status, Detail: b.Detail, SourceURL: b.SourceURL,
+		})
+	}
 	return sources
 }
 
