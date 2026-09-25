@@ -57,7 +57,7 @@
       <button class="vv204-brand" id="vv204Home">
         <span class="vv204-brandmark">${icon('leaf')}</span>
         <span><strong>ViaVerdeCAR</strong><small>CONSULTA E ANÁLISE RURAL</small></span>
-        <b id="vv204Version">2.0.4</b>
+        <b id="vv204Version">2.0.5</b>
       </button>
       <div class="vv204-searchbar">
         ${icon('search')}
