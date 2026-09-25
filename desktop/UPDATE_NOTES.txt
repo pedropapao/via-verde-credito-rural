@@ -1,13 +1,16 @@
-ViaVerdeCAR 2.0.2 — correção visual da interface
+ViaVerdeCAR 2.0.3 — Banco Central integrado ao Raio X
 
-• Corrige os ícones vazios vistos no Windows: a interface principal agora usa SVG embutido no próprio aplicativo e não depende de símbolos Unicode ou da fonte instalada no sistema.
-• A Visão Geral foi reconstruída de verdade, em vez de apenas receber elementos sobre a tela antiga.
-• Sidebar verde reorganizada com Início, Clientes, Imóveis, Consulta CAR, Raio X Ambiental, Raio X Fundiário, Crédito Rural, Mapa, Relatórios e Dossiês.
-• Barra superior fixa com busca única por CAR, CPF, CNPJ, imóvel, matrícula ou município.
-• Após analisar um CAR, a Visão Geral apresenta cinco cards: CAR, Ambiental, Fundiário, Crédito Rural e Atenções.
-• Área central com Resumo do Imóvel, mapa grande com camadas reais e Linha do Tempo.
-• Área inferior com Raio X Ambiental, SIGEF/INCRA, SICOR e Ações Rápidas.
-• O mapa usa somente geometrias reais retornadas pelas fontes; nenhum alerta é desenhado por aproximação visual inventada.
-• Mantidas as correções 2.0.1 do SICAR: localizado, parcial, indisponível, não localizado e cache local são estados distintos.
-• Mantida a pesquisa CPF/CNPJ com vínculos locais e caminhos oficiais permitidos.
-• Banco SQLite, clientes, imóveis, KMLs, histórico, análises, relatórios e dossiês foram preservados.
+• Integra um novo módulo de Dados Abertos do Banco Central ao fluxo automático do CAR, sem exigir login, token ou cadastro do usuário nas fontes públicas utilizadas.
+• Reaproveita o SICOR/MDCR já existente e amplia o contexto de mercado sem duplicar a lógica de operações vinculadas ao CAR.
+• MDCR/SICOR: produtos de custeio e investimento no município, instituições e programas por UF e fontes de recursos do crédito rural.
+• SGS/BCB: séries públicas de taxas rurais PF/PJ, saldos, concessões e inadimplência, com valor mais recente, valor anterior e variação.
+• Taxas por instituição: consulta a publicação oficial de médias por instituição/modalidade e mantém somente modalidades identificadas como rurais/agro quando retornadas.
+• Entidades supervisionadas: cruza os nomes relevantes do contexto MDCR com o cadastro oficial de instituições autorizadas pelo Banco Central.
+• IFData: consulta automaticamente a data-base trimestral disponível e relaciona cadastro, segmento, atividade e situação das instituições relevantes.
+• SCR.data: fica identificado como fonte oficial agregada mensal por UF. Os arquivos completos não são baixados silenciosamente no Raio X porque são volumosos e não servem para consulta de dívida individual por CPF/CNPJ.
+• O novo painel “Banco Central • Dados Abertos” aparece na Visão Geral com mercado municipal, taxas, contexto nacional, instituições, IFData, programas, fontes e SCR.data.
+• Cada fonte BCB mantém status próprio: disponível, vazia no recorte, indisponível ou sob demanda. Falha de uma fonte não derruba as demais.
+• Cache local BCB de 8 horas reduz chamadas repetidas e acelera consultas do mesmo município.
+• A Inteligência de Crédito mantém o contexto agregado MDCR disponível mesmo quando nenhuma operação pública vinculada ao CAR é localizada.
+• Nenhum dado individual de SCR, dívida privada, limite bancário ou decisão de crédito é inferido pelo sistema.
+• Banco SQLite, clientes, imóveis, KMLs, histórico, Raio X ambiental/fundiário, MapBiomas, SIGEF, SICOR, relatórios e dossiês foram preservados.
