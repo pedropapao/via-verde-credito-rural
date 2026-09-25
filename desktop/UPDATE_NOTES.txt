@@ -1,19 +1,12 @@
-ViaVerdeCAR 2.0.4 — Interface Operacional
+ViaVerdeCAR 2.0.5 — PDFs profissionais
 
-• Reorganiza a experiência principal sem alterar as integrações e dados da 2.0.3.
-• Remove a sidebar fixa da tela principal para devolver largura ao conteúdo.
-• Mantém uma barra superior com ViaVerdeCAR, busca única, Cadastros, Histórico, Configurações e Ajuda.
-• Aumenta a tipografia, espaçamento, altura das linhas e tamanho dos números importantes.
-• Mantém os cinco indicadores superiores: CAR, Ambiental, Fundiário, Crédito Rural e Atenções.
-• A navegação principal passa a ser horizontal e em uma única tela: Resumo, CAR, Ambiental, Fundiário, Crédito Rural, Mapa, Documentos e Relatórios.
-• Resumo: mostra somente dados essenciais do imóvel, mapa, três resultados principais, ações rápidas e linha do tempo.
-• CAR: concentra ficha pública, situação da consulta SICAR, geometria, KML e vínculo com cliente.
-• Ambiental: amplia a lista de bases e o mapa ambiental; base indisponível continua diferente de sem ocorrência.
-• Fundiário: amplia SIGEF/INCRA, cobertura e registros.
-• Crédito Rural: organiza SICOR e todo o módulo Banco Central da 2.0.3 em painéis legíveis.
-• Mapa: passa a ocupar uma área grande própria com controle de camadas.
-• Documentos: centraliza KML SICAR, KML externo, evidências e dossiê.
-• Relatórios: centraliza demonstrativo CAR, laudo ambiental, evidências e dossiê completo.
-• Clientes, imóveis e Configurações continuam acessíveis pelo topo, sem depender da antiga sidebar.
-• ui201 e ui202 permanecem versionadas no repositório para rollback, mas não são carregadas na 2.0.4.
-• Banco SQLite, CAR, KML, MapBiomas, IBAMA, FUNAI, ICMBio, INPE, SIGEF, SICOR, BCB, relatórios, dossiês e atualizador foram preservados.
+• Mantém a interface operacional 2.0.4 e concentra esta versão somente na qualidade das saídas técnicas.
+• Demonstrativo CAR: novo PDF profissional em 2 páginas, com identificação do imóvel, situação SICAR, métricas cadastrais, mapa vetorial, KML e comparação geométrica quando disponível.
+• Laudo Ambiental: preserva o relatório multipágina existente e passa a usar a mesma identidade visual profissional da Via Verde.
+• Caderno de Evidências Ambientais: novo PDF em 3 páginas com status das bases, MapBiomas, INPE, IBAMA, FUNAI, ICMBio, MMA/MCR, temas SICAR, mapa, alertas, fontes, avisos e limitações.
+• Dossiê Técnico do Imóvel: novo PDF consolidado em 7 páginas com CAR, mapa, ambiental, SIGEF/INCRA, SICOR, Banco Central, fontes e ressalvas.
+• A aba Relatórios passa a entregar quatro PDFs: Demonstrativo CAR, Laudo Ambiental, Caderno de Evidências e Dossiê Técnico.
+• O JSON de evidências continua disponível na aba Documentos para rastreabilidade estruturada.
+• O pacote ZIP técnico continua disponível na aba Documentos; o novo Dossiê PDF não elimina essa saída.
+• Todos os documentos diferenciam ocorrência, ausência confirmada, fonte indisponível e consulta parcial.
+• Banco SQLite, clientes, imóveis, CAR, KML, MapBiomas, SIGEF, SICOR, BCB, análises e histórico permanecem preservados.
