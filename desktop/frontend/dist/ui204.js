@@ -514,18 +514,18 @@
     return `
       <div class="vv204-tab-title"><div><span>RELATÓRIOS</span><h2>Saídas técnicas do imóvel</h2><p>Gere somente o documento necessário para o trabalho atual.</p></div></div>
       <div class="vv204-report-grid">
-        <article class="vv204-report-card"><span>${icon('print')}</span><h3>Demonstrativo CAR</h3><p>Cadastro, geometria, comparação e síntese técnica.</p><button id="vv204ReportCAR" ${can?'':'disabled'}>Gerar PDF técnico</button></article>
-        <article class="vv204-report-card"><span>${icon('tree')}</span><h3>Laudo Ambiental</h3><p>MapBiomas, INPE e cruzamentos ambientais públicos.</p><button id="vv204ReportEnv" ${can?'':'disabled'}>Gerar laudo ambiental</button></article>
-        <article class="vv204-report-card"><span>${icon('database')}</span><h3>Evidências Ambientais</h3><p>Arquivo JSON para rastreabilidade dos dados consultados.</p><button id="vv204ReportEvidence" ${can?'':'disabled'}>Exportar evidências</button></article>
-        <article class="vv204-report-card featured"><span>${icon('file')}</span><h3>Dossiê do Imóvel</h3><p>Pacote completo disponível no fluxo atual do ViaVerdeCAR.</p><button id="vv204ReportPackage" ${can?'':'disabled'}>Gerar dossiê completo</button></article>
+        <article class="vv204-report-card"><span>${icon('print')}</span><h3>Demonstrativo CAR</h3><p>PDF profissional com ficha cadastral, situação SICAR, métricas e mapa vetorial do imóvel.</p><button id="vv204ReportCAR" ${can?'':'disabled'}>Gerar Demonstrativo PDF</button></article>
+        <article class="vv204-report-card"><span>${icon('tree')}</span><h3>Laudo Ambiental</h3><p>Laudo multipágina com MapBiomas, INPE, perfil territorial, mapa, fontes e limitações.</p><button id="vv204ReportEnv" ${can?'':'disabled'}>Gerar Laudo PDF</button></article>
+        <article class="vv204-report-card"><span>${icon('database')}</span><h3>Caderno de Evidências</h3><p>PDF de rastreabilidade com status das bases, mapa, alertas, fontes e avisos da execução.</p><button id="vv204ReportEvidence" ${can?'':'disabled'}>Gerar Evidências PDF</button></article>
+        <article class="vv204-report-card featured"><span>${icon('file')}</span><h3>Dossiê Técnico do Imóvel</h3><p>PDF consolidado com CAR, ambiental, fundiário, SICOR, Banco Central, fontes e ressalvas.</p><button id="vv204ReportPackage" ${can?'':'disabled'}>Gerar Dossiê PDF</button></article>
       </div>`;
   }
 
   function bindReportActions(r){
     E('vv204ReportCAR').onclick=()=>safeAction(()=>exportReport());
-    E('vv204ReportEnv').onclick=()=>safeAction(()=>api().ExportEnvironmentalTechnicalReport(r.property_id,false).then(p=>toast('Laudo salvo em '+p)));
-    E('vv204ReportEvidence').onclick=()=>safeAction(()=>api().ExportEnvironmentalEvidenceJSON(r.property_id,false).then(p=>toast('Evidências salvas em '+p)));
-    E('vv204ReportPackage').onclick=()=>safeAction(()=>exportPackage());
+    E('vv204ReportEnv').onclick=()=>safeAction(()=>api().ExportEnvironmentalTechnicalReport(r.property_id,false).then(p=>toast('Laudo PDF salvo em '+p)));
+    E('vv204ReportEvidence').onclick=()=>safeAction(()=>api().ExportEnvironmentalEvidencePDF(r.property_id,false).then(p=>toast('Caderno de evidências salvo em '+p)));
+    E('vv204ReportPackage').onclick=()=>safeAction(()=>api().ExportPropertyTechnicalDossierPDF(r.property_id,false).then(p=>toast('Dossiê técnico PDF salvo em '+p)));
   }
 
   function dataRow(label,value,cls=''){return `<div><dt>${H(label)}</dt><dd class="${cls}">${H(value||'—')}</dd></div>`}
