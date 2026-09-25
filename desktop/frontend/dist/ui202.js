@@ -56,7 +56,7 @@
         <div class="vv202-brand">
           <div class="vv202-logo">${icon('leaf')}</div>
           <div><strong>ViaVerdeCAR</strong><span>CONSULTA E ANÁLISE RURAL</span></div>
-          <b id="vv202Version">2.0.2</b>
+          <b id="vv202Version">2.0.3</b>
         </div>
         <nav class="vv202-nav">
           ${navButton202('dashboard','home','Início',true)}
