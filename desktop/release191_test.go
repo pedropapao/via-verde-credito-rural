@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion205(t *testing.T) {
-	if AppVersion != "2.0.5" {
+func TestReleaseVersion206(t *testing.T) {
+	if AppVersion != "2.0.6" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.0.5"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.0.5")
+	if !strings.Contains(string(b), `"productVersion": "2.0.6"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.0.6")
 	}
 }
 
@@ -112,5 +112,26 @@ func TestRelease205ProfessionalPDFs(t *testing.T) {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("interface 2.0.5 sem integração PDF %q", marker)
 		}
+	}
+}
+
+
+func TestRelease206PDFsDoNotRequireSavedProperty(t *testing.T) {
+	b, err := os.ReadFile("frontend/dist/ui204.js")
+	if err != nil { t.Fatal(err) }
+	js := string(b)
+	for _, marker := range []string{
+		"ExportCARAutomationPDF(r)",
+		"ExportEnvironmentalAutomationPDF(r)",
+		"ExportEnvironmentalAutomationEvidencePDF(r)",
+		"ExportPropertyAutomationDossierPDF(r)",
+		"Salvar/vincular o imóvel é opcional",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("consulta avulsa sem integração PDF %q", marker)
+		}
+	}
+	if strings.Contains(js, "const can=!!r.property_id;") {
+		t.Fatal("relatórios 2.0.6 não podem depender de property_id")
 	}
 }
