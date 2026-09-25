@@ -343,6 +343,7 @@
           <button id="vv202Report" ${r.property_id?'':'disabled'}>${icon('print')}<span><b>Imprimir relatório</b><small>Relatório técnico do imóvel</small></span></button>
         </article>
       </section>
+      ${bcb202(r)}
       ${arr(r.warnings).length?'<details class="vv202-warnings"><summary>Avisos e limitações ('+arr(r.warnings).length+')</summary>'+arr(r.warnings).map(w=>'<p>'+esc(w)+'</p>').join('')+'</details>':''}
     `;
     bindAnalysis202(r);
@@ -364,6 +365,7 @@
     el('vv202Report').onclick=()=>{openWorkspace202(r).then(()=>setTimeout(()=>el('reportBtn')?.click(),160))};
     el('vv202HistoryFull').onclick=()=>{openWorkspace202(r).then(()=>setTimeout(()=>document.querySelector('.history-panel')?.scrollIntoView({behavior:'smooth'}),120))};
     document.querySelectorAll('[data-tab202]').forEach(b=>b.onclick=()=>tab202(b.dataset.tab202,r));
+    document.querySelectorAll('[data-bcb-source202]').forEach(b=>b.onclick=()=>openExternal(b.dataset.bcbSource202));
   }
 
   async function openWorkspace202(r,section=''){
@@ -405,7 +407,7 @@
   }
 
   function src202(r,key){return arr(r.sources).find(x=>x.key===key)||{}}
-  function status202(s){return {ok:'Sem ocorrência',hit:'Ocorrência encontrada',unavailable:'Base indisponível',not_configured:'Não configurado',partial:'Consulta parcial',cached:'Cache local',not_found:'Não localizado',not_saved:'Não salvo'}[s]||'Não consultado'}
+  function status202(s){return {ok:'Sem ocorrência',hit:'Ocorrência encontrada',available:'Disponível',empty:'Sem dados no recorte',on_demand:'Sob demanda',unavailable:'Base indisponível',not_configured:'Não configurado',partial:'Consulta parcial',cached:'Cache local',not_found:'Não localizado',not_saved:'Não salvo'}[s]||'Não consultado'}
   function row202(r,key,label){
     const s=src202(r,key),n=Number(s.count)||0;
     const tone=s.status==='hit'?'hit':s.status==='ok'?'ok':['unavailable','not_configured'].includes(s.status)?'off':['cached','partial'].includes(s.status)?'warn':'neutral';
@@ -420,6 +422,64 @@
     const s=r.xray?.sicor||{},ops=arr(s.operations);
     if(!ops.length)return '<div class="vv202-empty">'+esc(src202(r,'sicor').detail||'Nenhuma operação pública retornada.')+'</div>';
     return '<div class="vv202-credit-list">'+ops.slice(0,4).map(o=>'<div><span><strong>'+esc(o.purpose||o.activity||o.product||'Operação SICOR')+'</strong><small>'+esc([o.institution_name,o.program_name,o.year].filter(Boolean).join(' / '))+'</small></span><b>'+money(o.credit_value)+'</b></div>').join('')+'</div>';
+  }
+
+  function bcb202(r){
+    const b=r.bcb||{}, market=b.market||{}, series=b.series||{}, inst=b.institutions||{}, ifd=b.ifdata||{};
+    if(!b.generated_at && !b.available && !arr(b.sources).length)return '';
+    const products=arr(market.municipal_products).slice(0,6);
+    const programs=arr(market.state_programs).slice(0,5);
+    const institutions=arr(inst.institutions).slice(0,7);
+    const ifdata=arr(ifd.institutions).slice(0,5);
+    const rates=arr(series.metrics).filter(x=>x.measure==='Taxa de juros'&&x.status==='available').slice(0,6);
+    const macro=arr(series.metrics).filter(x=>x.measure!=='Taxa de juros'&&x.status==='available').slice(0,6);
+    return `
+      <section class="vv202-bcb-wrap">
+        <div class="vv202-bcb-title">
+          <div><span>BANCO CENTRAL • DADOS ABERTOS</span><h3>Mercado e contexto oficial de crédito rural</h3><p>Dados agregados para conferência técnica. Não representam aprovação, limite, dívida ou risco individual do produtor.</p></div>
+          <b class="${b.used_cache?'cache':b.available?'ok':'off'}">${b.used_cache?'CACHE 8H':b.available?'ATUALIZADO':'PARCIAL'}</b>
+        </div>
+        <div class="vv202-bcb-grid">
+          <article class="vv202-panel vv202-bcb-card">
+            <div class="vv202-panel-head"><div><span>MDCR / SICOR</span><h3>Mercado no município</h3></div><button data-bcb-source202="${esc(market.source_url||'https://dadosabertos.bcb.gov.br/dataset/matrizdadoscreditorural')}">${icon('database')}</button></div>
+            <div class="vv202-bcb-metrics"><div><span>Contratos</span><strong>${Number(market.contracts||0)?num(market.contracts,0):'-'}</strong></div><div><span>Valor agregado</span><strong>${Number(market.value||0)?money(market.value):'-'}</strong></div></div>
+            <div class="vv202-bcb-list">${products.length?products.map(x=>'<div><span><strong>'+esc(x.label||x.kind||'Produto')+'</strong><small>'+esc([x.kind,x.year].filter(Boolean).join(' / '))+'</small></span><b>'+money(x.value)+'</b></div>').join(''):'<div class="vv202-empty">Sem produtos municipais retornados nesta consulta.</div>'}</div>
+          </article>
+
+          <article class="vv202-panel vv202-bcb-card">
+            <div class="vv202-panel-head"><div><span>SGS • TAXAS RURAIS</span><h3>Taxas oficiais agregadas</h3></div><button data-bcb-source202="https://www.bcb.gov.br/estatisticas/">${icon('history')}</button></div>
+            <div class="vv202-bcb-series">${rates.length?rates.map(seriesLine202).join(''):'<div class="vv202-empty">Séries de taxas indisponíveis nesta consulta.</div>'}</div>
+          </article>
+
+          <article class="vv202-panel vv202-bcb-card">
+            <div class="vv202-panel-head"><div><span>SGS • CONTEXTO NACIONAL</span><h3>Saldo, concessões e inadimplência</h3></div><button data-bcb-source202="https://www.bcb.gov.br/estatisticas/">${icon('history')}</button></div>
+            <div class="vv202-bcb-series">${macro.length?macro.map(seriesLine202).join(''):'<div class="vv202-empty">Séries macroeconômicas indisponíveis nesta consulta.</div>'}</div>
+          </article>
+
+          <article class="vv202-panel vv202-bcb-card">
+            <div class="vv202-panel-head"><div><span>ENTIDADES SUPERVISIONADAS</span><h3>Instituições do contexto</h3></div><button data-bcb-source202="${esc(inst.source_url||'https://dadosabertos.bcb.gov.br/dataset/dados-cadastrais-de-entidades-autorizadas')}">${icon('bank')}</button></div>
+            <div class="vv202-bcb-list">${institutions.length?institutions.map(x=>'<div><span><strong>'+esc(x.name)+'</strong><small>'+esc([x.type,x.situation,x.uf].filter(Boolean).join(' / '))+'</small></span><b>'+esc(x.code||'')+'</b></div>').join(''):'<div class="vv202-empty">'+esc(inst.message||'Sem correspondência segura nesta consulta.')+'</div>'}</div>
+          </article>
+
+          <article class="vv202-panel vv202-bcb-card">
+            <div class="vv202-panel-head"><div><span>IFDATA</span><h3>Cadastro trimestral das instituições</h3></div><button data-bcb-source202="${esc(ifd.source_url||'https://dadosabertos.bcb.gov.br/dataset/ifdata---dados-selecionados-de-instituies-financeiras')}">${icon('bank')}</button></div>
+            <div class="vv202-bcb-ref">Data-base: <strong>${esc(ifd.reference||'-')}</strong></div>
+            <div class="vv202-bcb-list">${ifdata.length?ifdata.map(x=>'<div><span><strong>'+esc(x.name)+'</strong><small>'+esc([x.segment,x.activity,x.situation].filter(Boolean).join(' / '))+'</small></span><b>'+esc(x.uf||'')+'</b></div>').join(''):'<div class="vv202-empty">'+esc(ifd.message||'Sem instituição correspondente nesta data-base.')+'</div>'}</div>
+          </article>
+
+          <article class="vv202-panel vv202-bcb-card">
+            <div class="vv202-panel-head"><div><span>PROGRAMAS E SCR.DATA</span><h3>Contexto complementar</h3></div><button data-bcb-source202="https://dadosabertos.bcb.gov.br/dataset/scr_data">${icon('database')}</button></div>
+            <div class="vv202-bcb-list">${programs.length?programs.map(x=>'<div><span><strong>'+esc(x.label||'Programa')+'</strong><small>'+esc([x.detail,x.year].filter(Boolean).join(' / '))+'</small></span><b>'+money(x.value)+'</b></div>').join(''):'<div class="vv202-empty">Programas não retornados no recorte atual.</div>'}</div>
+            <div class="vv202-bcb-note"><strong>SCR.data:</strong> disponível como base agregada por UF. O aplicativo não baixa automaticamente os arquivos mensais volumosos e não apresenta o SCR como consulta de dívida individual.</div>
+          </article>
+        </div>
+      </section>`;
+  }
+
+  function seriesLine202(x){
+    const trend=Number(x.change_pct)||0;
+    const arrow=trend>0?'↑':trend<0?'↓':'→';
+    return '<div class="vv202-series-line"><span><strong>'+esc(x.label)+'</strong><small>'+esc(x.latest_date||'')+' • SGS '+esc(x.sgs_code)+'</small></span><b>'+num(x.latest_value,2)+' '+esc(x.unit||'')+'</b><em class="'+(trend>0?'up':trend<0?'down':'flat')+'">'+arrow+' '+num(Math.abs(trend),1)+'%</em></div>';
   }
 
   function timeline202(r){
