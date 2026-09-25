@@ -112,7 +112,7 @@
       el('vv202TopInput').addEventListener('input',()=>{
         clearTimeout(timer202);timer202=setTimeout(()=>search202(false),350);
       });
-      el('vv202History').onclick=()=>{setView('car');setTimeout(()=>document.querySelector('.history-panel')?.scrollIntoView({behavior:'smooth'}),100)};
+      el('vv202History').onclick=()=>{setView('car');setTimeout(()=>{openSection202('car','tab:docs');document.querySelector('.history-panel')?.scrollIntoView({behavior:'smooth',block:'start'});activateSideSection202('tab:docs')},120)};
       el('vv202Config').onclick=()=>setView('settings');
       el('vv202Help').onclick=()=>toast('CAR executa a análise automática. CPF/CNPJ pesquisa vínculos locais e apresenta fontes oficiais disponíveis.');
     }
