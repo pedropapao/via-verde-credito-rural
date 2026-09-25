@@ -47,3 +47,7 @@ body.vv202 .topbar{height:72px!important;min-height:72px!important;padding:10px 
 
 @media(max-width:1380px){body.vv202 .app-shell{grid-template-columns:205px minmax(0,1fr)!important}.vv202-cards{grid-template-columns:repeat(3,1fr)}.vv202-main{grid-template-columns:1fr 1.35fr}.vv202-timeline-panel{grid-column:1/-1}.vv202-timeline{display:grid;grid-template-columns:1fr 1fr}.vv202-bottom{grid-template-columns:repeat(2,1fr)}.vv202-recent{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:980px){body.vv202 .app-shell{grid-template-columns:70px minmax(0,1fr)!important}.vv202-brand>div:nth-child(2),.vv202-brand>b,.vv202-nav button span,.vv202-side-tools span,.vv202-footer>div:last-child{display:none}.vv202-brand{justify-content:center;padding:0}.vv202-nav button{justify-content:center;padding:10px}.vv202-top-actions{display:none}.vv202-cards{grid-template-columns:repeat(2,1fr)}.vv202-main,.vv202-bottom,.vv202-doc-grid{grid-template-columns:1fr}.vv202-doc-grid>div+div{border-left:0;border-top:1px solid #e8eee9}.vv202-recent{grid-template-columns:1fr 1fr}}
+
+/* UI 2.0.2 usa SVG próprio; glifos antigos não devem aparecer como quadrados no WebView2. */
+body.vv202 .car-tab161-icon{display:none!important}
+#vv202AnalyzeAll{display:inline-flex;align-items:center;gap:6px}#vv202AnalyzeAll .vv202-icon{width:14px;height:14px}
