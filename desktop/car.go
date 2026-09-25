@@ -139,6 +139,16 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 		return result, fmt.Errorf("a base pública do SICAR não respondeu: %w", err)
 	}
 	if feature == nil {
+		if cached, ok := a.carLookupFallback(propertyID, car); ok {
+			cached.CheckedAt = result.CheckedAt
+			cached.LookupStatus = "cached"
+			cached.LookupDetail = "O SICAR público respondeu sem retornar este CAR nesta tentativa, mas existe uma geometria pública anterior do mesmo código salva localmente. Ela foi mantida apenas para continuidade técnica; a situação cadastral atual precisa de confirmação oficial."
+			cached.PublicConfirmed = false
+			cached.Source = "Último resultado SICAR salvo localmente"
+			cached.Checks = append(cached.Checks, QualityCheck{Level: "warning", Title: "SICAR sem correspondência atual", Detail: v2FirstNonEmpty(lookupMeta.Detail, "A consulta pública atual não retornou o CAR.")})
+			cached.Checks = append(cached.Checks, QualityCheck{Level: "info", Title: "Geometria anterior reaproveitada", Detail: "O mapa e os cruzamentos usam a última geometria pública salva deste mesmo CAR e não representam confirmação cadastral atual."})
+			return cached, nil
+		}
 		result.LookupStatus = "not_found"
 		result.PublicConfirmed = false
 		result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "CAR não localizado", Detail: v2FirstNonEmpty(lookupMeta.Detail, "O código é válido, mas não apareceu na camada pública consultada.")})
