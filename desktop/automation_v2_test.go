@@ -140,3 +140,69 @@ func TestSaveAnalyzedCARToClientReusesSessionAndCreatesKML(t *testing.T) {
 		t.Fatalf("CAR duplicou imóvel: primeiro=%d segundo=%d", p.ID, again.ID)
 	}
 }
+
+
+func TestSearchEverythingDocumentShowsOfficialPaths(t *testing.T) {
+	a := newV2AutomationTestApp(t)
+	r, err := a.SearchEverything("529.982.247-25")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Mode != "cpf" || len(r.OfficialOptions) < 2 {
+		t.Fatalf("caminhos oficiais CPF ausentes: %#v", r.OfficialOptions)
+	}
+	if r.PrivacyNotice == "" {
+		t.Fatal("pesquisa por CPF precisa explicar o limite de titularidade pública")
+	}
+
+	cnpj, err := a.SearchEverything("11.222.333/0001-81")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cnpj.Mode != "cnpj" || len(cnpj.OfficialOptions) < 3 {
+		t.Fatalf("caminhos oficiais CNPJ ausentes: %#v", cnpj.OfficialOptions)
+	}
+}
+
+func TestCARLookupFallbackUsesOnlySameSavedCAR(t *testing.T) {
+	a := newV2AutomationTestApp(t)
+	client, err := a.SaveClient(Client{Name: "Produtor Fallback"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	car := "MG-3106200-CCCC.CCCC.CCCC.CCCC.CCCC.CCCC.CCCC.CCCC"
+	p, err := a.SaveProperty(Property{ClientID: client.ID, Name: "Fazenda Fallback", UF: "MG", CARNumber: car})
+	if err != nil {
+		t.Fatal(err)
+	}
+	geo := `{"type":"Feature","properties":{},"geometry":{"type":"Polygon","coordinates":[[[-46.0,-20.0],[-45.99,-20.0],[-45.99,-19.99],[-46.0,-19.99],[-46.0,-20.0]]]}}`
+	r := CARResult{
+		CAR: car, UF: "MG", Found: true, HasGeometry: true, GeoJSON: geo,
+		LookupStatus: "found", PublicConfirmed: true, CheckedAt: time.Now().Format(time.RFC3339),
+	}
+	if err := a.persistCARAnalysis(p.ID, car, &r); err != nil {
+		t.Fatal(err)
+	}
+	got, ok := a.carLookupFallback(p.ID, car)
+	if !ok || got.CAR != car || !got.HasGeometry {
+		t.Fatalf("fallback válido não recuperado: ok=%v result=%#v", ok, got)
+	}
+	if _, ok := a.carLookupFallback(p.ID, "MG-3106200-DDDD.DDDD.DDDD.DDDD.DDDD.DDDD.DDDD.DDDD"); ok {
+		t.Fatal("fallback não pode reutilizar CAR diferente")
+	}
+}
+
+func TestAutomationSourcesDistinguishesSICARCache(t *testing.T) {
+	out := CARAutomationResult{CAR: CARResult{
+		CAR: "MG-3106200-EEEE.EEEE.EEEE.EEEE.EEEE.EEEE.EEEE.EEEE",
+		Found: true, HasGeometry: true, LookupStatus: "cached",
+		LookupDetail: "SICAR indisponível; cache local reaproveitado.",
+	}}
+	sources := automationSources(out)
+	if len(sources) == 0 || sources[0].Status != "cached" {
+		t.Fatalf("status SICAR deveria ser cached: %#v", sources)
+	}
+	if automationOverallStatus(out) == "complete" {
+		t.Fatal("resultado com SICAR em cache não pode ser marcado como completo")
+	}
+}
