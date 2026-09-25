@@ -288,8 +288,8 @@
       <div class="vv204-quick-actions">
         <button id="vv204Refresh" class="primary">${icon('refresh')}<span><strong>Atualizar tudo</strong><small>Executar novamente todas as análises</small></span></button>
         <button id="vv204Kml">${icon('download')}<span><strong>Gerar KML</strong><small>Perímetro público SICAR</small></span></button>
-        <button id="vv204Dossier" ${r.property_id?'':'disabled'}>${icon('file')}<span><strong>Gerar dossiê</strong><small>PDF + KML + evidências</small></span></button>
-        <button id="vv204Report" ${r.property_id?'':'disabled'}>${icon('print')}<span><strong>Relatórios</strong><small>Saídas técnicas do imóvel</small></span></button>
+        <button id="vv204Dossier">${icon('file')}<span><strong>Gerar dossiê PDF</strong><small>Usa a análise atual, mesmo sem cadastro</small></span></button>
+        <button id="vv204Report">${icon('print')}<span><strong>Relatórios</strong><small>Saídas técnicas do imóvel</small></span></button>
       </div>
 
       <article id="vv204Timeline" class="vv204-panel vv204-timeline-panel">
@@ -304,7 +304,7 @@
     document.querySelectorAll('[data-go-tab]').forEach(b=>b.onclick=()=>{activeTab=b.dataset.goTab;renderShell()});
     E('vv204Refresh').onclick=()=>runCAR(r.car.car,r.property_id||0,true);
     E('vv204Kml').onclick=()=>safeAction(()=>exportKML());
-    E('vv204Dossier').onclick=()=>safeAction(()=>exportPackage());
+    E('vv204Dossier').onclick=()=>safeAction(()=>api().ExportPropertyAutomationDossierPDF(r).then(p=>toast('Dossiê técnico PDF salvo em '+p)));
     E('vv204Report').onclick=()=>{activeTab='reports';renderShell()};
   }
 
@@ -510,9 +510,9 @@
   }
 
   function reportsTab(r){
-    const can=!!r.property_id;
+    const can=!!r?.car?.car;
     return `
-      <div class="vv204-tab-title"><div><span>RELATÓRIOS</span><h2>Saídas técnicas do imóvel</h2><p>Gere somente o documento necessário para o trabalho atual.</p></div></div>
+      <div class="vv204-tab-title"><div><span>RELATÓRIOS</span><h2>Saídas técnicas do imóvel</h2><p>Os PDFs podem ser gerados diretamente da consulta atual do CAR. Salvar/vincular o imóvel é opcional.</p></div><span class="vv204-big-status ${can?'ok':'neutral'}">${can?'Consulta pronta para PDF':'Analise um CAR'}</span></div>
       <div class="vv204-report-grid">
         <article class="vv204-report-card"><span>${icon('print')}</span><h3>Demonstrativo CAR</h3><p>PDF profissional com ficha cadastral, situação SICAR, métricas e mapa vetorial do imóvel.</p><button id="vv204ReportCAR" ${can?'':'disabled'}>Gerar Demonstrativo PDF</button></article>
         <article class="vv204-report-card"><span>${icon('tree')}</span><h3>Laudo Ambiental</h3><p>Laudo multipágina com MapBiomas, INPE, perfil territorial, mapa, fontes e limitações.</p><button id="vv204ReportEnv" ${can?'':'disabled'}>Gerar Laudo PDF</button></article>
@@ -522,10 +522,10 @@
   }
 
   function bindReportActions(r){
-    E('vv204ReportCAR').onclick=()=>safeAction(()=>exportReport());
-    E('vv204ReportEnv').onclick=()=>safeAction(()=>api().ExportEnvironmentalTechnicalReport(r.property_id,false).then(p=>toast('Laudo PDF salvo em '+p)));
-    E('vv204ReportEvidence').onclick=()=>safeAction(()=>api().ExportEnvironmentalEvidencePDF(r.property_id,false).then(p=>toast('Caderno de evidências salvo em '+p)));
-    E('vv204ReportPackage').onclick=()=>safeAction(()=>api().ExportPropertyTechnicalDossierPDF(r.property_id,false).then(p=>toast('Dossiê técnico PDF salvo em '+p)));
+    E('vv204ReportCAR').onclick=()=>safeAction(()=>api().ExportCARAutomationPDF(r).then(p=>toast('Demonstrativo CAR salvo em '+p)));
+    E('vv204ReportEnv').onclick=()=>safeAction(()=>api().ExportEnvironmentalAutomationPDF(r).then(p=>toast('Laudo PDF salvo em '+p)));
+    E('vv204ReportEvidence').onclick=()=>safeAction(()=>api().ExportEnvironmentalAutomationEvidencePDF(r).then(p=>toast('Caderno de evidências salvo em '+p)));
+    E('vv204ReportPackage').onclick=()=>safeAction(()=>api().ExportPropertyAutomationDossierPDF(r).then(p=>toast('Dossiê técnico PDF salvo em '+p)));
   }
 
   function dataRow(label,value,cls=''){return `<div><dt>${H(label)}</dt><dd class="${cls}">${H(value||'—')}</dd></div>`}
