@@ -66,7 +66,7 @@ func TestPropertyTechnicalDossierPDF205(t *testing.T) {
 		},
 		BCB: BCBPublicContext{Available: true, Municipality: "Jacuí", UF: "MG"},
 	}
-	pdf := buildPropertyTechnicalDossierPDF(p, r)
+	pdf := buildPropertyTechnicalDossierPDF(p, r, KMLResult{}, GeometryComparison{})
 	s := string(pdf)
 	if !strings.HasPrefix(s, "%PDF-1.4") {
 		t.Fatal("dossiê técnico não gerou PDF")
