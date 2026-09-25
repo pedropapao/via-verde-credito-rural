@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion202(t *testing.T) {
-	if AppVersion != "2.0.2" {
+func TestReleaseVersion203(t *testing.T) {
+	if AppVersion != "2.0.3" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.0.2"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.0.2")
+	if !strings.Contains(string(b), `"productVersion": "2.0.3"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.0.3")
 	}
 }
 
@@ -61,6 +61,23 @@ func TestRelease202DoesNotLoadSupersededShells(t *testing.T) {
 	for _, asset := range []string{"ui202.js", "ui202.css"} {
 		if !strings.Contains(html, asset) {
 			t.Fatalf("shell 2.0.2 obrigatório não carregado: %s", asset)
+		}
+	}
+}
+
+
+func TestRelease203IncludesBCBOpenDataModule(t *testing.T) {
+	for _, path := range []string{"bcb_public.go", "bcb_public_test.go"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("módulo BCB 2.0.3 ausente: %s", path)
+		}
+	}
+	b, err := os.ReadFile("frontend/dist/ui202.js")
+	if err != nil { t.Fatal(err) }
+	js := string(b)
+	for _, marker := range []string{"BANCO CENTRAL • DADOS ABERTOS", "MDCR / SICOR", "IFDATA", "SCR.DATA", "TAXAS POR INSTITUIÇÃO"} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("painel BCB sem marcador %q", marker)
 		}
 	}
 }
