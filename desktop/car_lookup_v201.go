@@ -67,13 +67,13 @@ func lookupCARPublicDetailed(ctx context.Context, car, uf string) (*carGeoFeatur
 					failures = append(failures, fmt.Sprintf("%s WFS %s: %v", shortCAREndpoint(endpoint), v.version, err))
 					continue
 				}
-				successfulResponses++
-				meta.Responded = true
 				var fc carGeoJSON
 				if err := json.Unmarshal(body, &fc); err != nil {
 					failures = append(failures, fmt.Sprintf("%s WFS %s retornou JSON inesperado", shortCAREndpoint(endpoint), v.version))
 					continue
 				}
+				successfulResponses++
+				meta.Responded = true
 				if len(fc.Features) == 0 {
 					continue
 				}
