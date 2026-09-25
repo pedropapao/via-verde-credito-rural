@@ -202,6 +202,7 @@ func TestAutomationSourcesDistinguishesSICARCache(t *testing.T) {
 	if len(sources) == 0 || sources[0].Status != "cached" {
 		t.Fatalf("status SICAR deveria ser cached: %#v", sources)
 	}
+	out.Sources = sources
 	if automationOverallStatus(out) == "complete" {
 		t.Fatal("resultado com SICAR em cache não pode ser marcado como completo")
 	}
