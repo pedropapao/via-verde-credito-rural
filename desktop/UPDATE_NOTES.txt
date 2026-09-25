@@ -1,15 +1,14 @@
-ViaVerdeCAR 2.0.0 — Central Automática do Imóvel Rural
+ViaVerdeCAR 2.0.1 — SICAR resiliente + interface operacional
 
-• Nova busca única por CAR, CPF/CNPJ cadastrado, cliente, imóvel, matrícula e município.
-• Um CAR passa a acionar o fluxo integrado: SICAR → geometria → KML → ambiental → SIGEF/INCRA → SICOR/crédito → resumo executivo.
-• CPF/CNPJ é pesquisado com segurança na base local; o aplicativo não tenta contornar dados protegidos do titular no SICAR.
-• Cadastro local pode ser enriquecido somente quando campos estão vazios, preservando dados informados pelo usuário.
-• Nova Central Automática na tela inicial, com progresso, fontes consultadas e distinção entre sem ocorrência, ocorrência, base indisponível e fonte não configurada.
-• Novo botão “Analisar tudo” na área de CAR.
-• Índices SQLite adicionais para CPF/CNPJ, matrícula e município, via migração não destrutiva.
-• Mantidos os módulos existentes de CAR, KML, IBAMA, FUNAI, ICMBio, MCR/PRODES, MapBiomas, INPE, SIGEF, SICOR, mapa, relatórios e histórico sem duplicação.
-
-• Uma consulta avulsa de CAR pode ser vinculada a um cliente existente em um clique, reaproveitando os dados públicos e gerando o KML SICAR sem ocupar o campo reservado ao KML externo do cliente.
-• O atualizador agora reconsulta e valida o manifesto oficial no backend antes de instalar: versão, canal, host Supabase autorizado, caminho, tamanho e SHA-256.
-• Leaflet externo passa a ser carregado com Subresource Integrity (SRI).
-• O pipeline Windows valida todos os JavaScripts antes de compilar o EXE.
+• Corrige a classificação do SICAR: “não localizado” só aparece quando a base pública respondeu validamente e não retornou o CAR.
+• Se o SICAR estiver indisponível, o ViaVerdeCAR diferencia “base indisponível” de “sem ocorrência”.
+• Quando existe uma consulta pública anterior do mesmo CAR, a última geometria salva pode manter os cruzamentos funcionando, identificada claramente como cache local e sem fingir confirmação atual.
+• Consulta SICAR reforçada com código compacto primeiro, múltiplas versões WFS, dois endpoints públicos e retry limitado.
+• Ficha pública parcial passa a ser informada como parcial quando a geometria existe mas alguns atributos cadastrais não vieram.
+• Nova interface da Visão Geral inspirada no painel aprovado: sidebar verde, busca superior, cards de CAR/Ambiental/Fundiário/Crédito/Atenções, resumo do imóvel, mapa central com camadas, linha do tempo e ações rápidas.
+• O mapa da Visão Geral usa somente geometrias realmente retornadas: CAR, IBAMA, FUNAI, ICMBio, MapBiomas e glebas SICOR quando disponíveis.
+• Pesquisa por CPF/CNPJ continua automática na base local e agora apresenta caminhos oficiais disponíveis, sem inferir titularidade do CAR.
+• CPF: integração oficial automatizada exige credenciais/autorização e, na solução CPF v3, data de nascimento; nenhuma consulta paga é feita automaticamente.
+• CNPJ: são apresentados os caminhos oficiais da Receita/Conecta e Dados Abertos; nenhuma API paga ou não oficial é habilitada silenciosamente.
+• Consulta Pública SNCR fica acessível como fonte oficial auxiliar de conferência fundiária.
+• Preservados clientes, imóveis, banco SQLite, KMLs, histórico, Raio X, MapBiomas, SIGEF, SICOR, relatórios e dossiês existentes.
