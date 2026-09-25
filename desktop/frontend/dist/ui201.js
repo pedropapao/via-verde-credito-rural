@@ -43,6 +43,8 @@
     });
 
     waitForData201();
+    setTimeout(renderRecent201,1100);
+    setTimeout(renderRecent201,2300);
   }
 
   function rebuildSidebar201(){
@@ -154,7 +156,8 @@
 
   async function search201(run){
     const q=(E('vvSearch201')?.value||E('vvTopSearch201')?.value||'').trim();
-    if(!q){renderWelcome201();return}
+    if(!q){setView('dashboard');renderWelcome201();return}
+    setView('dashboard');
     E('vvSearch201').value=q; E('vvTopSearch201').value=q;
     try{
       const r=await api().SearchEverything(q);
