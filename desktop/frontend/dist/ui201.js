@@ -66,11 +66,11 @@
         ['car','⌖','Mapa','map-layout'],
         ['car','▤','Relatórios','report-panel'],
         ['car','□','Dossiês','report-panel'],
-      ].map((x,i)=>'<button class="nav-item '+(i===0?'active':'')+'" data-view="'+x[0]+'" data-vv-view201="'+x[0]+'" data-vv-section201="'+x[3]+'"><span>'+x[1]+'</span> '+x[2]+'</button>').join('');
+      ].map((x,i)=>'<button class="nav-item '+(i===0?'active':'')+'" '+((i===0||x[2]==='Clientes'||x[2]==='Consulta CAR')?'data-view="'+x[0]+'" ':'')+'data-vv-view201="'+x[0]+'" data-vv-section201="'+x[3]+'"><span>'+x[1]+'</span> '+x[2]+'</button>').join('');
       nav.querySelectorAll('[data-vv-view201]').forEach(b=>b.onclick=()=>{
         const view=b.dataset.vvView201;
-        document.querySelectorAll('.sidebar .nav-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');
         setView(view);
+        document.querySelectorAll('.sidebar .nav-item').forEach(x=>x.classList.remove('active'));b.classList.add('active');
         const cls=b.dataset.vvSection201;
         if(cls)setTimeout(()=>document.querySelector('#view-'+view+' .'+cls)?.scrollIntoView({behavior:'smooth',block:'start'}),120);
       });
@@ -229,7 +229,8 @@
   function renderOverview201(r){
     const car=r.car||{}, env=r.environmental||{}, x=r.xray||{}, sigef=x.sigef||{}, sicor=x.sicor||{};
     const area=Number(car.area_ha||car.geometry_area_ha)||0;
-    const envCount=(Number(env.environment?.ibama_embargo_count)||0)+(Number(env.environment?.indigenous_count)||0)+(Number(env.environment?.federal_uc_count)||0)+(env.environment?.mcr_listed?1:0)+(Number(env.mapbiomas?.total_alerts)||0)+(Number(env.profile?.fire?.feature_count)||0);
+    const envKeys=['ibama','mapbiomas','inpe_fire','funai','icmbio','mcr'];
+    const envCount=envKeys.reduce((sum,key)=>{const s=source201(r,key);return sum+(s.status==='hit'?(Number(s.count)||1):0)},0);
     const affected=Number(env.summary?.alert_area_in_car_ha)||0;
     const attention=countAttention201(r);
     const carLabel=car.lookup_status==='cached'?'Cache local':car.lookup_status==='partial'?'Ficha parcial':car.status||((car.found||car.has_geometry)?'Localizado':'Não localizado');
@@ -419,7 +420,8 @@
       }catch(_){}
     };
     add('CAR (SICAR)',r.car?.geojson,{color:'#ff3b30',weight:3,fillColor:'#ffffff',fillOpacity:.03},true);
-    const env=r.environmental?.environment||{};
+    const liveEnv=r.environmental?.environment||{};
+    const env=(liveEnv.ibama_checked||liveEnv.funai_checked||liveEnv.icmbio_checked||liveEnv.mcr_checked)?liveEnv:(r.car?.environment||{});
     A(env.ibama_embargos).forEach((x,i)=>add('Embargo IBAMA '+(i+1),x.geojson,{color:'#e11d48',weight:3,fillColor:'#ef4444',fillOpacity:.25},true));
     A(env.indigenous_findings).forEach((x,i)=>add('Terra Indígena '+(i+1),x.geojson,{color:'#f59e0b',weight:3,fillColor:'#fbbf24',fillOpacity:.20},true));
     A(env.federal_uc_findings).forEach((x,i)=>add('UC Federal '+(i+1),x.geojson,{color:'#16a34a',weight:3,fillColor:'#22c55e',fillOpacity:.18},true));
