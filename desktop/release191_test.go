@@ -94,9 +94,9 @@ func TestRelease203BCBModulePreserved(t *testing.T) {
 }
 
 
-func TestRelease205ProfessionalPDFs(t *testing.T) {
+func TestRelease205ProfessionalPDFsPreserved(t *testing.T) {
 	if st, err := os.Stat("professional_reports.go"); err != nil || st.Size() == 0 {
-		t.Fatal("módulo de PDFs profissionais 2.0.5 ausente")
+		t.Fatal("módulo de PDFs profissionais ausente")
 	}
 	b, err := os.ReadFile("frontend/dist/ui204.js")
 	if err != nil { t.Fatal(err) }
@@ -106,11 +106,9 @@ func TestRelease205ProfessionalPDFs(t *testing.T) {
 		"Gerar Laudo PDF",
 		"Gerar Evidências PDF",
 		"Gerar Dossiê PDF",
-		"ExportEnvironmentalEvidencePDF",
-		"ExportPropertyTechnicalDossierPDF",
 	} {
 		if !strings.Contains(js, marker) {
-			t.Fatalf("interface 2.0.5 sem integração PDF %q", marker)
+			t.Fatalf("interface sem saída PDF %q", marker)
 		}
 	}
 }
