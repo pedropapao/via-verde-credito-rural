@@ -63,12 +63,12 @@
           ${navButton202('clients','users','Clientes')}
           ${navButton202('clients','building','Imóveis','property-panel')}
           ${navButton202('car','search','Consulta CAR','car-toolbar')}
-          ${navButton202('car','tree','Raio X Ambiental','environment-panel')}
-          ${navButton202('car','map','Raio X Fundiário','professional-bottom')}
-          ${navButton202('car','bank','Crédito Rural','professional-bottom')}
-          ${navButton202('car','map','Mapa','map-layout')}
-          ${navButton202('car','file','Relatórios','report-panel')}
-          ${navButton202('car','folder','Dossiês','report-panel')}
+          ${navButton202('car','tree','Raio X Ambiental','tab:environment')}
+          ${navButton202('car','map','Raio X Fundiário','tab:xray')}
+          ${navButton202('car','bank','Crédito Rural','tab:credit')}
+          ${navButton202('car','map','Mapa','tab:map')}
+          ${navButton202('car','file','Relatórios','tab:docs')}
+          ${navButton202('car','folder','Dossiês','tab:docs')}
         </nav>
         <div class="vv202-side-tools">
           <button id="vv202Sources">${icon('database')}<span>Fontes de Dados</span></button>
@@ -84,7 +84,7 @@
         side.querySelectorAll('.vv202-nav button').forEach(x=>x.classList.remove('active'));
         b.classList.add('active');
         const section=b.dataset.vv202Section;
-        if(section)setTimeout(()=>document.querySelector('#view-'+b.dataset.vv202View+' .'+section)?.scrollIntoView({behavior:'smooth',block:'start'}),100);
+        if(section)setTimeout(()=>openSection202(b.dataset.vv202View,section),100);
       });
       el('vv202Backup').onclick=async()=>{try{const r=await api().BackupData();toast(r?.message||'Backup concluído.')}catch(e){if(!String(e).toLowerCase().includes('cancelado'))toast(String(e),true)}};
       el('vv202Settings').onclick=()=>setView('settings');
@@ -117,6 +117,27 @@
       el('vv202Help').onclick=()=>toast('CAR executa a análise automática. CPF/CNPJ pesquisa vínculos locais e apresenta fontes oficiais disponíveis.');
     }
     try{api()?.GetAppInfo?.().then(i=>{if(i?.version){if(el('vv202Version'))el('vv202Version').textContent=i.version;if(el('versionLabel'))el('versionLabel').textContent='Versão '+i.version}})}catch(_){}
+  }
+
+  function openSection202(view,section){
+    if(view!=='car'){
+      if(section)document.querySelector('#view-'+view+' .'+section)?.scrollIntoView({behavior:'smooth',block:'start'});
+      return;
+    }
+    if(section.startsWith('tab:')){
+      const key=section.slice(4);
+      const tab=document.querySelector('[data-car-tab131="'+key+'"]');
+      if(tab){tab.click();setTimeout(()=>document.getElementById('carWorkspace131')?.scrollIntoView({behavior:'smooth',block:'start'}),60)}
+      return;
+    }
+    document.querySelector('#view-car .'+section)?.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  function activateSideSection202(section){
+    const side=document.querySelector('.sidebar');if(!side)return;
+    side.querySelectorAll('.vv202-nav button').forEach(x=>x.classList.remove('active'));
+    const b=side.querySelector('[data-vv202-section="'+section+'"]');
+    if(b)b.classList.add('active');
   }
 
   function navButton202(view,ico,label,section='',active=false){
@@ -353,15 +374,24 @@
     }else{
       state.car=r.car;renderCAR(r.car);if(r.car.geojson)drawGeoJSON('car',r.car.geojson);if(el('carInput'))el('carInput').value=r.car.car||'';
     }
-    if(section==='map')setTimeout(()=>document.querySelector('.map-layout')?.scrollIntoView({behavior:'smooth'}),100);
+    if(section==='map')setTimeout(()=>{openSection202('car','tab:map');activateSideSection202('tab:map')},100);
   }
 
   function tab202(key,r){
     if(key==='summary'){el('vv202Cards')?.scrollIntoView({behavior:'smooth'});return}
-    openWorkspace202(r).then(()=>{
-      const cls={car:'car-toolbar',environment:'environment-panel',map:'map-layout',reports:'report-panel'}[key];
-      if(cls)setTimeout(()=>document.querySelector('.'+cls)?.scrollIntoView({behavior:'smooth'}),100);
-    });
+    const section={
+      car:'car-toolbar',
+      environment:'tab:environment',
+      land:'tab:xray',
+      credit:'tab:credit',
+      map:'tab:map',
+      docs:'tab:docs',
+      reports:'tab:docs'
+    }[key]||'car-toolbar';
+    openWorkspace202(r).then(()=>setTimeout(()=>{
+      openSection202('car',section);
+      activateSideSection202(section);
+    },80));
   }
 
   function linkBox202(r){
