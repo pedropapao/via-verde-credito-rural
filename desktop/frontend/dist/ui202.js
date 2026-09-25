@@ -425,14 +425,18 @@
   }
 
   function bcb202(r){
-    const b=r.bcb||{}, market=b.market||{}, series=b.series||{}, inst=b.institutions||{}, ifd=b.ifdata||{};
+    const b=r.bcb||{}, market=b.market||{}, series=b.series||{}, inst=b.institutions||{}, ifd=b.ifdata||{}, bankRates=b.institution_rates||{};
     if(!b.generated_at && !b.available && !arr(b.sources).length)return '';
-    const products=arr(market.municipal_products).slice(0,6);
+    const allProducts=arr(market.municipal_products), products=allProducts.slice(0,6);
     const programs=arr(market.state_programs).slice(0,5);
+    const funding=arr(market.national_sources).slice(0,5);
     const institutions=arr(inst.institutions).slice(0,7);
     const ifdata=arr(ifd.institutions).slice(0,5);
     const rates=arr(series.metrics).filter(x=>x.measure==='Taxa de juros'&&x.status==='available').slice(0,6);
     const macro=arr(series.metrics).filter(x=>x.measure!=='Taxa de juros'&&x.status==='available').slice(0,6);
+    const institutionRates=arr(bankRates.rates).slice(0,7);
+    const marketContracts=allProducts.reduce((s,x)=>s+(Number(x.contracts)||0),0);
+    const marketValue=allProducts.reduce((s,x)=>s+(Number(x.value)||0),0);
     return `
       <section class="vv202-bcb-wrap">
         <div class="vv202-bcb-title">
@@ -442,7 +446,7 @@
         <div class="vv202-bcb-grid">
           <article class="vv202-panel vv202-bcb-card">
             <div class="vv202-panel-head"><div><span>MDCR / SICOR</span><h3>Mercado no município</h3></div><button data-bcb-source202="${esc(market.source_url||'https://dadosabertos.bcb.gov.br/dataset/matrizdadoscreditorural')}">${icon('database')}</button></div>
-            <div class="vv202-bcb-metrics"><div><span>Contratos</span><strong>${Number(market.contracts||0)?num(market.contracts,0):'-'}</strong></div><div><span>Valor agregado</span><strong>${Number(market.value||0)?money(market.value):'-'}</strong></div></div>
+            <div class="vv202-bcb-metrics"><div><span>Contratos nos itens exibidos</span><strong>${marketContracts?num(marketContracts,0):'-'}</strong></div><div><span>Valor nos itens exibidos</span><strong>${marketValue?money(marketValue):'-'}</strong></div></div>
             <div class="vv202-bcb-list">${products.length?products.map(x=>'<div><span><strong>'+esc(x.label||x.kind||'Produto')+'</strong><small>'+esc([x.kind,x.year].filter(Boolean).join(' / '))+'</small></span><b>'+money(x.value)+'</b></div>').join(''):'<div class="vv202-empty">Sem produtos municipais retornados nesta consulta.</div>'}</div>
           </article>
 
@@ -468,9 +472,21 @@
           </article>
 
           <article class="vv202-panel vv202-bcb-card">
-            <div class="vv202-panel-head"><div><span>PROGRAMAS E SCR.DATA</span><h3>Contexto complementar</h3></div><button data-bcb-source202="https://dadosabertos.bcb.gov.br/dataset/scr_data">${icon('database')}</button></div>
+            <div class="vv202-panel-head"><div><span>PROGRAMAS E FONTES</span><h3>Como o crédito rural é distribuído</h3></div><button data-bcb-source202="https://dadosabertos.bcb.gov.br/dataset/matrizdadoscreditorural">${icon('database')}</button></div>
             <div class="vv202-bcb-list">${programs.length?programs.map(x=>'<div><span><strong>'+esc(x.label||'Programa')+'</strong><small>'+esc([x.detail,x.year].filter(Boolean).join(' / '))+'</small></span><b>'+money(x.value)+'</b></div>').join(''):'<div class="vv202-empty">Programas não retornados no recorte atual.</div>'}</div>
-            <div class="vv202-bcb-note"><strong>SCR.data:</strong> disponível como base agregada por UF. O aplicativo não baixa automaticamente os arquivos mensais volumosos e não apresenta o SCR como consulta de dívida individual.</div>
+            <div class="vv202-bcb-subtitle">Fontes de recursos</div>
+            <div class="vv202-bcb-list compact">${funding.length?funding.map(x=>'<div><span><strong>'+esc(x.label||'Fonte')+'</strong><small>'+esc(x.year||'')+'</small></span><b>'+money(x.value)+'</b></div>').join(''):'<div class="vv202-empty">Fontes de recursos não retornadas.</div>'}</div>
+          </article>
+
+          <article class="vv202-panel vv202-bcb-card">
+            <div class="vv202-panel-head"><div><span>TAXAS POR INSTITUIÇÃO</span><h3>Médias publicadas pelo BCB</h3></div><button data-bcb-source202="${esc(bankRates.source_url||'https://dadosabertos.bcb.gov.br/dataset/taxas-de-juros-de-operacoes-de-credito')}">${icon('bank')}</button></div>
+            <div class="vv202-bank-rates">${institutionRates.length?institutionRates.map(x=>'<div><span><strong>'+esc(x.institution||'Instituição')+'</strong><small>'+esc([x.segment,x.modality,x.end_date].filter(Boolean).join(' / '))+'</small></span><b>'+num(x.annual_rate,2)+'% a.a.</b></div>').join(''):'<div class="vv202-empty">'+esc(bankRates.message||'Nenhuma modalidade rural/agro retornada no recorte atual.')+'</div>'}</div>
+            <div class="vv202-bcb-note">Taxa média observada nas operações publicadas pelo BCB. Não é oferta nem taxa garantida para o cliente.</div>
+          </article>
+
+          <article class="vv202-panel vv202-bcb-card">
+            <div class="vv202-panel-head"><div><span>SCR.DATA</span><h3>Risco agregado do mercado</h3></div><button data-bcb-source202="https://dadosabertos.bcb.gov.br/dataset/scr_data">${icon('database')}</button></div>
+            <div class="vv202-bcb-note standalone"><strong>Base oficial mensal por UF:</strong> carteira ativa, inadimplência e ativos problemáticos agregados. O ViaVerdeCAR mantém esta fonte identificada e usa as séries SGS leves no fluxo automático; os arquivos mensais completos do SCR não são baixados silenciosamente porque são volumosos e não servem para consultar dívida individual por CPF/CNPJ.</div>
           </article>
         </div>
       </section>`;
