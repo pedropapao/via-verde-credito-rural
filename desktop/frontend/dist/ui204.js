@@ -425,6 +425,11 @@
     return `
       <div class="vv204-tab-title"><div><span>CRÉDITO RURAL</span><h2>SICOR + Banco Central</h2><p>Operações ligadas ao imóvel e contexto oficial agregado do mercado.</p></div><span class="vv204-big-status purple">${Number(sic.operation_count)||0} operação(ões)</span></div>
 
+      <div class="vv204-bcb-banner">
+        <div><span>BANCO CENTRAL • DADOS ABERTOS</span><strong>Contexto oficial agregado de crédito rural</strong><small>MDCR/SICOR, SGS, instituições supervisionadas, IFData e taxas por instituição.</small></div>
+        <b>${b.used_cache?'CACHE 8H':b.available?'ATUALIZADO':'PARCIAL'}</b>
+      </div>
+
       <div class="vv204-credit-overview">
         <article><span>Operações SICOR</span><strong>${Number(sic.operation_count)||0}</strong><small>vinculadas ao contexto do imóvel</small></article>
         <article><span>Valor total SICOR</span><strong>${sic.total_credit_value?MONEY(sic.total_credit_value):'—'}</strong><small>soma das operações retornadas</small></article>
