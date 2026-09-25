@@ -84,6 +84,7 @@ func queryCreditMarketContext(ctx context.Context, municipality, uf, municipalit
 			out.Warnings = append(out.Warnings, fmt.Sprintf("fontes de recursos %d: %v", year, err))
 		} else {
 			anySuccess = true
+			rows = filterMarketYearRows(rows, strconv.Itoa(year))
 			out.NationalSources = append(out.NationalSources, aggregateMarketRows(rows, "Brasil", "Fonte de recursos", strconv.Itoa(year), "resource")...)
 		}
 	}
@@ -185,6 +186,18 @@ func filterMarketUFRows(rows []map[string]any, uf, year string) []map[string]any
 		rowUF:=strings.ToUpper(strings.TrimSpace(firstNonEmptyStringMapValue(r,"nomeUF","UF","uf","Estado")))
 		if wantUF!=""&&rowUF!=""&&rowUF!=wantUF{continue}
 		out=append(out,r)
+	}
+	return out
+}
+
+func filterMarketYearRows(rows []map[string]any, year string) []map[string]any {
+	var out []map[string]any
+	for _, r := range rows {
+		y := marketYear(r)
+		if year != "" && y != "" && y != year {
+			continue
+		}
+		out = append(out, r)
 	}
 	return out
 }
