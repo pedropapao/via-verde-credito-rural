@@ -24,3 +24,22 @@ func TestReleaseFirePipeline191(t *testing.T) {
 		t.Fatal("estados da consulta de focos não podem ficar vazios")
 	}
 }
+
+
+func TestRelease201LoadsNewInterface(t *testing.T) {
+	b, err := os.ReadFile("frontend/dist/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	html := string(b)
+	for _, asset := range []string{"ui201.css", "ui201.js"} {
+		if !strings.Contains(html, asset) {
+			t.Fatalf("interface 2.0.1 não carrega %s", asset)
+		}
+	}
+	for _, path := range []string{"frontend/dist/ui201.css", "frontend/dist/ui201.js"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("asset 2.0.1 ausente ou vazio: %s", path)
+		}
+	}
+}
