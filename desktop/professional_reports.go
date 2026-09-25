@@ -689,12 +689,12 @@ func dossierCreditPage(p Property, r CARAutomationResult, page int) string {
 		for i, op := range s.Operations {
 			if i >= 9 || y < 125 { break }
 			label := firstNonEmptyText(op.Purpose, op.Activity, op.Product, fmt.Sprintf("Operação %d", i+1))
-			detail := strings.Join(v2NonEmpty(
+			detail := strings.Join(v2NonEmpty([]string{
 				firstNonEmptyText(op.InstitutionName, op.InstitutionCode),
 				firstNonEmptyText(op.ProgramName, op.SubprogramName),
 				func() string {if op.CreditValue>0{return moneyBR(op.CreditValue)};return ""}(),
 				func() string {if op.Year>0{return fmt.Sprintf("%d", op.Year)};return ""}(),
-			), " - ")
+			}), " - ")
 			proKV(&c, &y, label, detail)
 		}
 	}
