@@ -74,7 +74,7 @@ func TestPropertyTechnicalDossierPDF205(t *testing.T) {
 	if !strings.Contains(s, "/Count 7") {
 		t.Fatal("dossiê técnico deve ter 7 páginas")
 	}
-	for _, marker := range []string{"DOSSIE TECNICO DO IMOVEL", "Raio X ambiental", "Raio X fundiário", "Banco Central"} {
+	for _, marker := range []string{"DOSSIE TECNICO DO IMOVEL", "Raio X ambiental", "SIGEF / INCRA", "Banco Central"} {
 		if !strings.Contains(s, marker) {
 			t.Fatalf("dossiê sem seção %q", marker)
 		}
