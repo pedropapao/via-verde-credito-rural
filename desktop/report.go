@@ -21,7 +21,7 @@ func (a *App) ExportCARReport(propertyID int64, car CARResult, kml KMLResult, co
 	if err != nil {
 		return "", err
 	}
-	pdf := buildCARTechnicalPDF(p, car, kml, comparison)
+	pdf := buildCARProfessionalPDF(p, car, kml, comparison)
 	name := "Demonstrativo_CAR_" + safeCARFilename(car.CAR) + ".pdf"
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{Title: "Salvar demonstrativo técnico", DefaultFilename: name, Filters: []runtime.FileFilter{{DisplayName: "PDF", Pattern: "*.pdf"}}})
 	if err != nil {
