@@ -42,6 +42,8 @@
     document.body.classList.add('vv202');
     rebuildShell202();
     buildDashboard202();
+    installCarAction202();
+    patchSetView202();
     bindSearch202();
     setTimeout(renderLanding202,250);
     setTimeout(renderLanding202,1200);
@@ -119,6 +121,42 @@
 
   function navButton202(view,ico,label,section='',active=false){
     return '<button class="'+(active?'active':'')+'" data-vv202-view="'+view+'" data-vv202-section="'+section+'">'+icon(ico)+'<span>'+esc(label)+'</span></button>';
+  }
+
+  function syncNav202(view){
+    const side=document.querySelector('.sidebar');
+    if(!side)return;
+    side.querySelectorAll('.vv202-nav button').forEach(b=>b.classList.remove('active'));
+    const target=side.querySelector('[data-vv202-view="'+view+'"]');
+    if(target)target.classList.add('active');
+  }
+
+  function patchSetView202(){
+    if(window.__vv202SetViewPatched)return;
+    window.__vv202SetViewPatched=true;
+    const old=setView;
+    setView=function(name){
+      old(name);
+      syncNav202(name);
+    };
+  }
+
+  function installCarAction202(){
+    const toolbar=document.querySelector('#view-car .car-toolbar');
+    const actions=toolbar?.querySelector('.toolbar-actions')||toolbar;
+    if(!actions||el('vv202AnalyzeAll'))return;
+    const b=document.createElement('button');
+    b.id='vv202AnalyzeAll';
+    b.className='btn primary';
+    b.innerHTML=icon('refresh')+'<span>Analisar tudo</span>';
+    b.onclick=()=>{
+      const car=(el('carInput')?.value||state?.selectedProperty?.car_number||'').trim();
+      if(!car){toast('Informe um CAR para executar a análise completa.',true);return}
+      setView('dashboard');
+      if(el('vv202TopInput'))el('vv202TopInput').value=car;
+      setTimeout(()=>runCAR202(car,state?.selectedProperty?.id||0,true),40);
+    };
+    actions.prepend(b);
   }
 
   function buildDashboard202(){
