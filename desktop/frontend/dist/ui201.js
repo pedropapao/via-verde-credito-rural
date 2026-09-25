@@ -78,7 +78,12 @@
     const foot=side.querySelector('.sidebar-footer');
     if(foot){
       foot.insertAdjacentHTML('beforebegin','<div class="vv-side-tools201"><button data-vv-tools201="sources">● <span>Fontes de Dados</span></button><button data-vv-tools201="backup">▱ <span>Backup / Banco</span></button><button data-vv-tools201="settings">ⓘ <span>Configurações</span></button></div>');
-      side.querySelector('[data-vv-tools201="backup"]').onclick=()=>E('backupBtn')?.click();
+      side.querySelector('[data-vv-tools201="backup"]').onclick=async()=>{
+        try{
+          const r=await api().BackupData();
+          if(r?.message)toast(r.message+' '+(r.path||''));
+        }catch(err){if(!String(err).toLowerCase().includes('cancelado'))toast(String(err),true)}
+      };
       side.querySelector('[data-vv-tools201="settings"]').onclick=()=>setView('settings');
       side.querySelector('[data-vv-tools201="sources"]').onclick=()=>{setView('dashboard');setTimeout(()=>E('vvSources201')?.scrollIntoView({behavior:'smooth'}),80)};
     }
