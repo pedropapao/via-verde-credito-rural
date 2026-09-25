@@ -389,18 +389,11 @@ func environmentalConclusionText(intel EnvironmentalIntelligenceResult,alerts []
 }
 
 func envReportHeader(c *pdfCanvas,title,subtitle string,page int){
-	c.b.WriteString("0.055 0.42 0.29 rg\n");c.rect(0,760,595,82,true)
-	c.b.WriteString("1 1 1 rg\n");c.text(38,808,15,true,"VIA VERDE CAR")
-	c.text(38,788,9,true,title);c.text(38,774,7,false,subtitle)
-	c.b.WriteString("0.10 0.18 0.14 rg\n")
-	c.text(520,744,6.5,false,fmt.Sprintf("p. %d",page))
+	proHeader(c,title,subtitle,page)
 }
 
 func envReportFooter(c *pdfCanvas,page int){
-	c.b.WriteString("0.82 0.87 0.84 RG 0.5 w\n");c.line(40,45,555,45)
-	c.b.WriteString("0.35 0.42 0.39 rg\n")
-	c.text(40,30,6.3,false,"Gerado em "+time.Now().Format("02/01/2006 15:04")+" • Via Verde CAR v"+AppVersion+" • relatório técnico auxiliar")
-	c.text(520,30,6.3,false,fmt.Sprintf("%d",page))
+	proFooter(c,page)
 }
 
 func envSection(c *pdfCanvas,y *float64,title string){
