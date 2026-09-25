@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion201(t *testing.T) {
-	if AppVersion != "2.0.1" {
+func TestReleaseVersion202(t *testing.T) {
+	if AppVersion != "2.0.2" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.0.1"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.0.1")
+	if !strings.Contains(string(b), `"productVersion": "2.0.2"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.0.2")
 	}
 }
 
@@ -41,5 +41,20 @@ func TestRelease201LoadsNewInterface(t *testing.T) {
 		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
 			t.Fatalf("asset 2.0.1 ausente ou vazio: %s", path)
 		}
+	}
+}
+
+
+func TestRelease202LoadsSVGInterface(t *testing.T) {
+	b, err := os.ReadFile("frontend/dist/index.html")
+	if err != nil { t.Fatal(err) }
+	html := string(b)
+	for _, asset := range []string{"ui202.css", "ui202.js"} {
+		if !strings.Contains(html, asset) { t.Fatalf("interface 2.0.2 não carrega %s", asset) }
+	}
+	js, err := os.ReadFile("frontend/dist/ui202.js")
+	if err != nil { t.Fatal(err) }
+	if !strings.Contains(string(js), "<svg class=\"vv202-icon") {
+		t.Fatal("interface 2.0.2 precisa usar ícones SVG embutidos")
 	}
 }
