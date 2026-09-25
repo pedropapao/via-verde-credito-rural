@@ -70,7 +70,15 @@ func (a *App) ExportPropertyTechnicalDossierPDF(propertyID int64, force bool) (s
 	if err != nil {
 		return "", err
 	}
-	pdf := buildPropertyTechnicalDossierPDF(p, result)
+	var kml KMLResult
+	var comparison GeometryComparison
+	if strings.TrimSpace(p.KMLPath) != "" {
+		if savedKML, loadErr := a.LoadPropertyKML(propertyID); loadErr == nil {
+			kml = savedKML
+			comparison = a.CompareKMLWithCAR(kml, result.CAR)
+		}
+	}
+	pdf := buildPropertyTechnicalDossierPDF(p, result, kml, comparison)
 	name := "Dossie_Tecnico_" + safeFilePart(p.Name) + "_" + safeCARFilename(result.CAR.CAR) + ".pdf"
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		Title:           "Salvar dossiê técnico do imóvel",
@@ -513,11 +521,11 @@ func environmentalEvidenceSourcesPage(p Property, car CARResult, intel Environme
 	return c.b.String()
 }
 
-func buildPropertyTechnicalDossierPDF(p Property, r CARAutomationResult) []byte {
+func buildPropertyTechnicalDossierPDF(p Property, r CARAutomationResult, kml KMLResult, cmp GeometryComparison) []byte {
 	pages := []string{}
 	page := 1
 	pages = append(pages, dossierCoverPage(p, r, page)); page++
-	pages = append(pages, dossierCARPage(p, r, page)); page++
+	pages = append(pages, dossierCARPage(p, r, kml, cmp, page)); page++
 	pages = append(pages, dossierEnvironmentalPage(p, r, page)); page++
 	pages = append(pages, dossierLandPage(p, r, page)); page++
 	pages = append(pages, dossierCreditPage(p, r, page)); page++
@@ -578,7 +586,7 @@ func dossierCoverPage(p Property, r CARAutomationResult, page int) string {
 	return c.b.String()
 }
 
-func dossierCARPage(p Property, r CARAutomationResult, page int) string {
+func dossierCARPage(p Property, r CARAutomationResult, kml KMLResult, cmp GeometryComparison, page int) string {
 	var c pdfCanvas
 	proHeader(&c, "DOSSIE TECNICO DO IMOVEL", "CAR e representação geométrica", page)
 	y := 720.0
@@ -597,7 +605,14 @@ func dossierCARPage(p Property, r CARAutomationResult, page int) string {
 	c.rect(40, 110, 515, y-125, true)
 	c.b.WriteString("0.80 0.86 0.82 RG 0.7 w\n")
 	c.rect(40, 110, 515, y-125, false)
-	drawDossierGeometry(&c, r.CAR, KMLResult{}, 54, 137, 487, y-175)
+	drawDossierGeometry(&c, r.CAR, kml, 54, 137, 487, y-175)
+	if kml.AreaHa > 0 {
+		c.b.WriteString("0.94 0.98 0.95 rg\n")
+		c.rect(40, 62, 515, 38, true)
+		c.b.WriteString("0.16 0.27 0.20 rg\n")
+		c.text(50, 84, 6.7, true, "KML EXTERNO")
+		c.text(132, 84, 6.7, false, fmtBR(kml.AreaHa, 4)+" ha; "+firstNonEmptyText(cmp.Summary, "comparação geométrica calculada"))
+	}
 	proFooter(&c, page)
 	return c.b.String()
 }
