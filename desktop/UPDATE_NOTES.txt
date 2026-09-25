@@ -1,14 +1,13 @@
-ViaVerdeCAR 2.0.1 — SICAR resiliente + interface operacional
+ViaVerdeCAR 2.0.2 — correção visual da interface
 
-• Corrige a classificação do SICAR: “não localizado” só aparece quando a base pública respondeu validamente e não retornou o CAR.
-• Se o SICAR estiver indisponível, o ViaVerdeCAR diferencia “base indisponível” de “sem ocorrência”.
-• Quando existe uma consulta pública anterior do mesmo CAR, a última geometria salva pode manter os cruzamentos funcionando, identificada claramente como cache local e sem fingir confirmação atual.
-• Consulta SICAR reforçada com código compacto primeiro, múltiplas versões WFS, dois endpoints públicos e retry limitado.
-• Ficha pública parcial passa a ser informada como parcial quando a geometria existe mas alguns atributos cadastrais não vieram.
-• Nova interface da Visão Geral inspirada no painel aprovado: sidebar verde, busca superior, cards de CAR/Ambiental/Fundiário/Crédito/Atenções, resumo do imóvel, mapa central com camadas, linha do tempo e ações rápidas.
-• O mapa da Visão Geral usa somente geometrias realmente retornadas: CAR, IBAMA, FUNAI, ICMBio, MapBiomas e glebas SICOR quando disponíveis.
-• Pesquisa por CPF/CNPJ continua automática na base local e agora apresenta caminhos oficiais disponíveis, sem inferir titularidade do CAR.
-• CPF: integração oficial automatizada exige credenciais/autorização e, na solução CPF v3, data de nascimento; nenhuma consulta paga é feita automaticamente.
-• CNPJ: são apresentados os caminhos oficiais da Receita/Conecta e Dados Abertos; nenhuma API paga ou não oficial é habilitada silenciosamente.
-• Consulta Pública SNCR fica acessível como fonte oficial auxiliar de conferência fundiária.
-• Preservados clientes, imóveis, banco SQLite, KMLs, histórico, Raio X, MapBiomas, SIGEF, SICOR, relatórios e dossiês existentes.
+• Corrige os ícones vazios vistos no Windows: a interface principal agora usa SVG embutido no próprio aplicativo e não depende de símbolos Unicode ou da fonte instalada no sistema.
+• A Visão Geral foi reconstruída de verdade, em vez de apenas receber elementos sobre a tela antiga.
+• Sidebar verde reorganizada com Início, Clientes, Imóveis, Consulta CAR, Raio X Ambiental, Raio X Fundiário, Crédito Rural, Mapa, Relatórios e Dossiês.
+• Barra superior fixa com busca única por CAR, CPF, CNPJ, imóvel, matrícula ou município.
+• Após analisar um CAR, a Visão Geral apresenta cinco cards: CAR, Ambiental, Fundiário, Crédito Rural e Atenções.
+• Área central com Resumo do Imóvel, mapa grande com camadas reais e Linha do Tempo.
+• Área inferior com Raio X Ambiental, SIGEF/INCRA, SICOR e Ações Rápidas.
+• O mapa usa somente geometrias reais retornadas pelas fontes; nenhum alerta é desenhado por aproximação visual inventada.
+• Mantidas as correções 2.0.1 do SICAR: localizado, parcial, indisponível, não localizado e cache local são estados distintos.
+• Mantida a pesquisa CPF/CNPJ com vínculos locais e caminhos oficiais permitidos.
+• Banco SQLite, clientes, imóveis, KMLs, histórico, análises, relatórios e dossiês foram preservados.
