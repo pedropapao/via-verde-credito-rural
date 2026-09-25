@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion204(t *testing.T) {
-	if AppVersion != "2.0.4" {
+func TestReleaseVersion205(t *testing.T) {
+	if AppVersion != "2.0.5" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.0.4"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.0.4")
+	if !strings.Contains(string(b), `"productVersion": "2.0.5"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.0.5")
 	}
 }
 
@@ -89,6 +89,28 @@ func TestRelease203BCBModulePreserved(t *testing.T) {
 	for _, path := range []string{"bcb_public.go", "bcb_public_test.go"} {
 		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
 			t.Fatalf("módulo BCB ausente: %s", path)
+		}
+	}
+}
+
+
+func TestRelease205ProfessionalPDFs(t *testing.T) {
+	if st, err := os.Stat("professional_reports.go"); err != nil || st.Size() == 0 {
+		t.Fatal("módulo de PDFs profissionais 2.0.5 ausente")
+	}
+	b, err := os.ReadFile("frontend/dist/ui204.js")
+	if err != nil { t.Fatal(err) }
+	js := string(b)
+	for _, marker := range []string{
+		"Gerar Demonstrativo PDF",
+		"Gerar Laudo PDF",
+		"Gerar Evidências PDF",
+		"Gerar Dossiê PDF",
+		"ExportEnvironmentalEvidencePDF",
+		"ExportPropertyTechnicalDossierPDF",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.0.5 sem integração PDF %q", marker)
 		}
 	}
 }
