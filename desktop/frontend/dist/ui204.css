@@ -155,3 +155,5 @@ body.vv204 #view-clients .panel,body.vv204 #view-settings .panel,body.vv204 #vie
   .vv204-tabs{top:142px}.vv204-env-row{grid-template-columns:10px 1fr auto}.vv204-env-row>b,.vv204-env-row>em{display:none}
   .vv204-split-list{grid-template-columns:1fr}.vv204-split-list>div+div{border-left:0;border-top:1px solid #e8eee9;padding-left:0;padding-top:12px}
 }
+
+.vv204-bcb-banner{margin-bottom:12px;padding:14px 16px;border:1px solid #d9e7dd;border-radius:12px;background:linear-gradient(135deg,#f3f9f5,#eaf4ee);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.vv204-bcb-banner>div{display:grid;gap:2px}.vv204-bcb-banner span{font-size:10px;font-weight:900;letter-spacing:.08em;color:#5d7868}.vv204-bcb-banner strong{font-size:15px;color:#2b4938}.vv204-bcb-banner small{font-size:11px;color:#718078}.vv204-bcb-banner>b{font-size:10px;border-radius:999px;padding:5px 8px;background:#dff3e5;color:#167742;white-space:nowrap}
