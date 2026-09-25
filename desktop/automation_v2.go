@@ -29,6 +29,15 @@ type UniversalSearchHit struct {
 	AreaHa       float64 `json:"area_ha"`
 }
 
+type DocumentSourceOption struct {
+	Key       string `json:"key"`
+	Label     string `json:"label"`
+	Status    string `json:"status"`
+	Detail    string `json:"detail"`
+	URL       string `json:"url"`
+	Automatic bool   `json:"automatic"`
+}
+
 type UniversalSearchResult struct {
 	Query           string               `json:"query"`
 	Mode            string               `json:"mode"`
@@ -38,6 +47,7 @@ type UniversalSearchResult struct {
 	Hits            []UniversalSearchHit `json:"hits"`
 	Message         string               `json:"message"`
 	PrivacyNotice   string               `json:"privacy_notice"`
+	OfficialOptions []DocumentSourceOption `json:"official_options"`
 }
 
 type AutomationSourceStatus struct {
@@ -83,8 +93,9 @@ func (a *App) SearchEverything(query string) (UniversalSearchResult, error) {
 	} else if (mode == "cpf" || mode == "cnpj") && !valid {
 		out.Message = strings.ToUpper(mode) + " com dígitos verificadores inválidos."
 	} else if mode == "cpf" || mode == "cnpj" {
-		out.Message = "Busca por " + strings.ToUpper(mode) + " realizada somente na base local do ViaVerdeCAR."
-		out.PrivacyNotice = "A camada pública nacional do SICAR não fornece nome/CPF do detentor. O ViaVerdeCAR não tenta contornar esse acesso protegido."
+		out.Message = "Busca por " + strings.ToUpper(mode) + ": primeiro o ViaVerdeCAR cruza sua base local e apresenta os caminhos oficiais disponíveis."
+		out.PrivacyNotice = "O SICAR público não oferece pesquisa de imóvel por CPF/CNPJ. Vínculos de titularidade só são mostrados quando já cadastrados localmente ou quando uma fonte oficial consultada comprovar a relação."
+		out.OfficialOptions = documentOfficialOptions(mode)
 	} else {
 		out.Message = "Busca local por cliente, imóvel, matrícula, município e CAR."
 	}
@@ -424,12 +435,27 @@ func automationSources(out CARAutomationResult) []AutomationSourceStatus {
 	sources := []AutomationSourceStatus{{
 		Key: "sicar", Label: "SICAR", SourceURL: out.CAR.OfficialURL,
 	}}
-	if out.CAR.Found {
-		sources[0].Status = "ok"
-		sources[0].Detail = "CAR localizado na camada pública."
-	} else {
+	switch strings.ToLower(strings.TrimSpace(out.CAR.LookupStatus)) {
+	case "cached":
+		sources[0].Status = "cached"
+		sources[0].Detail = v2FirstNonEmpty(out.CAR.LookupDetail, "SICAR indisponível; última geometria pública salva foi reaproveitada.")
+	case "partial":
+		sources[0].Status = "partial"
+		sources[0].Detail = v2FirstNonEmpty(out.CAR.LookupDetail, "CAR e geometria localizados, com ficha cadastral parcial.")
+	case "unavailable":
+		sources[0].Status = "unavailable"
+		sources[0].Detail = v2FirstNonEmpty(out.CAR.LookupDetail, "Base pública SICAR indisponível.")
+	case "not_found":
 		sources[0].Status = "not_found"
-		sources[0].Detail = "CAR não localizado na camada pública consultada."
+		sources[0].Detail = v2FirstNonEmpty(out.CAR.LookupDetail, "CAR não localizado na camada pública consultada.")
+	default:
+		if out.CAR.Found {
+			sources[0].Status = "ok"
+			sources[0].Detail = "CAR localizado na camada pública."
+		} else {
+			sources[0].Status = "not_found"
+			sources[0].Detail = "CAR não localizado na camada pública consultada."
+		}
 	}
 	if !out.CAR.Found {
 		return sources
@@ -535,7 +561,7 @@ func automationOverallStatus(out CARAutomationResult) string {
 	}
 	partial := false
 	for _, s := range out.Sources {
-		if s.Status == "unavailable" || s.Status == "not_configured" {
+		if s.Status == "unavailable" || s.Status == "not_configured" || s.Status == "partial" || s.Status == "cached" {
 			partial = true
 		}
 	}
@@ -574,12 +600,48 @@ func automationExecutiveSummary(out CARAutomationResult, elapsed time.Duration) 
 	if summary != "" {
 		summary += ". "
 	}
+	if strings.EqualFold(car.LookupStatus, "cached") {
+		summary += "SICAR não confirmou a ficha nesta tentativa; foi usada a última geometria pública salva para manter os cruzamentos. "
+	} else if strings.EqualFold(car.LookupStatus, "partial") {
+		summary += "SICAR confirmou o CAR/geometria, mas a ficha veio parcial. "
+	}
 	summary += fmt.Sprintf("A análise automática consolidou %d fonte(s); %d item(ns) de ocorrência/registro foram sinalizados para conferência", len(out.Sources), hits)
 	if unavailable > 0 {
 		summary += fmt.Sprintf(" e %d fonte(s) ficaram indisponíveis ou não configuradas", unavailable)
 	}
 	summary += fmt.Sprintf(". Tempo aproximado: %.0f s. Resultados são triagem técnica e devem ser conferidos na fonte oficial quando houver ocorrência.", elapsed.Seconds())
 	return summary
+}
+
+func documentOfficialOptions(mode string) []DocumentSourceOption {
+	local := DocumentSourceOption{
+		Key: "local", Label: "ViaVerdeCAR • vínculos locais", Status: "ready", Automatic: true,
+		Detail: "Pesquisa clientes, imóveis e CARs já vinculados no banco local.",
+	}
+	sncr := DocumentSourceOption{
+		Key: "sncr", Label: "INCRA • Consulta Pública SNCR", Status: "manual_official",
+		Detail: "A consulta pública do SNCR disponibiliza nome do titular, imóvel, município, área e condição. Não fornece uma API pública por CPF; use como conferência de candidatos por nome/localidade.",
+		URL: "https://sncr.serpro.gov.br/sncr-web/consultaPublica.jsf",
+	}
+	if mode == "cpf" {
+		return []DocumentSourceOption{
+			local,
+			{Key: "cpf_serpro", Label: "Receita Federal / SERPRO • Consulta CPF v3", Status: "credentials_required",
+				Detail: "Fonte oficial automatizável mediante contratação/credenciais. A versão v3 exige CPF e data de nascimento; o ViaVerdeCAR não realiza consulta sem autorização configurada.",
+				URL: "https://www.gov.br/pt-br/servicos/obter-solucao-digital-de-consulta-de-dados-de-cadastro-de-pessoa-fisica-cpf"},
+			sncr,
+		}
+	}
+	return []DocumentSourceOption{
+		local,
+		{Key: "cnpj_conecta", Label: "Receita Federal • Consulta CNPJ", Status: "credentials_required",
+			Detail: "A API oficial de CNPJ pode retornar nome empresarial, situação e outros dados, mas exige adesão/credenciais do serviço oficial.",
+			URL: "https://www.gov.br/conecta/catalogo/apis/consulta-cnpj"},
+		{Key: "cnpj_open", Label: "Receita Federal • Dados Abertos CNPJ", Status: "bulk_official",
+			Detail: "Base oficial em dados abertos para processamento em lote. Não é usada silenciosamente como consulta online por exigir sincronização local volumosa.",
+			URL: "https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/dados-abertos/cadastros"},
+		sncr,
+	}
 }
 
 func v2ClassifyUnifiedQuery(v string) (mode, normalized string, valid bool) {
