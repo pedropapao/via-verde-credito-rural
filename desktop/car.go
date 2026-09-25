@@ -10,7 +10,6 @@ import (
 	"io"
 	"math"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"regexp"
@@ -466,44 +465,6 @@ func lookupCARPublic(ctx context.Context, car, uf string) (*carGeoFeature, error
 	feature, _, err := lookupCARPublicDetailed(ctx, car, uf)
 	return feature, err
 }
-func lookupCARPublicVersion(ctx context.Context, car, uf, version, typeKey string) (*carGeoFeature, error) {
-	params := url.Values{}
-	params.Set("service", "WFS")
-	params.Set("version", version)
-	params.Set("request", "GetFeature")
-	params.Set(typeKey, "sicar:sicar_imoveis_"+carLayerUF(uf))
-	params.Set("outputFormat", "application/json")
-	params.Set("srsName", "EPSG:4326")
-	if version == "2.0.0" {
-		params.Set("count", "2")
-	} else {
-		params.Set("maxFeatures", "2")
-	}
-	params.Set("CQL_FILTER", "cod_imovel='"+strings.ReplaceAll(car, "'", "''")+"'")
-
-	var lastErr error
-	for _, endpoint := range []string{carWFSURL, carWFSFallback} {
-		body, err := fetchCARBody(ctx, endpoint+"?"+params.Encode())
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		var fc carGeoJSON
-		if err := json.Unmarshal(body, &fc); err != nil {
-			lastErr = err
-			continue
-		}
-		if len(fc.Features) == 0 {
-			return nil, nil
-		}
-		return &fc.Features[0], nil
-	}
-	if lastErr != nil {
-		return nil, lastErr
-	}
-	return nil, errors.New("consulta SICAR sem resposta")
-}
-
 // fetchCARBody tenta primeiro o cliente HTTP nativo. Alguns servidores do SICAR
 // recusam esporadicamente o handshake TLS do Go/Windows embora funcionem no
 // navegador. Nessa situação usamos o curl.exe do próprio Windows (Schannel)
