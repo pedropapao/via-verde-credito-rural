@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const AppVersion = "1.9.5"
+const AppVersion = "2.0.6"
 
 type App struct {
 	ctx     context.Context
@@ -163,6 +163,9 @@ func (a *App) migrate() error {
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_properties_client ON properties(client_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_properties_car ON properties(car_number);`,
+		`CREATE INDEX IF NOT EXISTS idx_clients_cpf_cnpj ON clients(cpf_cnpj);`,
+		`CREATE INDEX IF NOT EXISTS idx_properties_registry ON properties(registry);`,
+		`CREATE INDEX IF NOT EXISTS idx_properties_municipality ON properties(municipality,uf);`,
 		`CREATE TABLE IF NOT EXISTS car_checks (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			property_id INTEGER NOT NULL,
@@ -241,7 +244,7 @@ func (a *App) migrate() error {
 			FOREIGN KEY(area_id) REFERENCES project_areas(id) ON DELETE CASCADE
 		);`,
 		`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
-		`UPDATE schema_version SET version=4 WHERE version < 4;`,
+		`UPDATE schema_version SET version=5 WHERE version < 5;`,
 	}
 	for _, stmt := range stmts {
 		if _, err := a.db.Exec(stmt); err != nil {
