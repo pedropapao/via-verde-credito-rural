@@ -10,6 +10,116 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// Os quatro métodos abaixo geram os PDFs diretamente do resultado que já está
+// na tela. Isso permite relatório de consulta avulsa sem criar cliente, imóvel,
+// histórico ou qualquer vínculo implícito no banco local.
+func (a *App) ExportCARAutomationPDF(result CARAutomationResult) (string, error) {
+	if a.ctx == nil {
+		return "", errors.New("aplicativo ainda não inicializado")
+	}
+	if strings.TrimSpace(result.CAR.CAR) == "" {
+		return "", errors.New("execute a análise de um CAR antes de gerar o demonstrativo")
+	}
+	p := a.propertyForAutomationReport(result)
+	kml, cmp := a.savedKMLForAutomationReport(result, p)
+	pdf := buildCARProfessionalPDF(p, result.CAR, kml, cmp)
+	name := "Demonstrativo_CAR_" + safeCARFilename(result.CAR.CAR) + ".pdf"
+	return a.saveProfessionalPDF("Salvar demonstrativo técnico do CAR", name, pdf)
+}
+
+func (a *App) ExportEnvironmentalAutomationPDF(result CARAutomationResult) (string, error) {
+	if a.ctx == nil {
+		return "", errors.New("aplicativo ainda não inicializado")
+	}
+	if strings.TrimSpace(result.CAR.CAR) == "" {
+		return "", errors.New("execute a análise de um CAR antes de gerar o laudo ambiental")
+	}
+	p := a.propertyForAutomationReport(result)
+	pdf := buildEnvironmentalTechnicalPDF(p, result.CAR, result.Environmental, "")
+	name := "Laudo_Tecnico_Ambiental_" + safeCARFilename(result.CAR.CAR) + ".pdf"
+	return a.saveProfessionalPDF("Salvar laudo técnico ambiental", name, pdf)
+}
+
+func (a *App) ExportEnvironmentalAutomationEvidencePDF(result CARAutomationResult) (string, error) {
+	if a.ctx == nil {
+		return "", errors.New("aplicativo ainda não inicializado")
+	}
+	if strings.TrimSpace(result.CAR.CAR) == "" {
+		return "", errors.New("execute a análise de um CAR antes de gerar as evidências")
+	}
+	p := a.propertyForAutomationReport(result)
+	pdf := buildEnvironmentalEvidencePDF(p, result.CAR, result.Environmental)
+	name := "Caderno_Evidencias_Ambientais_" + safeCARFilename(result.CAR.CAR) + ".pdf"
+	return a.saveProfessionalPDF("Salvar caderno de evidências ambientais", name, pdf)
+}
+
+func (a *App) ExportPropertyAutomationDossierPDF(result CARAutomationResult) (string, error) {
+	if a.ctx == nil {
+		return "", errors.New("aplicativo ainda não inicializado")
+	}
+	if strings.TrimSpace(result.CAR.CAR) == "" {
+		return "", errors.New("execute a análise de um CAR antes de gerar o dossiê")
+	}
+	p := a.propertyForAutomationReport(result)
+	kml, cmp := a.savedKMLForAutomationReport(result, p)
+	pdf := buildPropertyTechnicalDossierPDF(p, result, kml, cmp)
+	name := "Dossie_Tecnico_" + safeFilePart(firstNonEmptyText(p.Name, result.CAR.PropertyName, "Imovel")) + "_" + safeCARFilename(result.CAR.CAR) + ".pdf"
+	return a.saveProfessionalPDF("Salvar dossiê técnico do imóvel", name, pdf)
+}
+
+func (a *App) propertyForAutomationReport(result CARAutomationResult) Property {
+	if result.PropertyID > 0 {
+		if p, err := a.GetProperty(result.PropertyID); err == nil {
+			return p
+		}
+	}
+	area := firstPositive(result.CAR.AreaHa, result.CAR.GeometryAreaHa)
+	return Property{
+		Name:           firstNonEmptyText(result.CAR.PropertyName, "Imóvel rural"),
+		Municipality:   result.CAR.Municipality,
+		UF:             result.CAR.UF,
+		CARNumber:      result.CAR.CAR,
+		DeclaredAreaHa: area,
+	}
+}
+
+func (a *App) savedKMLForAutomationReport(result CARAutomationResult, p Property) (KMLResult, GeometryComparison) {
+	var kml KMLResult
+	var cmp GeometryComparison
+	if result.PropertyID <= 0 || strings.TrimSpace(p.KMLPath) == "" {
+		return kml, cmp
+	}
+	if saved, err := a.LoadPropertyKML(result.PropertyID); err == nil {
+		kml = saved
+		cmp = a.CompareKMLWithCAR(kml, result.CAR)
+	}
+	return kml, cmp
+}
+
+func (a *App) saveProfessionalPDF(title, defaultName string, pdf []byte) (string, error) {
+	if len(pdf) == 0 {
+		return "", errors.New("o PDF não pôde ser montado")
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           title,
+		DefaultFilename: defaultName,
+		Filters:         []runtime.FileFilter{{DisplayName: "PDF", Pattern: "*.pdf"}},
+	})
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(path) == "" {
+		return "", errors.New("exportação cancelada")
+	}
+	if !strings.HasSuffix(strings.ToLower(path), ".pdf") {
+		path += ".pdf"
+	}
+	if err := os.WriteFile(path, pdf, 0o644); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
 // ExportEnvironmentalEvidencePDF gera um caderno em PDF para conferência e
 // rastreabilidade. O JSON estruturado continua disponível na aba Documentos.
 func (a *App) ExportEnvironmentalEvidencePDF(propertyID int64, force bool) (string, error) {
