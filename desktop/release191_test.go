@@ -58,3 +58,20 @@ func TestRelease202LoadsSVGInterface(t *testing.T) {
 		t.Fatal("interface 2.0.2 precisa usar ícones SVG embutidos")
 	}
 }
+
+
+func TestRelease202DoesNotLoadSupersededShells(t *testing.T) {
+	b, err := os.ReadFile("frontend/dist/index.html")
+	if err != nil { t.Fatal(err) }
+	html := string(b)
+	for _, asset := range []string{"ui200.js", "ui200.css", "ui201.js", "ui201.css"} {
+		if strings.Contains(html, asset) {
+			t.Fatalf("shell legado não deve ser carregado na 2.0.2: %s", asset)
+		}
+	}
+	for _, asset := range []string{"ui202.js", "ui202.css"} {
+		if !strings.Contains(html, asset) {
+			t.Fatalf("shell 2.0.2 obrigatório não carregado: %s", asset)
+		}
+	}
+}
