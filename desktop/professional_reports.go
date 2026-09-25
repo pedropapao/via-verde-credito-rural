@@ -394,7 +394,7 @@ func environmentalEvidenceSummaryPage(p Property, car CARResult, intel Environme
 		}
 		return ""
 	}())
-	proMetric(&c, 433, y-72, 122, 64, "FOCOS DE CALOR", fmt.Sprintf("%d", intel.Profile.Fire.FeatureCount), environmentalFireReportStatus(intel.Profile.Fire), func() string {
+	proMetric(&c, 433, y-72, 122, 64, "FOCOS DE CALOR", fmt.Sprintf("%d", intel.Profile.Fire.FeatureCount), fireReportText(intel.Profile.Fire), func() string {
 		if intel.Profile.Fire.FeatureCount > 0 {
 			return "warn"
 		}
@@ -410,7 +410,7 @@ func environmentalEvidenceSummaryPage(p Property, car CARResult, intel Environme
 	proKV(&c, &y, "ICMBio", sourceState(intel.Environment.ICMBioChecked, intel.Environment.FederalUCCount))
 	proKV(&c, &y, "MMA / MCR-PRODES", mcrSourceSummary(intel.Environment))
 	proKV(&c, &y, "Temas SICAR", themeSourceSummary(intel.Themes))
-	proKV(&c, &y, "INPE / Programa Queimadas", environmentalFireReportStatus(intel.Profile.Fire))
+	proKV(&c, &y, "INPE / Programa Queimadas", fireReportText(intel.Profile.Fire))
 
 	if intel.Profile.BiomeAvailable || intel.Profile.LandCoverAvailable {
 		proSection(&c, &y, "PERFIL TERRITORIAL", "")
@@ -617,7 +617,7 @@ func dossierEnvironmentalPage(p Property, r CARAutomationResult, page int) strin
 	proSection(&c, &y, "FONTES E RESULTADOS", "")
 	mbState, mbDetail := mapBiomasReportState(r.Environmental.MapBiomas)
 	proKV(&c, &y, "MapBiomas Alerta", mbState+" - "+mbDetail)
-	proKV(&c, &y, "INPE / Focos de calor", environmentalFireReportStatus(r.Environmental.Profile.Fire))
+	proKV(&c, &y, "INPE / Focos de calor", fireReportText(r.Environmental.Profile.Fire))
 	proKV(&c, &y, "MMA / MCR-PRODES", mcrSourceSummary(r.Environmental.Environment))
 	proKV(&c, &y, "Temas SICAR", themeSourceSummary(r.Environmental.Themes))
 	if r.Environmental.Profile.BiomeAvailable {
@@ -769,6 +769,12 @@ func dossierSourcesPage(p Property, r CARAutomationResult, page int) string {
 	proNotice(&c, &y, "USO DO DOCUMENTO", "Este dossiê consolida consultas públicas e dados locais para apoio ao trabalho técnico. Ele não substitui documentos oficiais do SICAR, registro de imóveis, certificação SIGEF/INCRA, licenciamento, auto de infração, consulta bancária privada ou decisão de crédito. Toda ocorrência relevante deve ser confirmada na fonte oficial e revisada pelo profissional responsável.", "")
 	proFooter(&c, page)
 	return c.b.String()
+}
+
+func fireReportText(f EnvironmentalFireProfile) string {
+	status, value, detail := environmentalFireReportStatus(f)
+	parts := v2NonEmpty([]string{status, value, detail})
+	return strings.Join(parts, " - ")
 }
 
 func reportAutomationStatus(status string) string {
