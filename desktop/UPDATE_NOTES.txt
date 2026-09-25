@@ -1,16 +1,19 @@
-ViaVerdeCAR 2.0.3 — Banco Central integrado ao Raio X
+ViaVerdeCAR 2.0.4 — Interface Operacional
 
-• Integra um novo módulo de Dados Abertos do Banco Central ao fluxo automático do CAR, sem exigir login, token ou cadastro do usuário nas fontes públicas utilizadas.
-• Reaproveita o SICOR/MDCR já existente e amplia o contexto de mercado sem duplicar a lógica de operações vinculadas ao CAR.
-• MDCR/SICOR: produtos de custeio e investimento no município, instituições e programas por UF e fontes de recursos do crédito rural.
-• SGS/BCB: séries públicas de taxas rurais PF/PJ, saldos, concessões e inadimplência, com valor mais recente, valor anterior e variação.
-• Taxas por instituição: consulta a publicação oficial de médias por instituição/modalidade e mantém somente modalidades identificadas como rurais/agro quando retornadas.
-• Entidades supervisionadas: cruza os nomes relevantes do contexto MDCR com o cadastro oficial de instituições autorizadas pelo Banco Central.
-• IFData: consulta automaticamente a data-base trimestral disponível e relaciona cadastro, segmento, atividade e situação das instituições relevantes.
-• SCR.data: fica identificado como fonte oficial agregada mensal por UF. Os arquivos completos não são baixados silenciosamente no Raio X porque são volumosos e não servem para consulta de dívida individual por CPF/CNPJ.
-• O novo painel “Banco Central • Dados Abertos” aparece na Visão Geral com mercado municipal, taxas, contexto nacional, instituições, IFData, programas, fontes e SCR.data.
-• Cada fonte BCB mantém status próprio: disponível, vazia no recorte, indisponível ou sob demanda. Falha de uma fonte não derruba as demais.
-• Cache local BCB de 8 horas reduz chamadas repetidas e acelera consultas do mesmo município.
-• A Inteligência de Crédito mantém o contexto agregado MDCR disponível mesmo quando nenhuma operação pública vinculada ao CAR é localizada.
-• Nenhum dado individual de SCR, dívida privada, limite bancário ou decisão de crédito é inferido pelo sistema.
-• Banco SQLite, clientes, imóveis, KMLs, histórico, Raio X ambiental/fundiário, MapBiomas, SIGEF, SICOR, relatórios e dossiês foram preservados.
+• Reorganiza a experiência principal sem alterar as integrações e dados da 2.0.3.
+• Remove a sidebar fixa da tela principal para devolver largura ao conteúdo.
+• Mantém uma barra superior com ViaVerdeCAR, busca única, Cadastros, Histórico, Configurações e Ajuda.
+• Aumenta a tipografia, espaçamento, altura das linhas e tamanho dos números importantes.
+• Mantém os cinco indicadores superiores: CAR, Ambiental, Fundiário, Crédito Rural e Atenções.
+• A navegação principal passa a ser horizontal e em uma única tela: Resumo, CAR, Ambiental, Fundiário, Crédito Rural, Mapa, Documentos e Relatórios.
+• Resumo: mostra somente dados essenciais do imóvel, mapa, três resultados principais, ações rápidas e linha do tempo.
+• CAR: concentra ficha pública, situação da consulta SICAR, geometria, KML e vínculo com cliente.
+• Ambiental: amplia a lista de bases e o mapa ambiental; base indisponível continua diferente de sem ocorrência.
+• Fundiário: amplia SIGEF/INCRA, cobertura e registros.
+• Crédito Rural: organiza SICOR e todo o módulo Banco Central da 2.0.3 em painéis legíveis.
+• Mapa: passa a ocupar uma área grande própria com controle de camadas.
+• Documentos: centraliza KML SICAR, KML externo, evidências e dossiê.
+• Relatórios: centraliza demonstrativo CAR, laudo ambiental, evidências e dossiê completo.
+• Clientes, imóveis e Configurações continuam acessíveis pelo topo, sem depender da antiga sidebar.
+• ui201 e ui202 permanecem versionadas no repositório para rollback, mas não são carregadas na 2.0.4.
+• Banco SQLite, CAR, KML, MapBiomas, IBAMA, FUNAI, ICMBio, INPE, SIGEF, SICOR, BCB, relatórios, dossiês e atualizador foram preservados.
