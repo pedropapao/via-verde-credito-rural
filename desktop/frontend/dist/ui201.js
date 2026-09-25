@@ -13,6 +13,7 @@
     if(E('vvWorkspace201')) return;
     rebuildSidebar201();
     rebuildTopbar201();
+    try{api()?.GetAppInfo?.().then(info=>{if(E('vvVersionChip201')&&info?.version)E('vvVersionChip201').textContent=info.version}).catch(()=>{})}catch(_){}
 
     const dashboard=E('view-dashboard');
     if(!dashboard) return;
@@ -53,7 +54,7 @@
     side.dataset.vv201='1';
     const brand=side.querySelector('.brand');
     if(brand){
-      brand.innerHTML='<div class="vv-logo201">◆</div><div><strong>ViaVerdeCAR</strong><span>CONSULTA E ANÁLISE RURAL</span></div><b class="vv-version-chip201">2.0.1</b>';
+      brand.innerHTML='<div class="vv-logo201">◆</div><div><strong>ViaVerdeCAR</strong><span>CONSULTA E ANÁLISE RURAL</span></div><b id="vvVersionChip201" class="vv-version-chip201">2.0.1</b>';
     }
     const nav=side.querySelector('nav');
     if(nav){
