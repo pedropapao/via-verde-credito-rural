@@ -1,12 +1,10 @@
-ViaVerdeCAR 2.0.5 — PDFs profissionais
+ViaVerdeCAR 2.0.6 — PDFs liberados na consulta avulsa
 
-• Mantém a interface operacional 2.0.4 e concentra esta versão somente na qualidade das saídas técnicas.
-• Demonstrativo CAR: novo PDF profissional em 2 páginas, com identificação do imóvel, situação SICAR, métricas cadastrais, mapa vetorial, KML e comparação geométrica quando disponível.
-• Laudo Ambiental: preserva o relatório multipágina existente e passa a usar a mesma identidade visual profissional da Via Verde.
-• Caderno de Evidências Ambientais: novo PDF em 3 páginas com status das bases, MapBiomas, INPE, IBAMA, FUNAI, ICMBio, MMA/MCR, temas SICAR, mapa, alertas, fontes, avisos e limitações.
-• Dossiê Técnico do Imóvel: novo PDF consolidado em 7 páginas com CAR, mapa, ambiental, SIGEF/INCRA, SICOR, Banco Central, fontes e ressalvas.
-• A aba Relatórios passa a entregar quatro PDFs: Demonstrativo CAR, Laudo Ambiental, Caderno de Evidências e Dossiê Técnico.
-• O JSON de evidências continua disponível na aba Documentos para rastreabilidade estruturada.
-• O pacote ZIP técnico continua disponível na aba Documentos; o novo Dossiê PDF não elimina essa saída.
-• Todos os documentos diferenciam ocorrência, ausência confirmada, fonte indisponível e consulta parcial.
-• Banco SQLite, clientes, imóveis, CAR, KML, MapBiomas, SIGEF, SICOR, BCB, análises e histórico permanecem preservados.
+• Corrige o bloqueio visto na 2.0.5: os botões da aba Relatórios não dependem mais de property_id.
+• Demonstrativo CAR, Laudo Ambiental, Caderno de Evidências e Dossiê Técnico podem ser gerados diretamente da análise atual do CAR.
+• Não é necessário cadastrar cliente ou salvar/vincular o imóvel para gerar os PDFs.
+• A geração usa exatamente os dados já carregados na tela; não cria cliente, imóvel, histórico ou vínculo automaticamente.
+• Quando o imóvel estiver salvo, o sistema continua aproveitando nome do cliente, matrícula e KML externo já cadastrado.
+• O botão rápido “Gerar dossiê PDF” também funciona em consulta avulsa.
+• O pacote ZIP técnico e o JSON estruturado continuam na aba Documentos e podem continuar exigindo imóvel salvo quando dependem do armazenamento local.
+• Banco SQLite, CAR/SICAR, MapBiomas, SIGEF, SICOR, Banco Central e interface operacional permanecem preservados.
