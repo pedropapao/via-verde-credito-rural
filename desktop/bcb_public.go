@@ -20,6 +20,8 @@ const (
 	bcbMDCRDatasetURL       = "https://dadosabertos.bcb.gov.br/dataset/matrizdadoscreditorural"
 	bcbEntitiesDatasetURL   = "https://dadosabertos.bcb.gov.br/dataset/dados-cadastrais-de-entidades-autorizadas"
 	bcbIFDataDatasetURL     = "https://dadosabertos.bcb.gov.br/dataset/ifdata---dados-selecionados-de-instituies-financeiras"
+	bcbInstitutionRatesURL   = "https://dadosabertos.bcb.gov.br/dataset/taxas-de-juros-de-operacoes-de-credito"
+	bcbRateODataBase         = "https://olinda.bcb.gov.br/olinda/servico/taxaJuros/versao/v2/odata/"
 	bcbSCRDatasetURL        = "https://dadosabertos.bcb.gov.br/dataset/scr_data"
 	bcbSGSBaseURL           = "https://api.bcb.gov.br/dados/serie/bcdata.sgs."
 	bcbBcBaseODataBase      = "https://olinda.bcb.gov.br/olinda/servico/BcBase/versao/v2/odata/"
@@ -98,6 +100,26 @@ type BCBIFDataContext struct {
 	Warnings     []string          `json:"warnings"`
 }
 
+type BCBInstitutionRate struct {
+	StartDate     string  `json:"start_date"`
+	EndDate       string  `json:"end_date"`
+	Segment       string  `json:"segment"`
+	Modality      string  `json:"modality"`
+	Position      int     `json:"position"`
+	Institution   string  `json:"institution"`
+	CNPJ8         string  `json:"cnpj8"`
+	MonthlyRate   float64 `json:"monthly_rate"`
+	AnnualRate    float64 `json:"annual_rate"`
+}
+
+type BCBInstitutionRateContext struct {
+	Available bool                 `json:"available"`
+	Rates     []BCBInstitutionRate `json:"rates"`
+	Message   string               `json:"message"`
+	SourceURL string               `json:"source_url"`
+	Warnings  []string             `json:"warnings"`
+}
+
 type BCBOpenDataSource struct {
 	Key       string `json:"key"`
 	Label     string `json:"label"`
@@ -117,6 +139,7 @@ type BCBPublicContext struct {
 	Series        BCBSeriesContext      `json:"series"`
 	Institutions  BCBInstitutionContext `json:"institutions"`
 	IFData        BCBIFDataContext      `json:"ifdata"`
+	InstitutionRates BCBInstitutionRateContext `json:"institution_rates"`
 	Sources       []BCBOpenDataSource   `json:"sources"`
 	Warnings      []string              `json:"warnings"`
 	SourceURL     string                `json:"source_url"`
@@ -172,6 +195,7 @@ func (a *App) GetBCBPublicContext(propertyID int64, force bool) (BCBPublicContex
 			{Key: "sgs", Label: "SGS / Séries rurais", Status: "pending", Detail: "Taxas, saldos, concessões e inadimplência agregadas.", SourceURL: "https://www.bcb.gov.br/estatisticas/indecoreestruturacao", Automatic: true},
 			{Key: "entities", Label: "Entidades supervisionadas", Status: "pending", Detail: "Cadastro oficial de instituições autorizadas pelo BCB.", SourceURL: bcbEntitiesDatasetURL, Automatic: true},
 			{Key: "ifdata", Label: "IFData", Status: "pending", Detail: "Cadastro trimestral e contexto das instituições financeiras.", SourceURL: bcbIFDataDatasetURL, Automatic: true},
+			{Key: "rates_if", Label: "Taxas por instituição", Status: "pending", Detail: "Médias publicadas pelo BCB por instituição e modalidade; não são oferta individual.", SourceURL: bcbInstitutionRatesURL, Automatic: true},
 			{Key: "scr", Label: "SCR.data", Status: "on_demand", Detail: "Base mensal agregada por UF. Não é baixada automaticamente no Raio X porque os arquivos são volumosos e não permitem consulta de dívida individual por CPF/CNPJ.", SourceURL: bcbSCRDatasetURL, Automatic: false},
 		},
 	}
@@ -191,8 +215,13 @@ func (a *App) GetBCBPublicContext(propertyID int64, force bool) (BCBPublicContex
 		v BCBSeriesContext
 		e error
 	}
+	type rateResult struct {
+		v BCBInstitutionRateContext
+		e error
+	}
 	marketCh := make(chan marketResult, 1)
 	seriesCh := make(chan seriesResult, 1)
+	rateCh := make(chan rateResult, 1)
 	go func() {
 		v, e := queryCreditMarketContext(ctx, car.Municipality, car.UF, car.MunicipalityCode)
 		marketCh <- marketResult{v: v, e: e}
@@ -201,8 +230,12 @@ func (a *App) GetBCBPublicContext(propertyID int64, force bool) (BCBPublicContex
 		v, e := queryBCBRuralSeries(ctx)
 		seriesCh <- seriesResult{v: v, e: e}
 	}()
+	go func() {
+		v, e := queryBCBInstitutionRuralRates(ctx)
+		rateCh <- rateResult{v: v, e: e}
+	}()
 
-	mr, sr := <-marketCh, <-seriesCh
+	mr, sr, rr := <-marketCh, <-seriesCh, <-rateCh
 	out.Market = mr.v
 	out.Series = sr.v
 	if mr.e != nil {
@@ -220,6 +253,17 @@ func (a *App) GetBCBPublicContext(propertyID int64, force bool) (BCBPublicContex
 		setBCBSourceStatus(&out, "sgs", "available", sr.v.Message)
 	} else {
 		setBCBSourceStatus(&out, "sgs", "unavailable", sr.v.Message)
+	}
+	out.InstitutionRates = rr.v
+	if rr.e != nil {
+		out.Warnings = append(out.Warnings, "Taxas por instituição BCB: "+rr.e.Error())
+	}
+	if rr.v.Available {
+		setBCBSourceStatus(&out, "rates_if", "available", rr.v.Message)
+	} else if len(rr.v.Rates) == 0 && rr.e == nil {
+		setBCBSourceStatus(&out, "rates_if", "empty", rr.v.Message)
+	} else {
+		setBCBSourceStatus(&out, "rates_if", "unavailable", rr.v.Message)
 	}
 
 	targetNames := marketInstitutionNames(out.Market)
@@ -261,7 +305,7 @@ func (a *App) GetBCBPublicContext(propertyID int64, force bool) (BCBPublicContex
 	}
 
 	out.Warnings = v2UniqueNonEmpty(out.Warnings)
-	out.Available = out.Market.Available || out.Series.Available || out.Institutions.Available || out.IFData.Available
+	out.Available = out.Market.Available || out.Series.Available || out.Institutions.Available || out.IFData.Available || out.InstitutionRates.Available
 	if cachePath != "" {
 		if err := saveBCBPublicCache(cachePath, out); err != nil {
 			out.Warnings = append(out.Warnings, "Cache BCB: "+err.Error())
@@ -413,6 +457,58 @@ func parseBCBDecimal(v string) (float64, error) {
 		v = strings.ReplaceAll(v, ",", ".")
 	}
 	return strconv.ParseFloat(v, 64)
+}
+
+func queryBCBInstitutionRuralRates(ctx context.Context) (BCBInstitutionRateContext, error) {
+	out := BCBInstitutionRateContext{SourceURL: bcbInstitutionRatesURL}
+	q := url.Values{}
+	q.Set("$format", "json")
+	q.Set("$top", "10000")
+	target := bcbRateODataBase + "TaxasJurosDiariaPorInicioPeriodo?" + q.Encode()
+	rows, err := getODataRows(ctx, target)
+	if err != nil {
+		out.Message = "A API de taxas por instituição não respondeu nesta tentativa."
+		return out, err
+	}
+	for _, r := range rows {
+		modality := firstNonEmptyStringMapValue(r, "Modalidade", "modalidade")
+		segment := firstNonEmptyStringMapValue(r, "Segmento", "segmento")
+		text := strings.ToUpper(modality + " " + segment)
+		if !strings.Contains(text, "RURAL") && !strings.Contains(text, "AGRO") {
+			continue
+		}
+		position, _ := strconv.Atoi(firstNonEmptyStringMapValue(r, "Posicao", "Posição", "posicao"))
+		out.Rates = append(out.Rates, BCBInstitutionRate{
+			StartDate: firstNonEmptyStringMapValue(r, "InicioPeriodo", "inicioPeriodo"),
+			EndDate: firstNonEmptyStringMapValue(r, "FimPeriodo", "fimPeriodo"),
+			Segment: segment,
+			Modality: modality,
+			Position: position,
+			Institution: firstNonEmptyStringMapValue(r, "InstituicaoFinanceira", "InstituiçãoFinanceira", "NomeInstituicao"),
+			CNPJ8: firstNonEmptyStringMapValue(r, "cnpj8", "CNPJ8"),
+			MonthlyRate: numberMapValue(r, "TaxaJurosAoMes"),
+			AnnualRate: numberMapValue(r, "TaxaJurosAoAno"),
+		})
+	}
+	sort.SliceStable(out.Rates, func(i, j int) bool {
+		if out.Rates[i].Modality == out.Rates[j].Modality {
+			if out.Rates[i].AnnualRate == out.Rates[j].AnnualRate {
+				return out.Rates[i].Institution < out.Rates[j].Institution
+			}
+			return out.Rates[i].AnnualRate < out.Rates[j].AnnualRate
+		}
+		return out.Rates[i].Modality < out.Rates[j].Modality
+	})
+	if len(out.Rates) > 50 {
+		out.Rates = out.Rates[:50]
+	}
+	out.Available = true
+	if len(out.Rates) == 0 {
+		out.Message = "A base de taxas por instituição respondeu, mas nenhuma modalidade identificada como rural/agro foi retornada no recorte atual."
+	} else {
+		out.Message = fmt.Sprintf("%d registro(s) de taxa por instituição em modalidade rural/agro foram encontrados. São médias publicadas, não propostas ao produtor.", len(out.Rates))
+	}
+	return out, nil
 }
 
 func marketInstitutionNames(m CreditMarketContext) []string {
