@@ -1,3 +1,20 @@
+ViaVerdeCAR 2.1.0 — Automação Documental
+
+• Evolui a Central de Documentos e as Pendências Inteligentes sem remover nenhum recurso da 2.0.9.
+• Migração SQLite não destrutiva do esquema 7 para o esquema 8.
+• Armazena somente o último diagnóstico de automação por imóvel; executar novamente substitui o diagnóstico anterior e não cria histórico a cada clique.
+• Novo comando “Executar automação” revalida o CAR vinculado usando o fluxo SICAR já existente e reaproveita as mesmas regras de histórico material.
+• KML SICAR é conferido junto da revalidação; falha de geração ou ausência de geometria permanece como “Conferir/indisponível”.
+• A automação testa disponibilidade das fontes oficiais já cadastradas, com timeout e isolamento de falhas.
+• Fonte acessível não significa documento obtido: páginas com login, CAPTCHA ou fluxo interativo continuam exigindo ação do usuário.
+• Fonte indisponível nunca é interpretada como ausência de documento ou dispensa da exigência.
+• Documentos armazenados continuam sendo a referência para o estado “Recebido”; documentos vencidos permanecem pendentes para substituição.
+• Quando o nome do arquivo contém objetivamente um ano no formato 20XX e o campo exercício está vazio, o ViaVerdeCAR pode preencher somente esse metadado.
+• Data de emissão e validade nunca são inventadas a partir da data do arquivo.
+• A tela mostra última execução, itens prontos, pendentes, para conferir, fontes indisponíveis e metadados preenchidos.
+• O Dossiê Técnico passa a registrar o resumo da última automação documental quando ela existir.
+• Banco, documentos, versões, contexto da 2.0.9, CAR, KML, ambiental, fundiário, crédito rural, backups e PDFs anteriores permanecem preservados.
+
 ViaVerdeCAR 2.0.9 — Pendências Inteligentes
 
 • Evolui a Central de Documentos da 2.0.8 sem apagar arquivos, histórico ou estados já registrados.
