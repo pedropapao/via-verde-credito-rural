@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const AppVersion = "2.0.8"
+const AppVersion = "2.0.9"
 
 type App struct {
 	ctx     context.Context
@@ -274,7 +274,20 @@ func (a *App) migrate() error {
 			PRIMARY KEY(property_id,doc_type),
 			FOREIGN KEY(property_id) REFERENCES properties(id) ON DELETE CASCADE
 		);`,
-		`UPDATE schema_version SET version=6 WHERE version < 6;`,
+		`CREATE TABLE IF NOT EXISTS property_document_context (
+			property_id INTEGER PRIMARY KEY,
+			activity TEXT NOT NULL DEFAULT '',
+			operation_type TEXT NOT NULL DEFAULT '',
+			tenure TEXT NOT NULL DEFAULT '',
+			water_use TEXT NOT NULL DEFAULT 'auto',
+			animal_transit TEXT NOT NULL DEFAULT 'auto',
+			supplier_purchase TEXT NOT NULL DEFAULT 'auto',
+			technical_report TEXT NOT NULL DEFAULT 'auto',
+			notes TEXT NOT NULL DEFAULT '',
+			updated_at TEXT NOT NULL,
+			FOREIGN KEY(property_id) REFERENCES properties(id) ON DELETE CASCADE
+		);`,
+		`UPDATE schema_version SET version=7 WHERE version < 7;`,
 	}
 	for _, stmt := range stmts {
 		if _, err := a.db.Exec(stmt); err != nil {
