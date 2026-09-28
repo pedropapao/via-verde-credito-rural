@@ -1,10 +1,13 @@
-ViaVerdeCAR 2.0.6 — PDFs liberados na consulta avulsa
+ViaVerdeCAR 2.0.7 — acabamento profissional dos PDFs
 
-• Corrige o bloqueio visto na 2.0.5: os botões da aba Relatórios não dependem mais de property_id.
-• Demonstrativo CAR, Laudo Ambiental, Caderno de Evidências e Dossiê Técnico podem ser gerados diretamente da análise atual do CAR.
-• Não é necessário cadastrar cliente ou salvar/vincular o imóvel para gerar os PDFs.
-• A geração usa exatamente os dados já carregados na tela; não cria cliente, imóvel, histórico ou vínculo automaticamente.
-• Quando o imóvel estiver salvo, o sistema continua aproveitando nome do cliente, matrícula e KML externo já cadastrado.
-• O botão rápido “Gerar dossiê PDF” também funciona em consulta avulsa.
-• O pacote ZIP técnico e o JSON estruturado continuam na aba Documentos e podem continuar exigindo imóvel salvo quando dependem do armazenamento local.
-• Banco SQLite, CAR/SICAR, MapBiomas, SIGEF, SICOR, Banco Central e interface operacional permanecem preservados.
+• Mantém a interface e as integrações da 2.0.6; esta versão altera somente a apresentação dos documentos técnicos.
+• Remove dos PDFs mensagens internas de programação e transporte como Invalid URL, JSON inválido, context deadline exceeded, Client.Timeout e URLs de erro.
+• Os erros brutos continuam preservados na execução/log técnico; no documento entregue aparecem como “base indisponível nesta execução” ou mensagem equivalente.
+• Corrige os estados por tipo de fonte: SICAR passa a aparecer como “CAR localizado”, KML como “Disponível”, SICOR como “Operação pública localizada”, SIGEF como “parcela localizada / nenhuma parcela localizada” e bases ambientais como ocorrência ou sem ocorrência.
+• Fonte não consultada ou indisponível não exibe mais zero como se fosse resultado confirmado. Ex.: FUNAI indisponível passa a mostrar “Não verificado”.
+• O Laudo Ambiental omite a página exclusiva do ESA WorldCover quando não há classificação utilizável, reduzindo páginas vazias sem esconder a indisponibilidade da fonte.
+• O Dossiê usa apenas avisos profissionais e deduplicados na capa e na página final.
+• A página Banco Central do Dossiê aproveita melhor o espaço com taxas rurais, indicadores agregados disponíveis e mercado municipal.
+• Cabeçalhos e rodapés foram refinados: acentuação, “Página”, Via Verde Consultoria Agrícola e versão do ViaVerdeCAR.
+• Demonstrativo CAR, Laudo Ambiental, Caderno de Evidências e Dossiê continuam funcionando em consulta avulsa, sem exigir imóvel salvo.
+• Banco SQLite, clientes, imóveis, CAR/SICAR, MapBiomas, IBAMA, FUNAI, ICMBio, INPE, SIGEF, SICOR, BCB, KML, histórico e atualizador foram preservados.
