@@ -617,7 +617,7 @@
         <small>${H(item.source_label||'')}</small>
         <p>${H(item.detail||'')}</p>
         ${item.requirement_reason?'<div class="vv209-requirement '+(item.required?'required':'contextual')+'"><b>'+(item.required?'OBRIGATÓRIO PELO CONTEXTO':'APLICABILIDADE')+'</b><span>'+H(item.requirement_reason)+(item.requirement_source?' • '+H(item.requirement_source):'')+'</span></div>':''}
-        ${d?'<div class="vv208-file">'+icon('file')+'<span><b>'+file+'</b><small>'+H(meta)+'</small></span></div>:''}
+        ${d?'<div class="vv208-file">'+icon('file')+'<span><b>'+file+'</b><small>'+H(meta)+'</small></span></div>':''}
         ${item.notes?'<em>'+H(item.notes)+'</em>':''}
       </div>
       <div class="vv208-row-actions">
