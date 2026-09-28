@@ -506,7 +506,7 @@ func environmentalEvidenceSummaryPage(p Property, car CARResult, intel Environme
 		}
 		return ""
 	}())
-	proMetric(&c, 302, y-72, 122, 64, "IBAMA", fmt.Sprintf("%d", intel.Environment.IBAMAEmbargoCount), sourceState(intel.Environment.IBAMAChecked, intel.Environment.IBAMAEmbargoCount), func() string {
+	proMetric(&c, 302, y-72, 122, 64, "IBAMA", reportCheckedCount(intel.Environment.IBAMAChecked, intel.Environment.IBAMAEmbargoCount), sourceState(intel.Environment.IBAMAChecked, intel.Environment.IBAMAEmbargoCount), func() string {
 		if intel.Environment.IBAMAEmbargoCount > 0 {
 			return "danger"
 		}
@@ -627,7 +627,7 @@ func environmentalEvidenceSourcesPage(p Property, car CARResult, intel Environme
 		}
 	}
 
-	proNotice(&c, &y, "LIMITAÇÕES", "Este caderno registra evidências públicas e resultados automáticos para rastreabilidade. Não constitui certidão de regularidade ambiental, auto de infração, parecer jurídico, licenciamento ou decisão de crédito. Ocorrências devem ser confirmadas na fonte oficial; fonte indisponível deve permanecer identificada como indisponível.", "")
+	proNotice(&c, &y, "LIMITAÇÕES", "Este caderno organiza evidências públicas e o estado de cada consulta para fins de rastreabilidade. Não constitui certidão de regularidade ambiental, auto de infração, parecer jurídico, licenciamento ou decisão de crédito. Ocorrências relevantes devem ser confirmadas na fonte oficial; fontes indisponíveis permanecem expressamente identificadas como indisponíveis.", "")
 	proFooter(&c, page)
 	return c.b.String()
 }
@@ -736,9 +736,9 @@ func dossierEnvironmentalPage(p Property, r CARAutomationResult, page int) strin
 	proSection(&c, &y, "RESUMO AMBIENTAL", "")
 	s := r.Environmental.Summary
 	proMetric(&c, 40, y-72, 122, 64, "MAPBIOMAS", fmt.Sprintf("%d alerta(s)", s.Alerts), fmtBR(s.AlertAreaInCARHa, 2)+" ha no CAR", func() string { if s.Alerts>0{return "warn"};return "" }())
-	proMetric(&c, 171, y-72, 122, 64, "IBAMA", fmt.Sprintf("%d", r.Environmental.Environment.IBAMAEmbargoCount), sourceState(r.Environmental.Environment.IBAMAChecked, r.Environmental.Environment.IBAMAEmbargoCount), func() string { if r.Environmental.Environment.IBAMAEmbargoCount>0{return "danger"};return "" }())
-	proMetric(&c, 302, y-72, 122, 64, "FUNAI", fmt.Sprintf("%d", r.Environmental.Environment.IndigenousCount), sourceState(r.Environmental.Environment.FUNAIChecked, r.Environmental.Environment.IndigenousCount), "")
-	proMetric(&c, 433, y-72, 122, 64, "ICMBio", fmt.Sprintf("%d", r.Environmental.Environment.FederalUCCount), sourceState(r.Environmental.Environment.ICMBioChecked, r.Environmental.Environment.FederalUCCount), "")
+	proMetric(&c, 171, y-72, 122, 64, "IBAMA", reportCheckedCount(r.Environmental.Environment.IBAMAChecked, r.Environmental.Environment.IBAMAEmbargoCount), sourceState(r.Environmental.Environment.IBAMAChecked, r.Environmental.Environment.IBAMAEmbargoCount), func() string { if r.Environmental.Environment.IBAMAEmbargoCount>0{return "danger"};return "" }())
+	proMetric(&c, 302, y-72, 122, 64, "FUNAI", reportCheckedCount(r.Environmental.Environment.FUNAIChecked, r.Environmental.Environment.IndigenousCount), sourceState(r.Environmental.Environment.FUNAIChecked, r.Environmental.Environment.IndigenousCount), "")
+	proMetric(&c, 433, y-72, 122, 64, "ICMBio", reportCheckedCount(r.Environmental.Environment.ICMBioChecked, r.Environmental.Environment.FederalUCCount), sourceState(r.Environmental.Environment.ICMBioChecked, r.Environmental.Environment.FederalUCCount), "")
 	y -= 95
 
 	proSection(&c, &y, "FONTES E RESULTADOS", "")
