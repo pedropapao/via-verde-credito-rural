@@ -1,13 +1,19 @@
-ViaVerdeCAR 2.0.7 — acabamento profissional dos PDFs
+ViaVerdeCAR 2.0.8 — Central de Documentos + Pendências
 
-• Mantém a interface e as integrações da 2.0.6; esta versão altera somente a apresentação dos documentos técnicos.
-• Remove dos PDFs mensagens internas de programação e transporte como Invalid URL, JSON inválido, context deadline exceeded, Client.Timeout e URLs de erro.
-• Os erros brutos continuam preservados na execução/log técnico; no documento entregue aparecem como “base indisponível nesta execução” ou mensagem equivalente.
-• Corrige os estados por tipo de fonte: SICAR passa a aparecer como “CAR localizado”, KML como “Disponível”, SICOR como “Operação pública localizada”, SIGEF como “parcela localizada / nenhuma parcela localizada” e bases ambientais como ocorrência ou sem ocorrência.
-• Fonte não consultada ou indisponível não exibe mais zero como se fosse resultado confirmado. Ex.: FUNAI indisponível passa a mostrar “Não verificado”.
-• O Laudo Ambiental omite a página exclusiva do ESA WorldCover quando não há classificação utilizável, reduzindo páginas vazias sem esconder a indisponibilidade da fonte.
-• O Dossiê usa apenas avisos profissionais e deduplicados na capa e na página final.
-• A página Banco Central do Dossiê aproveita melhor o espaço com taxas rurais, indicadores agregados disponíveis e mercado municipal.
-• Cabeçalhos e rodapés foram refinados: acentuação, “Página”, Via Verde Consultoria Agrícola e versão do ViaVerdeCAR.
-• Demonstrativo CAR, Laudo Ambiental, Caderno de Evidências e Dossiê continuam funcionando em consulta avulsa, sem exigir imóvel salvo.
-• Banco SQLite, clientes, imóveis, CAR/SICAR, MapBiomas, IBAMA, FUNAI, ICMBio, INPE, SIGEF, SICOR, BCB, KML, histórico e atualizador foram preservados.
+• Adiciona uma Central de Documentos por imóvel salvo, sem alterar CAR, ambiental, fundiário, SICOR, BCB ou os PDFs existentes.
+• Migração SQLite não destrutiva do esquema 5 para o esquema 6; nenhum banco ou dado existente é apagado.
+• Novas tabelas armazenam metadados dos documentos e o estado do checklist por imóvel.
+• Arquivos anexados são copiados para properties/<id>/documents/<tipo>/ dentro da área gerenciada pelo ViaVerdeCAR.
+• O backup existente já inclui a pasta properties e, por isso, passa a incluir também os documentos anexados.
+• Cada item mantém SHA-256, tamanho, nome original, data de inclusão, emissão, validade, exercício e observações.
+• Substituir um documento preserva a versão anterior no histórico; a versão anterior não é apagada do disco.
+• Reanexar exatamente o mesmo arquivo reutiliza a versão já existente pelo SHA-256, evitando duplicação.
+• Estados do checklist: Recebido, Pendente, Conferir, Vencido/desatualizado e Não se aplica.
+• Data de validade objetiva vencida prevalece automaticamente como “Vencido/desatualizado”.
+• CAR e KML SICAR são itens automáticos; KML do cliente reutiliza o fluxo externo já existente.
+• Checklist inicial inclui matrícula/certidão, CCIR, CAFIR/CIB, ITR, documentos do produtor, arrendamento/cessão/comodato, outorga, GTA, orçamento, nota fiscal e laudo/documento técnico.
+• Documentos condicionais ao projeto começam como “Conferir”, evitando tratá-los como pendência obrigatória para todo imóvel.
+• A interface ganha a aba Pendências e uma Central de Documentos com resumo, grupos, fontes oficiais, upload/substituição, abertura, metadados, histórico de versões e alteração de status.
+• Fontes oficiais vinculadas: RI Digital/Cartório, INCRA/SNCR, Receita Federal/CNIR, ANA e MAPA.
+• O Dossiê Técnico ganha uma página final de Documentos e Pendências.
+• Consulta avulsa continua gerando PDFs sem cadastrar cliente/imóvel; somente o armazenamento persistente de documentos exige imóvel salvo.
