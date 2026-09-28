@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion206(t *testing.T) {
-	if AppVersion != "2.0.6" {
+func TestReleaseVersion207(t *testing.T) {
+	if AppVersion != "2.0.7" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.0.6"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.0.6")
+	if !strings.Contains(string(b), `"productVersion": "2.0.7"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.0.7")
 	}
 }
 
@@ -131,5 +131,22 @@ func TestRelease206PDFsDoNotRequireSavedProperty(t *testing.T) {
 	}
 	if strings.Contains(js, "const can=!!r.property_id;") {
 		t.Fatal("relatórios 2.0.6 não podem depender de property_id")
+	}
+}
+
+
+func TestRelease207KeepsInternalErrorsOutOfProfessionalPDFs(t *testing.T) {
+	b, err := os.ReadFile("professional_reports.go")
+	if err != nil { t.Fatal(err) }
+	src := string(b)
+	for _, marker := range []string{
+		"professionalReportWarnings",
+		"professionalSourceDetail",
+		"reportAutomationSourceStatus",
+		"Fonte externa indisponível nesta execução",
+	} {
+		if !strings.Contains(src, marker) {
+			t.Fatalf("acabamento PDF 2.0.7 sem marcador %q", marker)
+		}
 	}
 }
