@@ -474,13 +474,13 @@ func (a *App) GetPropertyDocumentCenter(propertyID int64) (PropertyDocumentCente
 				item.Current = &doc
 				item.Status = "received"
 				item.Detail = d.OriginalName
-				if isExpiredDocument(d.ExpiryDate) {
-					item.Status = "expired"
-					item.Detail = d.OriginalName + " • validade expirada"
-				}
 			}
 			if explicit := strings.TrimSpace(statuses[def.Type]); explicit != "" {
 				item.Status = explicit
+			}
+			if d, ok := currentDocs[def.Type]; ok && isExpiredDocument(d.ExpiryDate) && item.Status != "not_applicable" {
+				item.Status = "expired"
+				item.Detail = d.OriginalName + " • validade expirada"
 			}
 		}
 		item.StatusLabel = documentStatusLabel(item.Status)
