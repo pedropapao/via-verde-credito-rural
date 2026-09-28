@@ -198,3 +198,29 @@ body.vv204 #view-clients .panel,body.vv204 #view-settings .panel,body.vv204 #vie
 .vv209-requirement.contextual{border:1px solid #e3e8e4}
 @media(max-width:1050px){.vv209-context-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.vv209-context-grid label.wide{grid-column:span 2}}
 @media(max-width:680px){.vv209-context-grid{grid-template-columns:1fr}.vv209-context-grid label.wide{grid-column:span 1}.vv209-context-actions{align-items:stretch;flex-direction:column}.vv209-context-actions button{width:100%}}
+
+
+/* ViaVerdeCAR 2.1.0 - automação documental */
+.vv210-automation{margin-bottom:18px;border:1px solid #cfe0d4;background:linear-gradient(180deg,#fbfefc 0%,#f6faf7 100%)}
+.vv210-auto-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.vv210-auto-head>div>span{font-size:10px;font-weight:900;letter-spacing:.08em;color:#3f7653}
+.vv210-auto-head h3{margin:4px 0 4px;color:#183425}
+.vv210-auto-head p{margin:0;color:#627068;font-size:12px;max-width:760px}
+.vv210-auto-head button{display:flex;align-items:center;gap:8px;border:0;border-radius:9px;background:#1f6a40;color:#fff;padding:10px 14px;font-weight:800;cursor:pointer;white-space:nowrap}
+.vv210-auto-head button:disabled{opacity:.6;cursor:wait}
+.vv210-auto-head button svg{width:16px;height:16px}
+.vv210-auto-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin-top:15px}
+.vv210-auto-grid>div{border:1px solid #dce6df;border-radius:9px;background:#fff;padding:9px 10px;min-width:0}
+.vv210-auto-grid small{display:block;color:#718078;font-size:10px;font-weight:800;text-transform:uppercase}
+.vv210-auto-grid strong{display:block;margin-top:4px;color:#244432;font-size:15px;overflow:hidden;text-overflow:ellipsis}
+.vv210-auto-status{display:flex;gap:9px;flex-wrap:wrap;margin-top:11px}
+.vv210-auto-status span{display:flex;gap:7px;align-items:center;border-radius:999px;background:#eaf3ed;padding:6px 9px;color:#4f6658;font-size:11px}
+.vv210-auto-status b{color:#245c38;text-transform:uppercase}
+.vv210-source-warning{display:flex;gap:10px;align-items:center;margin-top:11px;padding:9px 11px;border:1px solid #f0d4be;border-radius:9px;background:#fff7f0}
+.vv210-source-warning svg{width:18px;height:18px;color:#b75c24;flex:none}
+.vv210-source-warning strong,.vv210-source-warning span{display:block}
+.vv210-source-warning strong{font-size:12px;color:#874016}
+.vv210-source-warning span{font-size:11px;color:#785a48;margin-top:2px}
+.vv210-auto-note{margin-top:11px;color:#65766b;font-size:11px;line-height:1.45}
+@media(max-width:1100px){.vv210-auto-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:720px){.vv210-auto-head{flex-direction:column}.vv210-auto-head button{width:100%;justify-content:center}.vv210-auto-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

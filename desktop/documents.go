@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -8,10 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -66,11 +70,42 @@ type PropertyDocumentSummary struct {
 }
 
 type PropertyDocumentCenter struct {
-	PropertyID int64                   `json:"property_id"`
-	Items      []DocumentChecklistItem `json:"items"`
-	Summary    PropertyDocumentSummary `json:"summary"`
-	Context    DocumentProjectContext  `json:"context"`
-	UpdatedAt  string                  `json:"updated_at"`
+	PropertyID  int64                             `json:"property_id"`
+	Items       []DocumentChecklistItem           `json:"items"`
+	Summary     PropertyDocumentSummary           `json:"summary"`
+	Context     DocumentProjectContext            `json:"context"`
+	Automation  *PropertyDocumentAutomationResult `json:"automation,omitempty"`
+	UpdatedAt   string                            `json:"updated_at"`
+}
+
+type PropertyDocumentAutomationSummary struct {
+	Ready             int `json:"ready"`
+	Pending           int `json:"pending"`
+	Review            int `json:"review"`
+	SourceUnavailable int `json:"source_unavailable"`
+	NotApplicable     int `json:"not_applicable"`
+	MetadataUpdated   int `json:"metadata_updated"`
+}
+
+type PropertyDocumentAutomationCheck struct {
+	DocType       string `json:"doc_type"`
+	Label         string `json:"label"`
+	Status        string `json:"status"`
+	Detail        string `json:"detail"`
+	SourceURL     string `json:"source_url"`
+	SourceStatus  string `json:"source_status"`
+	SourceDetail  string `json:"source_detail"`
+	NeedsManual   bool   `json:"needs_manual"`
+}
+
+type PropertyDocumentAutomationResult struct {
+	PropertyID   int64                             `json:"property_id"`
+	CheckedAt    string                            `json:"checked_at"`
+	CARStatus    string                            `json:"car_status"`
+	CARDetail    string                            `json:"car_detail"`
+	KMLStatus    string                            `json:"kml_status"`
+	Summary      PropertyDocumentAutomationSummary `json:"summary"`
+	Checks       []PropertyDocumentAutomationCheck `json:"checks"`
 }
 
 type DocumentProjectContext struct {
@@ -341,6 +376,269 @@ func (a *App) documentRequirements(propertyID int64, ctx DocumentProjectContext)
 	out["technical_report"] = technical
 
 	return out
+}
+
+
+var documentReferenceYearPattern = regexp.MustCompile(`(?:^|[^0-9])(20[0-9]{2})(?:[^0-9]|$)`)
+
+type documentSourceProbe struct {
+	Status string
+	Detail string
+}
+
+func extractDocumentReferenceYear(name string) string {
+	matches := documentReferenceYearPattern.FindAllStringSubmatch(strings.TrimSpace(name), -1)
+	if len(matches) == 0 {
+		return ""
+	}
+	for i := len(matches) - 1; i >= 0; i-- {
+		if len(matches[i]) > 1 {
+			return matches[i][1]
+		}
+	}
+	return ""
+}
+
+func probeOfficialDocumentSource(ctx context.Context, target string) documentSourceProbe {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return documentSourceProbe{Status: "manual", Detail: "Documento depende de arquivo ou conferência manual."}
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return documentSourceProbe{Status: "unavailable", Detail: "Fonte oficial com endereço inválido nesta execução."}
+	}
+	req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion)
+	req.Header.Set("Accept", "text/html,application/json;q=0.9,*/*;q=0.8")
+	client := &http.Client{Timeout: 8 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return documentSourceProbe{Status: "unavailable", Detail: "Fonte oficial indisponível nesta execução."}
+	}
+	defer resp.Body.Close()
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 400:
+		return documentSourceProbe{Status: "available", Detail: "Fonte oficial acessível; emissão/consulta do documento pode exigir autenticação ou ação do usuário."}
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		return documentSourceProbe{Status: "restricted", Detail: "Fonte oficial respondeu, mas exige autenticação ou acesso interativo."}
+	default:
+		return documentSourceProbe{Status: "unavailable", Detail: fmt.Sprintf("Fonte oficial respondeu HTTP %d nesta execução.", resp.StatusCode)}
+	}
+}
+
+func probeOfficialDocumentSources(items []DocumentChecklistItem) map[string]documentSourceProbe {
+	urls := map[string]bool{}
+	for _, item := range items {
+		if strings.TrimSpace(item.SourceURL) == "" || item.Current != nil || item.Status == "not_applicable" {
+			continue
+		}
+		urls[item.SourceURL] = true
+	}
+	out := make(map[string]documentSourceProbe, len(urls))
+	if len(urls) == 0 {
+		return out
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	defer cancel()
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for target := range urls {
+		target := target
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			probe := probeOfficialDocumentSource(ctx, target)
+			mu.Lock()
+			out[target] = probe
+			mu.Unlock()
+		}()
+	}
+	wg.Wait()
+	return out
+}
+
+func documentAutomationCheck(item DocumentChecklistItem, probes map[string]documentSourceProbe) PropertyDocumentAutomationCheck {
+	check := PropertyDocumentAutomationCheck{
+		DocType: item.DocType, Label: item.Label, SourceURL: item.SourceURL,
+	}
+	if item.Automatic {
+		switch item.Status {
+		case "received":
+			check.Status = "ready"
+			check.Detail = firstNonEmptyText(item.Detail, "Item automático disponível.")
+		case "pending":
+			check.Status = "pending"
+			check.Detail = firstNonEmptyText(item.Detail, "Item automático ainda não disponível.")
+		default:
+			check.Status = "review"
+			check.Detail = firstNonEmptyText(item.Detail, "Item automático precisa de conferência.")
+		}
+		return check
+	}
+	if item.Status == "not_applicable" {
+		check.Status = "not_applicable"
+		check.Detail = firstNonEmptyText(item.RequirementReason, item.Detail, "Item dispensado no contexto informado.")
+		return check
+	}
+	if item.Current != nil && item.Status != "expired" {
+		check.Status = "ready"
+		check.Detail = "Documento atual armazenado: " + item.Current.OriginalName
+		return check
+	}
+	if item.Status == "expired" {
+		check.Status = "pending"
+		check.Detail = "Documento armazenado está vencido/desatualizado e precisa de substituição."
+	} else if item.Status == "pending" {
+		check.Status = "pending"
+		check.Detail = firstNonEmptyText(item.RequirementReason, item.Detail, "Documento pendente.")
+	} else {
+		check.Status = "review"
+		check.Detail = firstNonEmptyText(item.RequirementReason, item.Detail, "Aplicabilidade ou conteúdo precisa de conferência.")
+	}
+	check.NeedsManual = true
+	if strings.TrimSpace(item.SourceURL) == "" {
+		check.SourceStatus = "manual"
+		check.SourceDetail = "Documento depende do cliente, fornecedor ou profissional responsável."
+		return check
+	}
+	if probe, ok := probes[item.SourceURL]; ok {
+		check.SourceStatus = probe.Status
+		check.SourceDetail = probe.Detail
+	}
+	return check
+}
+
+func summarizeDocumentAutomation(checks []PropertyDocumentAutomationCheck, metadataUpdated int) PropertyDocumentAutomationSummary {
+	out := PropertyDocumentAutomationSummary{MetadataUpdated: metadataUpdated}
+	for _, check := range checks {
+		switch check.Status {
+		case "ready":
+			out.Ready++
+		case "pending":
+			out.Pending++
+		case "not_applicable":
+			out.NotApplicable++
+		default:
+			out.Review++
+		}
+		if check.SourceStatus == "unavailable" {
+			out.SourceUnavailable++
+		}
+	}
+	return out
+}
+
+func (a *App) GetLastPropertyDocumentAutomation(propertyID int64) (PropertyDocumentAutomationResult, error) {
+	if a.db == nil {
+		return PropertyDocumentAutomationResult{}, errors.New("banco local indisponível")
+	}
+	if propertyID <= 0 {
+		return PropertyDocumentAutomationResult{}, errors.New("imóvel inválido")
+	}
+	var checkedAt, raw string
+	err := a.db.QueryRow(`SELECT checked_at,result_json FROM property_document_automation WHERE property_id=?`, propertyID).Scan(&checkedAt, &raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return PropertyDocumentAutomationResult{}, nil
+	}
+	if err != nil {
+		return PropertyDocumentAutomationResult{}, err
+	}
+	var out PropertyDocumentAutomationResult
+	if strings.TrimSpace(raw) != "" {
+		if err := json.Unmarshal([]byte(raw), &out); err != nil {
+			return PropertyDocumentAutomationResult{}, errors.New("último diagnóstico documental está inválido")
+		}
+	}
+	out.PropertyID = propertyID
+	if strings.TrimSpace(out.CheckedAt) == "" {
+		out.CheckedAt = checkedAt
+	}
+	return out, nil
+}
+
+func (a *App) RunPropertyDocumentAutomation(propertyID int64) (PropertyDocumentAutomationResult, error) {
+	if a.db == nil {
+		return PropertyDocumentAutomationResult{}, errors.New("banco local indisponível")
+	}
+	if propertyID <= 0 {
+		return PropertyDocumentAutomationResult{}, errors.New("salve ou selecione o imóvel antes de automatizar documentos")
+	}
+	p, err := a.GetProperty(propertyID)
+	if err != nil {
+		return PropertyDocumentAutomationResult{}, err
+	}
+	out := PropertyDocumentAutomationResult{PropertyID: propertyID, CheckedAt: time.Now().Format(time.RFC3339)}
+
+	if strings.TrimSpace(p.CARNumber) == "" {
+		out.CARStatus = "not_configured"
+		out.CARDetail = "Imóvel sem CAR vinculado; consulta SICAR não realizada."
+	} else {
+		car, carErr := a.AnalyzePropertyCAR(propertyID, p.CARNumber)
+		if carErr != nil {
+			out.CARStatus = "unavailable"
+			out.CARDetail = "Não foi possível atualizar o CAR nesta execução; o checklist local foi preservado."
+		} else if !car.Found {
+			out.CARStatus = "not_found"
+			out.CARDetail = "CAR não localizado na camada pública consultada nesta execução."
+		} else {
+			out.CARStatus = firstNonEmptyText(car.LookupStatus, "available")
+			out.CARDetail = firstNonEmptyText(car.LookupDetail, "CAR revalidado na fonte pública.")
+			if strings.TrimSpace(car.AutoKMLPath) != "" {
+				if _, statErr := os.Stat(car.AutoKMLPath); statErr == nil {
+					out.KMLStatus = "ready"
+				} else {
+					out.KMLStatus = "review"
+				}
+			} else if car.HasGeometry {
+				out.KMLStatus = "review"
+			} else {
+				out.KMLStatus = "unavailable"
+			}
+		}
+	}
+
+	center, err := a.GetPropertyDocumentCenter(propertyID)
+	if err != nil {
+		return out, err
+	}
+	metadataUpdated := 0
+	now := time.Now().Format(time.RFC3339)
+	for _, item := range center.Items {
+		if item.Current == nil || strings.TrimSpace(item.Current.ReferenceYear) != "" {
+			continue
+		}
+		year := extractDocumentReferenceYear(item.Current.OriginalName)
+		if year == "" {
+			continue
+		}
+		if _, updateErr := a.db.Exec(`UPDATE property_documents SET reference_year=?,updated_at=? WHERE id=?`, year, now, item.Current.ID); updateErr == nil {
+			metadataUpdated++
+		}
+	}
+	if metadataUpdated > 0 {
+		if refreshed, refreshErr := a.GetPropertyDocumentCenter(propertyID); refreshErr == nil {
+			center = refreshed
+		}
+	}
+
+	probes := probeOfficialDocumentSources(center.Items)
+	out.Checks = make([]PropertyDocumentAutomationCheck, 0, len(center.Items))
+	for _, item := range center.Items {
+		out.Checks = append(out.Checks, documentAutomationCheck(item, probes))
+	}
+	out.Summary = summarizeDocumentAutomation(out.Checks, metadataUpdated)
+
+	raw, err := json.Marshal(out)
+	if err != nil {
+		return out, err
+	}
+	_, err = a.db.Exec(`INSERT INTO property_document_automation(property_id,checked_at,result_json)
+		VALUES(?,?,?) ON CONFLICT(property_id) DO UPDATE SET checked_at=excluded.checked_at,result_json=excluded.result_json`,
+		propertyID, out.CheckedAt, string(raw))
+	if err != nil {
+		return out, err
+	}
+	return out, nil
 }
 
 func (a *App) AddPropertyDocument(propertyID int64, docType string) (PropertyDocument, error) {
@@ -751,6 +1049,9 @@ func (a *App) GetPropertyDocumentCenter(propertyID int64) (PropertyDocumentCente
 		case "not_applicable":
 			out.Summary.NotApplicable++
 		}
+	}
+	if last, lastErr := a.GetLastPropertyDocumentAutomation(propertyID); lastErr == nil && strings.TrimSpace(last.CheckedAt) != "" {
+		out.Automation = &last
 	}
 	return out, nil
 }

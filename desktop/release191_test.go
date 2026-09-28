@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion209(t *testing.T) {
-	if AppVersion != "2.0.9" {
+func TestReleaseVersion210(t *testing.T) {
+	if AppVersion != "2.1.0" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.0.9"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.0.9")
+	if !strings.Contains(string(b), `"productVersion": "2.1.0"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.1.0")
 	}
 }
 
@@ -174,7 +174,7 @@ func TestRelease208DocumentCenterAndPendingTab(t *testing.T) {
 	appb, err := os.ReadFile("app.go")
 	if err != nil { t.Fatal(err) }
 	app := string(appb)
-	for _, marker := range []string{"property_documents", "property_document_status", "property_document_context", "version=7"} {
+	for _, marker := range []string{"property_documents", "property_document_status", "property_document_context", "property_document_automation", "version=8"} {
 		if !strings.Contains(app, marker) {
 			t.Fatalf("migração documental 2.0.8 sem marcador %q", marker)
 		}
@@ -223,5 +223,41 @@ func TestRelease209SmartPending(t *testing.T) {
 		if !strings.Contains(src, marker) {
 			t.Fatalf("backend 2.0.9 sem marcador %q", marker)
 		}
+	}
+}
+
+
+func TestRelease210DocumentAutomation(t *testing.T) {
+	jsb, err := os.ReadFile("frontend/dist/ui204.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"AUTOMAÇÃO DOCUMENTAL • 2.1.0",
+		"RunPropertyDocumentAutomation",
+		"Executar automação",
+		"Fontes indisponíveis",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.1.0 sem marcador %q", marker)
+		}
+	}
+	db, err := os.ReadFile("documents.go")
+	if err != nil { t.Fatal(err) }
+	src := string(db)
+	for _, marker := range []string{
+		"PropertyDocumentAutomationResult",
+		"probeOfficialDocumentSource",
+		"GetLastPropertyDocumentAutomation",
+		"extractDocumentReferenceYear",
+		"Fonte oficial indisponível nesta execução",
+	} {
+		if !strings.Contains(src, marker) {
+			t.Fatalf("backend 2.1.0 sem marcador %q", marker)
+		}
+	}
+	pdf, err := os.ReadFile("professional_reports.go")
+	if err != nil { t.Fatal(err) }
+	if !strings.Contains(string(pdf), "Última automação documental") {
+		t.Fatal("dossiê 2.1.0 sem resumo da automação documental")
 	}
 }

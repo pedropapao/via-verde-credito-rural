@@ -29,16 +29,16 @@ func newDocumentTestProperty(t *testing.T) (*App, Property) {
 	return a, p
 }
 
-func TestSchemaVersion209(t *testing.T) {
+func TestSchemaVersion210(t *testing.T) {
 	a := newV2AutomationTestApp(t)
 	var version int
 	if err := a.db.QueryRow(`SELECT version FROM schema_version LIMIT 1`).Scan(&version); err != nil {
 		t.Fatal(err)
 	}
-	if version != 7 {
-		t.Fatalf("schema esperado=7, obtido=%d", version)
+	if version != 8 {
+		t.Fatalf("schema esperado=8, obtido=%d", version)
 	}
-	for _, table := range []string{"property_documents", "property_document_status", "property_document_context"} {
+	for _, table := range []string{"property_documents", "property_document_status", "property_document_context", "property_document_automation"} {
 		var name string
 		if err := a.db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, table).Scan(&name); err != nil {
 			t.Fatalf("tabela %s ausente: %v", table, err)
@@ -280,4 +280,55 @@ func TestManualDocumentStatusOverridesInference209(t *testing.T) {
 		}
 	}
 	t.Fatal("outorga ausente")
+}
+
+
+func TestExtractDocumentReferenceYear210(t *testing.T) {
+	cases := map[string]string{
+		"CCIR_2026.pdf": "2026",
+		"ITR Fazenda 2025 recibo.pdf": "2025",
+		"matricula_sem_ano.pdf": "",
+		"relatorio_2024_revisao_2026.pdf": "2026",
+	}
+	for name, want := range cases {
+		if got := extractDocumentReferenceYear(name); got != want {
+			t.Fatalf("%q: esperado %q, obtido %q", name, want, got)
+		}
+	}
+}
+
+func TestDocumentAutomationKeepsSourceFailureSeparate210(t *testing.T) {
+	url := "https://exemplo.gov.br/documento"
+	item := DocumentChecklistItem{
+		DocType: "ccir",
+		Label: "CCIR",
+		Status: "pending",
+		Required: true,
+		RequirementReason: "Documento exigido no contexto.",
+		SourceURL: url,
+	}
+	check := documentAutomationCheck(item, map[string]documentSourceProbe{
+		url: {Status: "unavailable", Detail: "Fonte oficial indisponível nesta execução."},
+	})
+	if check.Status != "pending" {
+		t.Fatalf("falha da fonte não pode apagar a pendência: %#v", check)
+	}
+	if check.SourceStatus != "unavailable" {
+		t.Fatalf("indisponibilidade da fonte deve ficar separada: %#v", check)
+	}
+	if !check.NeedsManual {
+		t.Fatalf("item deve continuar para conferência manual: %#v", check)
+	}
+}
+
+func TestDocumentAutomationSummary210(t *testing.T) {
+	s := summarizeDocumentAutomation([]PropertyDocumentAutomationCheck{
+		{Status: "ready"},
+		{Status: "pending", SourceStatus: "unavailable"},
+		{Status: "review"},
+		{Status: "not_applicable"},
+	}, 2)
+	if s.Ready != 1 || s.Pending != 1 || s.Review != 1 || s.NotApplicable != 1 || s.SourceUnavailable != 1 || s.MetadataUpdated != 2 {
+		t.Fatalf("resumo inesperado: %#v", s)
+	}
 }

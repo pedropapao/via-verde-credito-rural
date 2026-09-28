@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 2.0.9 - interface operacional em uma única tela */
+/* ViaVerdeCAR 2.1.0 - interface operacional em uma única tela */
 (()=>{
   const E=id=>document.getElementById(id);
   const A=v=>Array.isArray(v)?v:[];
@@ -57,7 +57,7 @@
       <button class="vv204-brand" id="vv204Home">
         <span class="vv204-brandmark">${icon('leaf')}</span>
         <span><strong>ViaVerdeCAR</strong><small>CONSULTA E ANÁLISE RURAL</small></span>
-        <b id="vv204Version">2.0.9</b>
+        <b id="vv204Version">2.1.0</b>
       </button>
       <div class="vv204-searchbar">
         ${icon('search')}
@@ -557,6 +557,7 @@
     const groups=[...new Set(items.map(x=>x.group).filter(Boolean))];
     const shown=mode==='pending'?attention:items;
     return `
+      ${renderDocumentAutomation(center)}
       ${renderDocumentContext(center)}
       <div class="vv208-summary">
         ${docSummaryCard('check','Recebidos',s.received||0,'received')}
@@ -576,6 +577,24 @@
       </div>`;
   }
 
+  function renderDocumentAutomation(center){
+    const a=center.automation||null,s=a?.summary||{},issues=A(a?.checks).filter(x=>x.source_status==='unavailable');
+    const when=a?.checked_at?dateBR(a.checked_at):'Ainda não executada';
+    return `<article class="vv204-panel vv210-automation">
+      <div class="vv210-auto-head"><div><span>AUTOMAÇÃO DOCUMENTAL • 2.1.0</span><h3>Conferência automática do dossiê</h3><p>Revalida CAR/KML, reavalia o checklist, testa as fontes oficiais e preenche somente metadados objetivos encontrados no nome dos arquivos.</p></div><button id="vv210RunAutomation">${icon('refresh')}Executar automação</button></div>
+      <div class="vv210-auto-grid">
+        <div><small>Última execução</small><strong>${H(when)}</strong></div>
+        <div><small>Prontos</small><strong>${Number(s.ready||0)}</strong></div>
+        <div><small>Pendentes</small><strong>${Number(s.pending||0)}</strong></div>
+        <div><small>Conferir</small><strong>${Number(s.review||0)}</strong></div>
+        <div><small>Fontes indisponíveis</small><strong>${Number(s.source_unavailable||0)}</strong></div>
+        <div><small>Metadados preenchidos</small><strong>${Number(s.metadata_updated||0)}</strong></div>
+      </div>
+      ${a?'<div class="vv210-auto-status"><span><b>CAR</b>'+H(a.car_status||'não consultado')+'</span><span><b>KML</b>'+H(a.kml_status||'não confirmado')+'</span></div>':''}
+      ${issues.length?'<div class="vv210-source-warning">'+icon('alert')+'<div><strong>Fonte oficial indisponível nesta execução</strong><span>'+issues.map(x=>H(x.label)).join(' • ')+'</span></div></div>':''}
+      <div class="vv210-auto-note">A automação não declara documento inexistente quando a fonte falha e não contorna login, CAPTCHA ou acesso restrito. Nesses casos, o item continua para conferência manual.</div>
+    </article>`;
+  }
   function renderDocumentContext(center){
     const c=center.context||{};
     return `<article class="vv204-panel vv209-context">
@@ -638,6 +657,13 @@
   }
 
   function bindDocumentCenter(center,r,mode,target){
+    if(E('vv210RunAutomation'))E('vv210RunAutomation').onclick=()=>safeAction(async()=>{
+      const btn=E('vv210RunAutomation');
+      if(btn){btn.disabled=true;btn.textContent='Conferindo...'}
+      const result=await api().RunPropertyDocumentAutomation(Number(r.property_id));
+      toast('Automação documental concluída: '+Number(result.summary?.pending||0)+' pendência(s), '+Number(result.summary?.review||0)+' item(ns) para conferir.');
+      await loadDocumentWorkspace(r,mode);
+    });
     if(E('vv209ContextSave'))E('vv209ContextSave').onclick=()=>safeAction(async()=>{
       const ctx=center.context||{};
       await api().SavePropertyDocumentContext({
