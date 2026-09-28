@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 2.0.4 - interface operacional em uma única tela */
+/* ViaVerdeCAR 2.0.9 - interface operacional em uma única tela */
 (()=>{
   const E=id=>document.getElementById(id);
   const A=v=>Array.isArray(v)?v:[];
@@ -57,7 +57,7 @@
       <button class="vv204-brand" id="vv204Home">
         <span class="vv204-brandmark">${icon('leaf')}</span>
         <span><strong>ViaVerdeCAR</strong><small>CONSULTA E ANÁLISE RURAL</small></span>
-        <b id="vv204Version">2.0.8</b>
+        <b id="vv204Version">2.0.9</b>
       </button>
       <div class="vv204-searchbar">
         ${icon('search')}
@@ -557,6 +557,7 @@
     const groups=[...new Set(items.map(x=>x.group).filter(Boolean))];
     const shown=mode==='pending'?attention:items;
     return `
+      ${renderDocumentContext(center)}
       <div class="vv208-summary">
         ${docSummaryCard('check','Recebidos',s.received||0,'received')}
         ${docSummaryCard('alert','Pendentes',s.pending||0,'pending')}
@@ -564,7 +565,7 @@
         ${docSummaryCard('clock','Vencidos',s.expired||0,'expired')}
         ${docSummaryCard('close','Não se aplica',s.not_applicable||0,'not_applicable')}
       </div>
-      ${mode==='pending'?'<div class="vv208-pending-intro"><strong>'+attention.length+' item(ns) pedem atenção</strong><span>Documentos condicionais permanecem como “Conferir” até você definir se são necessários para aquele projeto.</span></div>':''}
+      ${mode==='pending'?'<div class="vv208-pending-intro"><strong>'+attention.length+' item(ns) pedem atenção</strong><span>Itens obrigatórios pelo contexto aparecem como “Pendente”; quando faltam dados suficientes, permanecem como “Conferir”.</span></div>':''}
       <div class="vv208-groups">
         ${groups.map(g=>{
           const rows=shown.filter(x=>x.group===g);
@@ -575,6 +576,32 @@
       </div>`;
   }
 
+  function renderDocumentContext(center){
+    const c=center.context||{};
+    return `<article class="vv204-panel vv209-context">
+      <div class="vv204-panel-head"><div><span>CONTEXTO DO PROJETO</span><h3>Pendências inteligentes</h3><p>Defina somente o que souber. “Automático” usa sinais já cadastrados no imóvel sem inventar exigências.</p></div><b>2.0.9</b></div>
+      <div class="vv209-context-grid">
+        <label>Atividade<select id="vv209Activity">${contextSelect(c.activity,[['','Não definida'],['pecuaria','Pecuária'],['agricultura','Agricultura'],['cafe','Cafeicultura'],['irrigacao','Irrigação'],['misto','Mista'],['outro','Outra']])}</select></label>
+        <label>Tipo de operação<select id="vv209Operation">${contextSelect(c.operation_type,[['','Não definida'],['custeio','Custeio'],['investimento','Investimento'],['aquisicao','Aquisição'],['renegociacao','Renegociação / prorrogação'],['outro','Outra']])}</select></label>
+        <label>Uso/posse do imóvel<select id="vv209Tenure">${contextSelect(c.tenure,[['','Não definido'],['proprio','Próprio'],['arrendado','Arrendado'],['cessao','Cessão de uso'],['comodato','Comodato'],['misto','Misto'],['outro','Outro']])}</select></label>
+        <label>Uso de água<select id="vv209Water">${triStateOptions(c.water_use)}</select></label>
+        <label>Trânsito de animais<select id="vv209Animal">${triStateOptions(c.animal_transit)}</select></label>
+        <label>Compra de fornecedor<select id="vv209Purchase">${triStateOptions(c.supplier_purchase)}</select></label>
+        <label>Laudo técnico adicional<select id="vv209Technical">${triStateOptions(c.technical_report)}</select></label>
+        <label class="wide">Observação<textarea id="vv209ContextNotes" rows="2" placeholder="Ex.: projeto de irrigação, aquisição de bovinos, área arrendada...">${H(c.notes||'')}</textarea></label>
+      </div>
+      <div class="vv209-context-actions"><small>A inferência automática nunca substitui exigência do banco ou conferência profissional.</small><button id="vv209ContextSave" class="primary">Aplicar contexto</button></div>
+    </article>`;
+  }
+
+  function contextSelect(current,options){
+    return options.map(([v,l])=>'<option value="'+v+'" '+(v===String(current||'')?'selected':'')+'>'+l+'</option>').join('');
+  }
+
+  function triStateOptions(current){
+    const v=['auto','yes','no'].includes(String(current||''))?String(current):'auto';
+    return [['auto','Automático / não sei'],['yes','Sim'],['no','Não']].map(([x,l])=>'<option value="'+x+'" '+(x===v?'selected':'')+'>'+l+'</option>').join('');
+  }
   function docSummaryCard(ico,label,value,status){
     return '<article class="vv208-summary-card '+status+'"><span>'+icon(ico)+'</span><div><small>'+H(label)+'</small><strong>'+Number(value||0)+'</strong></div></article>';
   }
@@ -589,7 +616,8 @@
         <strong>${H(item.label)}</strong>
         <small>${H(item.source_label||'')}</small>
         <p>${H(item.detail||'')}</p>
-        ${d?'<div class="vv208-file">'+icon('file')+'<span><b>'+file+'</b><small>'+H(meta)+'</small></span></div>':''}
+        ${item.requirement_reason?'<div class="vv209-requirement '+(item.required?'required':'contextual')+'"><b>'+(item.required?'OBRIGATÓRIO PELO CONTEXTO':'APLICABILIDADE')+'</b><span>'+H(item.requirement_reason)+(item.requirement_source?' • '+H(item.requirement_source):'')+'</span></div>':''}
+        ${d?'<div class="vv208-file">'+icon('file')+'<span><b>'+file+'</b><small>'+H(meta)+'</small></span></div>:''}
         ${item.notes?'<em>'+H(item.notes)+'</em>':''}
       </div>
       <div class="vv208-row-actions">
@@ -610,6 +638,23 @@
   }
 
   function bindDocumentCenter(center,r,mode,target){
+    if(E('vv209ContextSave'))E('vv209ContextSave').onclick=()=>safeAction(async()=>{
+      const ctx=center.context||{};
+      await api().SavePropertyDocumentContext({
+        ...ctx,
+        property_id:Number(r.property_id),
+        activity:E('vv209Activity')?.value||'',
+        operation_type:E('vv209Operation')?.value||'',
+        tenure:E('vv209Tenure')?.value||'',
+        water_use:E('vv209Water')?.value||'auto',
+        animal_transit:E('vv209Animal')?.value||'auto',
+        supplier_purchase:E('vv209Purchase')?.value||'auto',
+        technical_report:E('vv209Technical')?.value||'auto',
+        notes:E('vv209ContextNotes')?.value||''
+      });
+      toast('Contexto documental atualizado.');
+      await loadDocumentWorkspace(r,mode);
+    });
     target.querySelectorAll('[data-doc-source]').forEach(b=>b.onclick=()=>openExternal(b.dataset.docSource));
     target.querySelectorAll('[data-doc-auto="kml"]').forEach(b=>b.onclick=()=>safeAction(()=>exportKML()));
     target.querySelectorAll('[data-doc-auto="kml_client"]').forEach(b=>b.onclick=()=>safeAction(async()=>{await attachKML();await loadDocumentWorkspace(r,mode)}));
