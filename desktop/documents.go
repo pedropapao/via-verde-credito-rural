@@ -2,9 +2,11 @@ package main
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -37,19 +39,22 @@ type PropertyDocument struct {
 }
 
 type DocumentChecklistItem struct {
-	DocType       string            `json:"doc_type"`
-	Label         string            `json:"label"`
-	Group         string            `json:"group"`
-	SourceLabel   string            `json:"source_label"`
-	SourceURL     string            `json:"source_url"`
-	Automatic     bool              `json:"automatic"`
-	Conditional   bool              `json:"conditional"`
-	Status        string            `json:"status"`
-	StatusLabel   string            `json:"status_label"`
-	Detail        string            `json:"detail"`
-	Notes         string            `json:"notes"`
-	VersionCount  int               `json:"version_count"`
-	Current       *PropertyDocument `json:"current,omitempty"`
+	DocType           string            `json:"doc_type"`
+	Label             string            `json:"label"`
+	Group             string            `json:"group"`
+	SourceLabel       string            `json:"source_label"`
+	SourceURL         string            `json:"source_url"`
+	Automatic         bool              `json:"automatic"`
+	Conditional       bool              `json:"conditional"`
+	Required          bool              `json:"required"`
+	RequirementSource string            `json:"requirement_source"`
+	RequirementReason string            `json:"requirement_reason"`
+	Status            string            `json:"status"`
+	StatusLabel       string            `json:"status_label"`
+	Detail            string            `json:"detail"`
+	Notes             string            `json:"notes"`
+	VersionCount      int               `json:"version_count"`
+	Current           *PropertyDocument `json:"current,omitempty"`
 }
 
 type PropertyDocumentSummary struct {
@@ -64,7 +69,27 @@ type PropertyDocumentCenter struct {
 	PropertyID int64                   `json:"property_id"`
 	Items      []DocumentChecklistItem `json:"items"`
 	Summary    PropertyDocumentSummary `json:"summary"`
+	Context    DocumentProjectContext  `json:"context"`
 	UpdatedAt  string                  `json:"updated_at"`
+}
+
+type DocumentProjectContext struct {
+	PropertyID       int64  `json:"property_id"`
+	Activity         string `json:"activity"`
+	OperationType    string `json:"operation_type"`
+	Tenure           string `json:"tenure"`
+	WaterUse         string `json:"water_use"`
+	AnimalTransit    string `json:"animal_transit"`
+	SupplierPurchase string `json:"supplier_purchase"`
+	TechnicalReport  string `json:"technical_report"`
+	Notes            string `json:"notes"`
+	UpdatedAt        string `json:"updated_at"`
+}
+
+type documentRequirement struct {
+	State  string
+	Source string
+	Reason string
 }
 
 type documentDefinition struct {
@@ -129,6 +154,193 @@ func documentStatusLabel(status string) string {
 	default:
 		return "Conferir"
 	}
+}
+
+
+func validDocumentContextValue(value string, allowed ...string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return true
+	}
+	for _, item := range allowed {
+		if value == item {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeDocumentTriState(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "auto"
+	}
+	switch value {
+	case "auto", "yes", "no":
+		return value
+	default:
+		return ""
+	}
+}
+
+func (a *App) GetPropertyDocumentContext(propertyID int64) (DocumentProjectContext, error) {
+	if a.db == nil {
+		return DocumentProjectContext{}, errors.New("banco local indisponível")
+	}
+	if propertyID <= 0 {
+		return DocumentProjectContext{}, errors.New("imóvel inválido")
+	}
+	if _, err := a.GetProperty(propertyID); err != nil {
+		return DocumentProjectContext{}, err
+	}
+	out := DocumentProjectContext{
+		PropertyID: propertyID, WaterUse: "auto", AnimalTransit: "auto",
+		SupplierPurchase: "auto", TechnicalReport: "auto",
+	}
+	err := a.db.QueryRow(`SELECT activity,operation_type,tenure,water_use,animal_transit,supplier_purchase,technical_report,notes,updated_at
+		FROM property_document_context WHERE property_id=?`, propertyID).
+		Scan(&out.Activity, &out.OperationType, &out.Tenure, &out.WaterUse, &out.AnimalTransit, &out.SupplierPurchase, &out.TechnicalReport, &out.Notes, &out.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return out, nil
+	}
+	if err != nil {
+		return DocumentProjectContext{}, err
+	}
+	out.WaterUse = normalizeDocumentTriState(out.WaterUse)
+	out.AnimalTransit = normalizeDocumentTriState(out.AnimalTransit)
+	out.SupplierPurchase = normalizeDocumentTriState(out.SupplierPurchase)
+	out.TechnicalReport = normalizeDocumentTriState(out.TechnicalReport)
+	return out, nil
+}
+
+func (a *App) SavePropertyDocumentContext(ctx DocumentProjectContext) (DocumentProjectContext, error) {
+	if a.db == nil {
+		return DocumentProjectContext{}, errors.New("banco local indisponível")
+	}
+	if ctx.PropertyID <= 0 {
+		return DocumentProjectContext{}, errors.New("imóvel inválido")
+	}
+	if _, err := a.GetProperty(ctx.PropertyID); err != nil {
+		return DocumentProjectContext{}, err
+	}
+	ctx.Activity = strings.TrimSpace(ctx.Activity)
+	ctx.OperationType = strings.TrimSpace(ctx.OperationType)
+	ctx.Tenure = strings.TrimSpace(ctx.Tenure)
+	if !validDocumentContextValue(ctx.Activity, "pecuaria", "agricultura", "cafe", "irrigacao", "misto", "outro") {
+		return DocumentProjectContext{}, errors.New("atividade documental inválida")
+	}
+	if !validDocumentContextValue(ctx.OperationType, "custeio", "investimento", "aquisicao", "renegociacao", "outro") {
+		return DocumentProjectContext{}, errors.New("tipo de operação documental inválido")
+	}
+	if !validDocumentContextValue(ctx.Tenure, "proprio", "arrendado", "cessao", "comodato", "misto", "outro") {
+		return DocumentProjectContext{}, errors.New("forma de uso do imóvel inválida")
+	}
+	for label, value := range map[string]string{
+		"uso de água": ctx.WaterUse, "trânsito animal": ctx.AnimalTransit,
+		"compra de fornecedor": ctx.SupplierPurchase, "laudo técnico": ctx.TechnicalReport,
+	} {
+		if normalizeDocumentTriState(value) == "" {
+			return DocumentProjectContext{}, fmt.Errorf("%s com valor inválido", label)
+		}
+	}
+	ctx.WaterUse = normalizeDocumentTriState(ctx.WaterUse)
+	ctx.AnimalTransit = normalizeDocumentTriState(ctx.AnimalTransit)
+	ctx.SupplierPurchase = normalizeDocumentTriState(ctx.SupplierPurchase)
+	ctx.TechnicalReport = normalizeDocumentTriState(ctx.TechnicalReport)
+	ctx.Notes = strings.TrimSpace(ctx.Notes)
+	ctx.UpdatedAt = time.Now().Format(time.RFC3339)
+	_, err := a.db.Exec(`INSERT INTO property_document_context(
+		property_id,activity,operation_type,tenure,water_use,animal_transit,supplier_purchase,technical_report,notes,updated_at
+	) VALUES(?,?,?,?,?,?,?,?,?,?)
+	ON CONFLICT(property_id) DO UPDATE SET
+		activity=excluded.activity,operation_type=excluded.operation_type,tenure=excluded.tenure,
+		water_use=excluded.water_use,animal_transit=excluded.animal_transit,supplier_purchase=excluded.supplier_purchase,
+		technical_report=excluded.technical_report,notes=excluded.notes,updated_at=excluded.updated_at`,
+		ctx.PropertyID, ctx.Activity, ctx.OperationType, ctx.Tenure, ctx.WaterUse, ctx.AnimalTransit,
+		ctx.SupplierPurchase, ctx.TechnicalReport, ctx.Notes, ctx.UpdatedAt)
+	if err != nil {
+		return DocumentProjectContext{}, err
+	}
+	return ctx, nil
+}
+
+func documentPurposeSignals(areas []ProjectArea) string {
+	var parts []string
+	for _, area := range areas {
+		parts = append(parts, area.Name, area.Purpose)
+	}
+	return strings.ToLower(strings.Join(parts, " "))
+}
+
+func containsAnyDocumentSignal(value string, signals ...string) bool {
+	value = strings.ToLower(value)
+	for _, signal := range signals {
+		if strings.Contains(value, signal) {
+			return true
+		}
+	}
+	return false
+}
+
+func requirementByTriState(value, source, yesReason, noReason string) documentRequirement {
+	switch normalizeDocumentTriState(value) {
+	case "yes":
+		return documentRequirement{State: "required", Source: source, Reason: yesReason}
+	case "no":
+		return documentRequirement{State: "not_applicable", Source: source, Reason: noReason}
+	default:
+		return documentRequirement{State: "review", Source: source, Reason: "Aplicabilidade ainda não definida."}
+	}
+}
+
+func (a *App) documentRequirements(propertyID int64, ctx DocumentProjectContext) map[string]documentRequirement {
+	out := map[string]documentRequirement{}
+	areas, _ := a.ListProjectAreas(propertyID)
+	signals := documentPurposeSignals(areas)
+
+	if ctx.Tenure == "proprio" {
+		out["lease"] = documentRequirement{State: "not_applicable", Source: "contexto informado", Reason: "Imóvel informado como próprio."}
+	} else if ctx.Tenure == "arrendado" || ctx.Tenure == "cessao" || ctx.Tenure == "comodato" || ctx.Tenure == "misto" {
+		out["lease"] = documentRequirement{State: "required", Source: "contexto informado", Reason: "Uso do imóvel informado como " + ctx.Tenure + "."}
+	} else {
+		out["lease"] = documentRequirement{State: "review", Source: "contexto", Reason: "Forma de uso/posse ainda não definida."}
+	}
+
+	water := requirementByTriState(ctx.WaterUse, "contexto informado", "O projeto informa uso de água.", "O projeto foi marcado sem uso de água.")
+	if ctx.WaterUse == "auto" && (ctx.Activity == "irrigacao" || containsAnyDocumentSignal(signals, "irriga", "pivô", "pivo", "gotej", "aspers")) {
+		water = documentRequirement{State: "required", Source: "área/finalidade do projeto", Reason: "Há indicação de irrigação ou uso de água no contexto cadastrado."}
+	}
+	out["outorga"] = water
+
+	animal := requirementByTriState(ctx.AnimalTransit, "contexto informado", "O projeto informa movimentação/trânsito de animais.", "O projeto foi marcado sem trânsito animal.")
+	if ctx.AnimalTransit == "auto" {
+		animalSignal := ctx.Activity == "pecuaria" || containsAnyDocumentSignal(signals, "pecuar", "bovin", "gado", "confin", "leite")
+		if animalSignal && ctx.OperationType == "aquisicao" {
+			animal = documentRequirement{State: "required", Source: "atividade + operação", Reason: "Pecuária com aquisição indicada; conferir GTA/documentação de trânsito animal."}
+		} else if animalSignal {
+			animal = documentRequirement{State: "review", Source: "atividade do projeto", Reason: "Há sinal de atividade pecuária; confirmar se haverá trânsito animal."}
+		}
+	}
+	out["gta"] = animal
+
+	purchase := requirementByTriState(ctx.SupplierPurchase, "contexto informado", "O projeto informa aquisição junto a fornecedor.", "O projeto foi marcado sem compra de fornecedor.")
+	if ctx.SupplierPurchase == "auto" && (ctx.OperationType == "investimento" || ctx.OperationType == "aquisicao") {
+		purchase = documentRequirement{State: "required", Source: "tipo de operação", Reason: "Investimento/aquisição normalmente exige orçamento para conferência da proposta."}
+	}
+	out["budget"] = purchase
+
+	invoice := documentRequirement{State: "review", Source: "etapa de execução", Reason: "Nota fiscal depende da etapa da operação e da exigência da instituição financeira."}
+	if ctx.SupplierPurchase == "no" {
+		invoice = documentRequirement{State: "not_applicable", Source: "contexto informado", Reason: "Projeto marcado sem compra de fornecedor."}
+	} else if ctx.SupplierPurchase == "yes" || ctx.OperationType == "investimento" || ctx.OperationType == "aquisicao" {
+		invoice = documentRequirement{State: "review", Source: "tipo de operação", Reason: "Há aquisição/investimento; confirmar em que etapa a nota fiscal será exigida."}
+	}
+	out["invoice"] = invoice
+
+	technical := requirementByTriState(ctx.TechnicalReport, "contexto informado", "O projeto exige laudo ou documento técnico.", "O projeto foi marcado sem laudo técnico adicional.")
+	out["technical_report"] = technical
+
+	return out
 }
 
 func (a *App) AddPropertyDocument(propertyID int64, docType string) (PropertyDocument, error) {
@@ -443,7 +655,12 @@ func (a *App) GetPropertyDocumentCenter(propertyID int64) (PropertyDocumentCente
 	}
 	_ = statusRows.Close()
 
-	out := PropertyDocumentCenter{PropertyID: propertyID, UpdatedAt: time.Now().Format(time.RFC3339)}
+	ctx, ctxErr := a.GetPropertyDocumentContext(propertyID)
+	if ctxErr != nil {
+		return PropertyDocumentCenter{}, ctxErr
+	}
+	requirements := a.documentRequirements(propertyID, ctx)
+	out := PropertyDocumentCenter{PropertyID: propertyID, Context: ctx, UpdatedAt: time.Now().Format(time.RFC3339)}
 	for _, def := range propertyDocumentDefinitions {
 		item := DocumentChecklistItem{
 			DocType: def.Type, Label: def.Label, Group: def.Group, SourceLabel: def.SourceLabel, SourceURL: def.SourceURL,
@@ -488,12 +705,30 @@ func (a *App) GetPropertyDocumentCenter(propertyID int64) (PropertyDocumentCente
 				item.Detail = "Opcional para conferência independente CAR x levantamento externo."
 			}
 		default:
+			if def.Conditional {
+				if req, ok := requirements[def.Type]; ok {
+					item.Required = req.State == "required"
+					item.RequirementSource = req.Source
+					item.RequirementReason = req.Reason
+					switch req.State {
+					case "required":
+						item.Status = "pending"
+					case "not_applicable":
+						item.Status = "not_applicable"
+					default:
+						item.Status = "review"
+					}
+				}
+			}
 			if d, ok := currentDocs[def.Type]; ok {
 				doc := d
 				item.Current = &doc
 				item.Status = "received"
 				item.Detail = d.OriginalName
 			}
+			// Uma decisão manual já registrada continua tendo prioridade sobre
+			// a inferência automática da 2.0.9. Validade objetiva expirada ainda
+			// prevalece para documentos existentes.
 			if explicit := strings.TrimSpace(statuses[def.Type]); explicit != "" {
 				item.Status = explicit
 			}

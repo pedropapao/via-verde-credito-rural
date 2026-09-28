@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion208(t *testing.T) {
-	if AppVersion != "2.0.8" {
+func TestReleaseVersion209(t *testing.T) {
+	if AppVersion != "2.0.9" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.0.8"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.0.8")
+	if !strings.Contains(string(b), `"productVersion": "2.0.9"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.0.9")
 	}
 }
 
@@ -174,7 +174,7 @@ func TestRelease208DocumentCenterAndPendingTab(t *testing.T) {
 	appb, err := os.ReadFile("app.go")
 	if err != nil { t.Fatal(err) }
 	app := string(appb)
-	for _, marker := range []string{"property_documents", "property_document_status", "version=6"} {
+	for _, marker := range []string{"property_documents", "property_document_status", "property_document_context", "version=7"} {
 		if !strings.Contains(app, marker) {
 			t.Fatalf("migração documental 2.0.8 sem marcador %q", marker)
 		}
@@ -192,6 +192,36 @@ func TestRelease208DossierIncludesDocumentsPage(t *testing.T) {
 	} {
 		if !strings.Contains(src, marker) {
 			t.Fatalf("dossiê 2.0.8 sem integração documental %q", marker)
+		}
+	}
+}
+
+
+func TestRelease209SmartPending(t *testing.T) {
+	jsb, err := os.ReadFile("frontend/dist/ui204.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"Pendências inteligentes",
+		"SavePropertyDocumentContext",
+		"OBRIGATÓRIO PELO CONTEXTO",
+		"Automático / não sei",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.0.9 sem marcador %q", marker)
+		}
+	}
+	db, err := os.ReadFile("documents.go")
+	if err != nil { t.Fatal(err) }
+	src := string(db)
+	for _, marker := range []string{
+		"DocumentProjectContext",
+		"documentRequirements",
+		"requirementByTriState",
+		"RequirementReason",
+	} {
+		if !strings.Contains(src, marker) {
+			t.Fatalf("backend 2.0.9 sem marcador %q", marker)
 		}
 	}
 }

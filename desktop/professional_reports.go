@@ -960,7 +960,12 @@ func dossierDocumentsPage(p Property, r CARAutomationResult, docs PropertyDocume
 			} else if strings.TrimSpace(item.Detail) != "" {
 				value += " • " + item.Detail
 			}
-			if item.Conditional && item.Status == "review" {
+			if item.Required {
+				value += " • obrigatório pelo contexto"
+			}
+			if strings.TrimSpace(item.RequirementReason) != "" {
+				value += " • " + item.RequirementReason
+			} else if item.Conditional && item.Status == "review" {
 				value += " • verificar necessidade conforme a finalidade do projeto"
 			}
 			proKV(&c, &y, item.Label, value)

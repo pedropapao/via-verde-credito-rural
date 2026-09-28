@@ -29,16 +29,16 @@ func newDocumentTestProperty(t *testing.T) (*App, Property) {
 	return a, p
 }
 
-func TestSchemaVersion208(t *testing.T) {
+func TestSchemaVersion209(t *testing.T) {
 	a := newV2AutomationTestApp(t)
 	var version int
 	if err := a.db.QueryRow(`SELECT version FROM schema_version LIMIT 1`).Scan(&version); err != nil {
 		t.Fatal(err)
 	}
-	if version != 6 {
-		t.Fatalf("schema esperado=6, obtido=%d", version)
+	if version != 7 {
+		t.Fatalf("schema esperado=7, obtido=%d", version)
 	}
-	for _, table := range []string{"property_documents", "property_document_status"} {
+	for _, table := range []string{"property_documents", "property_document_status", "property_document_context"} {
 		var name string
 		if err := a.db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, table).Scan(&name); err != nil {
 			t.Fatalf("tabela %s ausente: %v", table, err)
@@ -198,4 +198,86 @@ func TestSafePropertyDocumentFilename208(t *testing.T) {
 	if got == "Matrícula João 2026.pdf" {
 		t.Fatalf("nome deve ser normalizado para armazenamento: %q", got)
 	}
+}
+
+
+func TestSmartDocumentContext209(t *testing.T) {
+	a, p := newDocumentTestProperty(t)
+	ctx, err := a.SavePropertyDocumentContext(DocumentProjectContext{
+		PropertyID: p.ID,
+		Activity: "irrigacao",
+		OperationType: "investimento",
+		Tenure: "arrendado",
+		WaterUse: "auto",
+		AnimalTransit: "no",
+		SupplierPurchase: "auto",
+		TechnicalReport: "yes",
+		Notes: "Irrigação em área arrendada.",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ctx.UpdatedAt == "" {
+		t.Fatal("contexto documental deve registrar atualização")
+	}
+
+	center, err := a.GetPropertyDocumentCenter(p.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"lease": "pending",
+		"outorga": "pending",
+		"gta": "not_applicable",
+		"budget": "pending",
+		"technical_report": "pending",
+	}
+	for typ, status := range want {
+		found := false
+		for _, item := range center.Items {
+			if item.DocType != typ {
+				continue
+			}
+			found = true
+			if item.Status != status {
+				t.Fatalf("%s esperado=%s obtido=%s item=%#v", typ, status, item.Status, item)
+			}
+			if status == "pending" && !item.Required {
+				t.Fatalf("%s deveria estar marcado como obrigatório pelo contexto", typ)
+			}
+		}
+		if !found {
+			t.Fatalf("item %s ausente", typ)
+		}
+	}
+}
+
+func TestManualDocumentStatusOverridesInference209(t *testing.T) {
+	a, p := newDocumentTestProperty(t)
+	if _, err := a.SavePropertyDocumentContext(DocumentProjectContext{
+		PropertyID: p.ID,
+		Activity: "irrigacao",
+		WaterUse: "yes",
+		AnimalTransit: "auto",
+		SupplierPurchase: "auto",
+		TechnicalReport: "auto",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SetPropertyDocumentStatus(p.ID, "outorga", "not_applicable", "Dispensado após conferência manual."); err != nil {
+		t.Fatal(err)
+	}
+	center, err := a.GetPropertyDocumentCenter(p.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range center.Items {
+		if item.DocType == "outorga" {
+			if item.Status != "not_applicable" {
+				t.Fatalf("status manual deve prevalecer: %#v", item)
+			}
+			return
+		}
+	}
+	t.Fatal("outorga ausente")
 }
