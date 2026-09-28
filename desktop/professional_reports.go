@@ -214,18 +214,18 @@ func proHeader(c *pdfCanvas, title, subtitle string, page int) {
 	c.rect(0, 760, 8, 82, true)
 	c.b.WriteString("1 1 1 rg\n")
 	c.text(38, 810, 17, true, "VIA VERDE")
-	c.text(38, 790, 8.5, true, "CONSULTORIA AGRICOLA")
+	c.text(38, 790, 8.5, true, "CONSULTORIA AGRÍCOLA")
 	c.text(210, 810, 11.5, true, title)
 	c.text(210, 790, 7.2, false, subtitle)
-	c.text(525, 775, 6.2, false, fmt.Sprintf("p. %d", page))
+	c.text(505, 775, 6.2, false, fmt.Sprintf("Página %d", page))
 }
 
 func proFooter(c *pdfCanvas, page int) {
 	c.b.WriteString("0.82 0.87 0.84 RG 0.5 w\n")
 	c.line(38, 48, 557, 48)
 	c.b.WriteString("0.34 0.42 0.38 rg\n")
-	c.text(38, 32, 6.2, false, "Via Verde Consultoria Agricola - documento tecnico auxiliar - gerado em "+time.Now().Format("02/01/2006 15:04"))
-	c.text(524, 32, 6.2, false, fmt.Sprintf("p. %d", page))
+	c.text(38, 32, 5.8, false, "Via Verde Consultoria Agrícola • ViaVerdeCAR v"+AppVersion+" • documento técnico auxiliar • "+time.Now().Format("02/01/2006 15:04"))
+	c.text(522, 32, 5.8, false, fmt.Sprintf("Página %d", page))
 }
 
 func proSection(c *pdfCanvas, y *float64, title, subtitle string) {
@@ -356,7 +356,7 @@ func buildCARProfessionalPDF(p Property, car CARResult, kml KMLResult, cmp Geome
 
 func carProfessionalSummaryPage(p Property, car CARResult, kml KMLResult, cmp GeometryComparison, page int) string {
 	var c pdfCanvas
-	proHeader(&c, "DEMONSTRATIVO TECNICO DO CAR", "Cadastro, geometria e conferência do imóvel rural", page)
+	proHeader(&c, "DEMONSTRATIVO TÉCNICO DO CAR", "Cadastro, geometria e conferência do imóvel rural", page)
 	y := 724.0
 
 	c.b.WriteString("0.06 0.31 0.20 rg\n")
@@ -415,7 +415,7 @@ func carProfessionalSummaryPage(p Property, car CARResult, kml KMLResult, cmp Ge
 
 func carProfessionalMapPage(p Property, car CARResult, kml KMLResult, cmp GeometryComparison, page int) string {
 	var c pdfCanvas
-	proHeader(&c, "DEMONSTRATIVO TECNICO DO CAR", "Mapa vetorial e conferência geométrica", page)
+	proHeader(&c, "DEMONSTRATIVO TÉCNICO DO CAR", "Mapa vetorial e conferência geométrica", page)
 	y := 720.0
 
 	proSection(&c, &y, "MAPA DE CONFERÊNCIA", "CAR público e KML externo quando disponível")
@@ -481,7 +481,7 @@ func buildEnvironmentalEvidencePDF(p Property, car CARResult, intel Environmenta
 
 func environmentalEvidenceSummaryPage(p Property, car CARResult, intel EnvironmentalIntelligenceResult, page int) string {
 	var c pdfCanvas
-	proHeader(&c, "CADERNO DE EVIDENCIAS AMBIENTAIS", "Rastreabilidade das bases e resultados consultados", page)
+	proHeader(&c, "CADERNO DE EVIDÊNCIAS AMBIENTAIS", "Rastreabilidade das bases e resultados consultados", page)
 	y := 720.0
 
 	proSection(&c, &y, "IDENTIFICAÇÃO", "")
@@ -553,7 +553,7 @@ func environmentalEvidenceSummaryPage(p Property, car CARResult, intel Environme
 
 func environmentalEvidenceMapAndAlertsPage(p Property, car CARResult, intel EnvironmentalIntelligenceResult, page int) string {
 	var c pdfCanvas
-	proHeader(&c, "CADERNO DE EVIDENCIAS AMBIENTAIS", "Mapa e registros detalhados", page)
+	proHeader(&c, "CADERNO DE EVIDÊNCIAS AMBIENTAIS", "Mapa e registros detalhados", page)
 	y := 720.0
 	proSection(&c, &y, "MAPA DE EVIDÊNCIAS", "CAR, alertas MapBiomas e embargos com geometria")
 	c.b.WriteString("0.97 0.98 0.97 rg\n")
@@ -597,7 +597,7 @@ func environmentalEvidenceMapAndAlertsPage(p Property, car CARResult, intel Envi
 
 func environmentalEvidenceSourcesPage(p Property, car CARResult, intel EnvironmentalIntelligenceResult, page int) string {
 	var c pdfCanvas
-	proHeader(&c, "CADERNO DE EVIDENCIAS AMBIENTAIS", "Fontes, rastreabilidade e limitações", page)
+	proHeader(&c, "CADERNO DE EVIDÊNCIAS AMBIENTAIS", "Fontes, rastreabilidade e limitações", page)
 	y := 720.0
 	proSection(&c, &y, "FONTES CONSULTADAS", "")
 	rows := []struct{ label, value string }{
@@ -614,15 +614,16 @@ func environmentalEvidenceSourcesPage(p Property, car CARResult, intel Environme
 		proKV(&c, &y, row.label, row.value)
 	}
 
-	proSection(&c, &y, "AVISOS DA EXECUÇÃO", "")
-	if len(intel.Warnings) == 0 {
-		proParagraph(&c, &y, "Nenhum aviso técnico adicional foi registrado nesta execução.")
+	proSection(&c, &y, "PONTOS DE ATENÇÃO DA EXECUÇÃO", "")
+	reportWarnings := professionalReportWarnings(intel.Warnings)
+	if len(reportWarnings) == 0 {
+		proParagraph(&c, &y, "Nenhum ponto de atenção adicional foi registrado nesta execução.")
 	} else {
-		for i, w := range intel.Warnings {
-			if i >= 10 || y < 190 {
+		for i, w := range reportWarnings {
+			if i >= 8 || y < 190 {
 				break
 			}
-			proParagraph(&c, &y, "- "+w)
+			proParagraph(&c, &y, "• "+w)
 		}
 	}
 
@@ -646,7 +647,7 @@ func buildPropertyTechnicalDossierPDF(p Property, r CARAutomationResult, kml KML
 
 func dossierCoverPage(p Property, r CARAutomationResult, page int) string {
 	var c pdfCanvas
-	proHeader(&c, "DOSSIE TECNICO DO IMOVEL", "CAR, ambiente, fundiário e crédito rural em um único documento", page)
+	proHeader(&c, "DOSSIÊ TÉCNICO DO IMÓVEL", "CAR, ambiente, fundiário e crédito rural em um único documento", page)
 	y := 706.0
 	c.b.WriteString("0.94 0.98 0.95 rg\n")
 	c.rect(40, 560, 515, 126, true)
@@ -681,8 +682,9 @@ func dossierCoverPage(p Property, r CARAutomationResult, page int) string {
 
 	proSection(&c, &y, "SÍNTESE EXECUTIVA", "")
 	proParagraph(&c, &y, firstNonEmptyText(r.ExecutiveSummary, "O ViaVerdeCAR consolidou as fontes públicas disponíveis para o imóvel."))
-	if len(r.Warnings) > 0 {
-		proNotice(&c, &y, "PONTOS PARA CONFERÊNCIA", fmt.Sprintf("%d aviso(s) técnico(s) foram registrados. As páginas seguintes detalham bases indisponíveis, consultas parciais e ocorrências localizadas.", len(r.Warnings)), "warn")
+	reportWarnings := professionalReportWarnings(r.Warnings)
+	if len(reportWarnings) > 0 {
+		proNotice(&c, &y, "PONTOS PARA CONFERÊNCIA", fmt.Sprintf("%d ponto(s) de atenção foram registrados. As páginas seguintes identificam bases indisponíveis, consultas parciais e ocorrências que exigem conferência.", len(reportWarnings)), "warn")
 	} else {
 		proNotice(&c, &y, "STATUS DA EXECUÇÃO", "A execução não registrou avisos técnicos adicionais. Isso não substitui a conferência documental e profissional do imóvel.", "")
 	}
@@ -698,7 +700,7 @@ func dossierCoverPage(p Property, r CARAutomationResult, page int) string {
 
 func dossierCARPage(p Property, r CARAutomationResult, kml KMLResult, cmp GeometryComparison, page int) string {
 	var c pdfCanvas
-	proHeader(&c, "DOSSIE TECNICO DO IMOVEL", "CAR e representação geométrica", page)
+	proHeader(&c, "DOSSIÊ TÉCNICO DO IMÓVEL", "CAR e representação geométrica", page)
 	y := 720.0
 	proSection(&c, &y, "CADASTRO AMBIENTAL RURAL", "")
 	proKV(&c, &y, "CAR", r.CAR.CAR)
@@ -729,7 +731,7 @@ func dossierCARPage(p Property, r CARAutomationResult, kml KMLResult, cmp Geomet
 
 func dossierEnvironmentalPage(p Property, r CARAutomationResult, page int) string {
 	var c pdfCanvas
-	proHeader(&c, "DOSSIE TECNICO DO IMOVEL", "Raio X ambiental", page)
+	proHeader(&c, "DOSSIÊ TÉCNICO DO IMÓVEL", "Raio X ambiental", page)
 	y := 720.0
 	proSection(&c, &y, "RESUMO AMBIENTAL", "")
 	s := r.Environmental.Summary
@@ -766,7 +768,7 @@ func dossierEnvironmentalPage(p Property, r CARAutomationResult, page int) strin
 
 func dossierLandPage(p Property, r CARAutomationResult, page int) string {
 	var c pdfCanvas
-	proHeader(&c, "DOSSIE TECNICO DO IMOVEL", "Raio X fundiário - SIGEF / INCRA", page)
+	proHeader(&c, "DOSSIÊ TÉCNICO DO IMÓVEL", "Raio X fundiário - SIGEF / INCRA", page)
 	y := 720.0
 	s := r.XRay.SIGEF
 	proMetric(&c, 40, y-72, 156, 64, "PARCELAS SIGEF", fmt.Sprintf("%d", s.ParcelCount), "parcelas públicas retornadas", "")
@@ -799,7 +801,7 @@ func dossierLandPage(p Property, r CARAutomationResult, page int) string {
 
 func dossierCreditPage(p Property, r CARAutomationResult, page int) string {
 	var c pdfCanvas
-	proHeader(&c, "DOSSIE TECNICO DO IMOVEL", "Operações públicas de crédito rural - SICOR", page)
+	proHeader(&c, "DOSSIÊ TÉCNICO DO IMÓVEL", "Operações públicas de crédito rural - SICOR", page)
 	y := 720.0
 	s := r.XRay.SICOR
 	proMetric(&c, 40, y-72, 156, 64, "OPERAÇÕES", fmt.Sprintf("%d", s.OperationCount), fmt.Sprintf("%d gleba(s)", s.GlebaCount), "purple")
@@ -830,7 +832,7 @@ func dossierCreditPage(p Property, r CARAutomationResult, page int) string {
 
 func dossierBCBPage(p Property, r CARAutomationResult, page int) string {
 	var c pdfCanvas
-	proHeader(&c, "DOSSIE TECNICO DO IMOVEL", "Banco Central - contexto público e agregado", page)
+	proHeader(&c, "DOSSIÊ TÉCNICO DO IMÓVEL", "Banco Central - contexto público e agregado", page)
 	y := 720.0
 	b := r.BCB
 	proSection(&c, &y, "CONTEXTO DE MERCADO", "dados agregados, não análise individual")
@@ -855,10 +857,31 @@ func dossierBCBPage(p Property, r CARAutomationResult, page int) string {
 		proParagraph(&c, &y, "As séries de taxas rurais não retornaram valores utilizáveis nesta execução.")
 	}
 
-	proSection(&c, &y, "MERCADO MUNICIPAL", "")
-	for i, item := range b.Market.MunicipalProducts {
-		if i >= 6 || y < 130 { break }
-		proKV(&c, &y, firstNonEmptyText(item.Label, item.Kind), fmt.Sprintf("%s - %s contrato(s) - %s", item.Year, fmtBR(item.Contracts, 0), moneyBR(item.Value)))
+	proSection(&c, &y, "INDICADORES DE CRÉDITO RURAL", "")
+	macroCount := 0
+	for _, m := range b.Series.Metrics {
+		if m.Measure == "Taxa de juros" || m.Status != "available" {
+			continue
+		}
+		if macroCount >= 4 || y < 235 { break }
+		proKV(&c, &y, m.Label, fmt.Sprintf("%s %s • ref. %s • SGS %d", fmtBR(m.LatestValue, 2), m.Unit, m.LatestDate, m.SGSCode))
+		macroCount++
+	}
+	if macroCount == 0 {
+		proParagraph(&c, &y, "Os indicadores agregados de saldo, concessões e inadimplência não retornaram valores utilizáveis nesta execução.")
+	}
+
+	if y > 185 {
+		proSection(&c, &y, "MERCADO MUNICIPAL", "")
+		shown := 0
+		for _, item := range b.Market.MunicipalProducts {
+			if shown >= 4 || y < 120 { break }
+			proKV(&c, &y, firstNonEmptyText(item.Label, item.Kind), fmt.Sprintf("%s • %s contrato(s) • %s", item.Year, fmtBR(item.Contracts, 0), moneyBR(item.Value)))
+			shown++
+		}
+		if shown == 0 {
+			proParagraph(&c, &y, "Nenhum produto municipal foi retornado no recorte disponível desta execução.")
+		}
 	}
 	proNotice(&c, &y, "SALVAGUARDA", "Os dados do Banco Central são públicos e agregados. Não representam taxa garantida, aprovação, limite, dívida, inadimplência ou risco individual do produtor.", "")
 	proFooter(&c, page)
@@ -867,28 +890,29 @@ func dossierBCBPage(p Property, r CARAutomationResult, page int) string {
 
 func dossierSourcesPage(p Property, r CARAutomationResult, page int) string {
 	var c pdfCanvas
-	proHeader(&c, "DOSSIE TECNICO DO IMOVEL", "Fontes consultadas, avisos e limitações", page)
+	proHeader(&c, "DOSSIÊ TÉCNICO DO IMÓVEL", "Fontes consultadas, avisos e limitações", page)
 	y := 720.0
 	proSection(&c, &y, "FONTES DA EXECUÇÃO", "")
 	for i, s := range r.Sources {
 		if i >= 18 || y < 300 { break }
-		value := reportAutomationStatus(s.Status)
+		value := reportAutomationSourceStatus(s)
 		if s.Count > 0 {
-			value += fmt.Sprintf(" - %d registro(s)", s.Count)
+			value += fmt.Sprintf(" • %d registro(s)", s.Count)
 		}
-		if strings.TrimSpace(s.Detail) != "" {
-			value += " - " + s.Detail
+		if detail := professionalSourceDetail(s); detail != "" {
+			value += " • " + detail
 		}
 		proKV(&c, &y, s.Label, value)
 	}
 
-	proSection(&c, &y, "AVISOS TÉCNICOS", "")
-	if len(r.Warnings) == 0 {
-		proParagraph(&c, &y, "Nenhum aviso técnico adicional foi registrado nesta execução.")
+	proSection(&c, &y, "PONTOS DE ATENÇÃO", "")
+	reportWarnings := professionalReportWarnings(r.Warnings)
+	if len(reportWarnings) == 0 {
+		proParagraph(&c, &y, "Nenhum ponto de atenção adicional foi registrado nesta execução.")
 	} else {
-		for i, w := range r.Warnings {
-			if i >= 12 || y < 150 { break }
-			proParagraph(&c, &y, "- "+w)
+		for i, w := range reportWarnings {
+			if i >= 10 || y < 150 { break }
+			proParagraph(&c, &y, "• "+w)
 		}
 	}
 	proNotice(&c, &y, "USO DO DOCUMENTO", "Este dossiê consolida consultas públicas e dados locais para apoio ao trabalho técnico. Ele não substitui documentos oficiais do SICAR, registro de imóveis, certificação SIGEF/INCRA, licenciamento, auto de infração, consulta bancária privada ou decisão de crédito. Toda ocorrência relevante deve ser confirmada na fonte oficial e revisada pelo profissional responsável.", "")
@@ -905,7 +929,7 @@ func fireReportText(f EnvironmentalFireProfile) string {
 func reportAutomationStatus(status string) string {
 	switch strings.TrimSpace(status) {
 	case "ok":
-		return "Sem ocorrência"
+		return "Consulta concluída"
 	case "hit":
 		return "Ocorrência encontrada"
 	case "available":
@@ -929,6 +953,151 @@ func reportAutomationStatus(status string) string {
 	default:
 		return "Não consultado"
 	}
+}
+
+func reportAutomationSourceStatus(s AutomationSourceStatus) string {
+	status := strings.TrimSpace(s.Status)
+	switch s.Key {
+	case "sicar":
+		switch status {
+		case "ok", "available":
+			return "CAR localizado"
+		case "cached":
+			return "CAR recuperado do cache local"
+		case "partial":
+			return "CAR localizado com consulta parcial"
+		case "not_found":
+			return "CAR não localizado"
+		case "unavailable":
+			return "Base pública indisponível"
+		}
+	case "kml":
+		switch status {
+		case "ok", "available":
+			return "Disponível"
+		case "not_saved":
+			return "Geometria disponível; arquivo não salvo"
+		case "unavailable":
+			return "Geração não confirmada"
+		}
+	case "sicor":
+		if status == "hit" {
+			return "Operação pública localizada"
+		}
+		if status == "ok" {
+			return "Consulta concluída sem operação localizada"
+		}
+	case "sigef":
+		if status == "hit" {
+			return "Parcela pública localizada"
+		}
+		if status == "ok" {
+			return "Consulta concluída sem parcela localizada"
+		}
+	case "mcr":
+		if status == "hit" {
+			return "CAR listado na base pública"
+		}
+		if status == "ok" {
+			return "CAR não listado na base consultada"
+		}
+	}
+	if strings.HasPrefix(s.Key, "bcb_") {
+		return reportAutomationStatus(status)
+	}
+	if status == "ok" {
+		return "Consulta concluída sem ocorrência"
+	}
+	return reportAutomationStatus(status)
+}
+
+func professionalSourceDetail(s AutomationSourceStatus) string {
+	detail := strings.TrimSpace(s.Detail)
+	if detail == "" {
+		return ""
+	}
+	if strings.TrimSpace(s.Status) == "unavailable" || strings.TrimSpace(s.Status) == "not_configured" {
+		switch s.Key {
+		case "funai":
+			return "Base geoespacial indisponível nesta execução."
+		case "inpe_fire":
+			return "Serviço de focos de calor indisponível nesta execução."
+		case "sigef":
+			return "Consulta SIGEF/INCRA indisponível nesta execução."
+		default:
+			if strings.HasPrefix(s.Key, "bcb_") {
+				return "Consulta do Banco Central indisponível nesta execução."
+			}
+		}
+	}
+	if reportContainsInternalError(detail) {
+		return "Fonte externa indisponível nesta execução."
+	}
+	return detail
+}
+
+func professionalReportWarnings(warnings []string) []string {
+	out := make([]string, 0, len(warnings))
+	seen := map[string]bool{}
+	for _, warning := range warnings {
+		clean := professionalReportWarning(warning)
+		if clean == "" || seen[clean] {
+			continue
+		}
+		seen[clean] = true
+		out = append(out, clean)
+	}
+	return out
+}
+
+func professionalReportWarning(warning string) string {
+	w := strings.TrimSpace(warning)
+	if w == "" {
+		return ""
+	}
+	lower := strings.ToLower(w)
+	switch {
+	case strings.Contains(lower, "worldcover"):
+		return "ESA WorldCover: base de cobertura do solo indisponível nesta execução."
+	case strings.HasPrefix(lower, "funai:") || strings.Contains(lower, " funai:"):
+		return "FUNAI: base geoespacial indisponível nesta execução."
+	case strings.Contains(lower, "taxas por instituição bcb"):
+		return "Banco Central: taxas por instituição indisponíveis nesta execução."
+	case strings.Contains(lower, "entidades supervisionadas bcb"):
+		return "Banco Central: cadastro de entidades supervisionadas indisponível nesta execução."
+	case strings.HasPrefix(lower, "ifdata:") || strings.Contains(lower, " ifdata:"):
+		return "Banco Central: IFData indisponível nesta execução."
+	case strings.Contains(lower, "context deadline exceeded"),
+		strings.Contains(lower, "client.timeout"),
+		strings.Contains(lower, "invalid url"),
+		strings.Contains(lower, "invalid character"),
+		strings.Contains(lower, "unexpected end of json"),
+		strings.Contains(lower, "connection reset"),
+		strings.Contains(lower, "no such host"):
+		return "Uma fonte externa ficou indisponível durante a consulta; o resultado foi mantido como indisponível, sem assumir ausência de ocorrência."
+	default:
+		return w
+	}
+}
+
+func reportContainsInternalError(value string) bool {
+	lower := strings.ToLower(value)
+	for _, marker := range []string{
+		"context deadline exceeded",
+		"client.timeout",
+		"invalid url",
+		"invalid character",
+		"unexpected end of json",
+		"connection reset",
+		"no such host",
+		"http 5",
+		"http 429",
+	} {
+		if strings.Contains(lower, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func moneyBR(v float64) string {
