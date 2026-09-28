@@ -47,7 +47,7 @@ func TestEnvironmentalEvidencePDF207(t *testing.T) {
 	}
 }
 
-func TestPropertyTechnicalDossierPDF207(t *testing.T) {
+func TestPropertyTechnicalDossierPDF208(t *testing.T) {
 	p := Property{Name: "Fazenda Teste", ClientName: "Cliente Teste", Municipality: "Jacuí", UF: "MG"}
 	r := CARAutomationResult{
 		OverallStatus: "complete",
@@ -66,15 +66,15 @@ func TestPropertyTechnicalDossierPDF207(t *testing.T) {
 		},
 		BCB: BCBPublicContext{Available: true, Municipality: "Jacuí", UF: "MG"},
 	}
-	pdf := buildPropertyTechnicalDossierPDF(p, r, KMLResult{}, GeometryComparison{})
+	pdf := buildPropertyTechnicalDossierPDF(p, r, KMLResult{}, GeometryComparison{}, PropertyDocumentCenter{})
 	s := string(pdf)
 	if !strings.HasPrefix(s, "%PDF-1.4") {
 		t.Fatal("dossiê técnico não gerou PDF")
 	}
-	if !strings.Contains(s, "/Count 7") {
-		t.Fatal("dossiê técnico deve ter 7 páginas")
+	if !strings.Contains(s, "/Count 8") {
+		t.Fatal("dossiê técnico deve ter 8 páginas com Documentos e Pendências")
 	}
-	for _, marker := range []string{"DOSSI", "Raio X ambiental", "SIGEF / INCRA", "Banco Central"} {
+	for _, marker := range []string{"DOSSI", "Raio X ambiental", "SIGEF / INCRA", "Banco Central", "Documentos"} {
 		if !strings.Contains(s, marker) {
 			t.Fatalf("dossiê sem seção %q", marker)
 		}
