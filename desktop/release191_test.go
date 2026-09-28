@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion207(t *testing.T) {
-	if AppVersion != "2.0.7" {
+func TestReleaseVersion208(t *testing.T) {
+	if AppVersion != "2.0.8" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.0.7"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.0.7")
+	if !strings.Contains(string(b), `"productVersion": "2.0.8"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.0.8")
 	}
 }
 
@@ -147,6 +147,51 @@ func TestRelease207KeepsInternalErrorsOutOfProfessionalPDFs(t *testing.T) {
 	} {
 		if !strings.Contains(src, marker) {
 			t.Fatalf("acabamento PDF 2.0.7 sem marcador %q", marker)
+		}
+	}
+}
+
+
+func TestRelease208DocumentCenterAndPendingTab(t *testing.T) {
+	if st, err := os.Stat("documents.go"); err != nil || st.Size() == 0 {
+		t.Fatal("módulo de documentos 2.0.8 ausente")
+	}
+	jsb, err := os.ReadFile("frontend/dist/ui204.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"Central de documentos do imóvel",
+		"Pendências",
+		"GetPropertyDocumentCenter",
+		"AddPropertyDocument",
+		"SetPropertyDocumentStatus",
+		"ListPropertyDocumentHistory",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.0.8 sem marcador %q", marker)
+		}
+	}
+	appb, err := os.ReadFile("app.go")
+	if err != nil { t.Fatal(err) }
+	app := string(appb)
+	for _, marker := range []string{"property_documents", "property_document_status", "version=6"} {
+		if !strings.Contains(app, marker) {
+			t.Fatalf("migração documental 2.0.8 sem marcador %q", marker)
+		}
+	}
+}
+
+func TestRelease208DossierIncludesDocumentsPage(t *testing.T) {
+	b, err := os.ReadFile("professional_reports.go")
+	if err != nil { t.Fatal(err) }
+	src := string(b)
+	for _, marker := range []string{
+		"dossierDocumentsPage",
+		"Documentos, pendências e estado do dossiê",
+		"GetPropertyDocumentCenter",
+	} {
+		if !strings.Contains(src, marker) {
+			t.Fatalf("dossiê 2.0.8 sem integração documental %q", marker)
 		}
 	}
 }
