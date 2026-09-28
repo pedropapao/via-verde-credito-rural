@@ -1,3 +1,18 @@
+ViaVerdeCAR 2.0.9 — Pendências Inteligentes
+
+• Evolui a Central de Documentos da 2.0.8 sem apagar arquivos, histórico ou estados já registrados.
+• Migração SQLite não destrutiva do esquema 6 para o esquema 7.
+• Adiciona contexto documental por imóvel: atividade, tipo de operação, uso/posse, uso de água, trânsito animal, compra de fornecedor e necessidade de laudo técnico.
+• Campos de contexto podem ficar em “Automático / não sei”; nesse modo o ViaVerdeCAR usa apenas sinais já cadastrados, como finalidade das áreas do projeto.
+• Documento condicional só vira “Pendente” quando existe sinal objetivo suficiente ou informação explícita do usuário.
+• Quando não há informação suficiente, o estado permanece “Conferir”; ausência de contexto nunca é tratada como documento dispensado.
+• Arrendamento/cessão/comodato, outorga, GTA, orçamento, nota fiscal e laudo técnico passam a mostrar a razão da aplicabilidade.
+• Decisões manuais de status continuam tendo prioridade sobre a inferência automática.
+• Validade objetiva expirada continua prevalecendo sobre o estado “Recebido”.
+• O Dossiê Técnico passa a registrar a razão contextual das pendências.
+• A interface de Documentos e Pendências recebe o painel “Contexto do Projeto”.
+• CAR, KML, análises ambientais, fundiárias, crédito rural, backups e PDFs anteriores permanecem preservados.
+
 ViaVerdeCAR 2.0.8 — Central de Documentos + Pendências
 
 • Adiciona uma Central de Documentos por imóvel salvo, sem alterar CAR, ambiental, fundiário, SICOR, BCB ou os PDFs existentes.
