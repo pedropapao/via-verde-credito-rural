@@ -10,7 +10,6 @@ import (
 	"io"
 	"math"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"regexp"
@@ -61,6 +60,9 @@ type CARResult struct {
 	GoogleMapsURL    string         `json:"google_maps_url"`
 	AutoKMLPath      string         `json:"auto_kml_path"`
 	SnapshotSaved    bool           `json:"snapshot_saved"`
+	LookupStatus     string         `json:"lookup_status"`
+	LookupDetail     string         `json:"lookup_detail"`
+	PublicConfirmed  bool           `json:"public_confirmed"`
 	OwnerDataAccess  string         `json:"owner_data_access"`
 	Environment      EnvironmentalSummary `json:"environment"`
 	Themes           SICARThemesSummary    `json:"themes"`
@@ -115,27 +117,61 @@ func (a *App) analyzeCAR(propertyID int64, number string) (CARResult, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, 22*time.Second)
 	defer cancel()
-	feature, err := lookupCARPublic(ctx, car, uf)
+	feature, lookupMeta, err := lookupCARPublicDetailed(ctx, car, uf)
+	result.LookupStatus = lookupMeta.Status
+	result.LookupDetail = lookupMeta.Detail
+	result.PublicConfirmed = lookupMeta.Status == "found" || lookupMeta.Status == "partial"
 	if err != nil {
+		if cached, ok := a.carLookupFallback(propertyID, car); ok {
+			cached.CheckedAt = result.CheckedAt
+			cached.LookupStatus = "cached"
+			cached.LookupDetail = "A camada pública SICAR não respondeu nesta tentativa. A geometria e a ficha abaixo foram reaproveitadas da última consulta pública bem-sucedida salva localmente."
+			cached.PublicConfirmed = false
+			cached.Source = "Último resultado SICAR salvo localmente"
+			cached.Checks = append(cached.Checks, QualityCheck{Level: "warning", Title: "SICAR temporariamente indisponível", Detail: err.Error()})
+			cached.Checks = append(cached.Checks, QualityCheck{Level: "info", Title: "Dados reaproveitados", Detail: "O ViaVerdeCAR continuou as análises com a última geometria pública salva. Isto não confirma o estado atual do cadastro no SICAR."})
+			return cached, nil
+		}
+		result.LookupStatus = "unavailable"
+		result.LookupDetail = err.Error()
 		result.Checks = append(result.Checks, QualityCheck{Level: "error", Title: "Consulta pública indisponível", Detail: err.Error()})
 		return result, fmt.Errorf("a base pública do SICAR não respondeu: %w", err)
 	}
 	if feature == nil {
-		result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "CAR não localizado", Detail: "O código é válido, mas não apareceu na camada pública consultada."})
+		if cached, ok := a.carLookupFallback(propertyID, car); ok {
+			cached.CheckedAt = result.CheckedAt
+			cached.LookupStatus = "cached"
+			cached.LookupDetail = "O SICAR público respondeu sem retornar este CAR nesta tentativa, mas existe uma geometria pública anterior do mesmo código salva localmente. Ela foi mantida apenas para continuidade técnica; a situação cadastral atual precisa de confirmação oficial."
+			cached.PublicConfirmed = false
+			cached.Source = "Último resultado SICAR salvo localmente"
+			cached.Checks = append(cached.Checks, QualityCheck{Level: "warning", Title: "SICAR sem correspondência atual", Detail: v2FirstNonEmpty(lookupMeta.Detail, "A consulta pública atual não retornou o CAR.")})
+			cached.Checks = append(cached.Checks, QualityCheck{Level: "info", Title: "Geometria anterior reaproveitada", Detail: "O mapa e os cruzamentos usam a última geometria pública salva deste mesmo CAR e não representam confirmação cadastral atual."})
+			return cached, nil
+		}
+		result.LookupStatus = "not_found"
+		result.PublicConfirmed = false
+		result.Checks = append(result.Checks, QualityCheck{Level: "warning", Title: "CAR não localizado", Detail: v2FirstNonEmpty(lookupMeta.Detail, "O código é válido, mas não apareceu na camada pública consultada.")})
 		return result, nil
 	}
 	result.Found = true
-	result.Municipality = carStringProp(feature.Properties, "nom_munici", "nom_municipio", "municipio", "nm_muni", "nome_municipio")
+	result.LookupStatus = "found"
+	result.PublicConfirmed = true
+	result.Municipality = carStringProp(feature.Properties, "municipio", "nom_munici", "nom_municipio", "nm_muni", "nome_municipio")
 	result.PropertyName = carStringProp(feature.Properties, "nom_imovel", "nome_imovel", "imovel")
 	result.Status = carStatusLabel(carStringProp(feature.Properties, "status_imovel", "ind_status", "situacao", "status"))
 	result.Condition = carStringProp(feature.Properties, "des_condic", "condicao", "descricao_condicao")
 	result.PropertyType = carPropertyTypeLabel(carStringProp(feature.Properties, "tipo_imovel", "ind_tipo_i", "ind_tipo", "tipo_imove", "des_tipo", "tipo"))
-	result.AreaHa = carFloatProp(feature.Properties, "num_area", "num_area_i", "area_imove", "area_ha", "area")
+	result.AreaHa = carFloatProp(feature.Properties, "area", "num_area", "num_area_i", "area_imove", "area_ha")
 	result.FiscalModules = carFloatProp(feature.Properties, "m_fiscal", "num_modulo", "mod_fiscal", "modulos_fiscais")
 	result.DataCadastro = carStringProp(feature.Properties, "dat_criacao", "dat_criaca", "data_cadastro", "data_criacao")
 	result.DataAtualizacao = carStringProp(feature.Properties, "data_atualizacao", "dat_atuali", "data_ultima_atualizacao")
-	result.OwnerDataAccess = "Nome e CPF do detentor não são publicados pela camada pública nacional consultada; exigem acesso autorizado do titular."
+	result.OwnerDataAccess = "A camada pública WFS do SICAR não publica CPF/nome do detentor. O ViaVerdeCAR usa vínculos locais e pode orientar consultas oficiais autorizadas sem inferir titularidade."
 	result.HasGeometry = carGeometryUsable(feature.Geometry)
+	if result.Found && (strings.TrimSpace(result.Municipality) == "" || result.AreaHa <= 0 || strings.TrimSpace(result.Status) == "") {
+		result.LookupStatus = "partial"
+		result.LookupDetail = "CAR e geometria localizados na camada pública, mas parte dos atributos cadastrais não foi retornada nesta consulta."
+		result.Checks = append(result.Checks, QualityCheck{Level: "info", Title: "Ficha SICAR parcial", Detail: result.LookupDetail})
+	}
 	if result.HasGeometry {
 		result.GeometryAreaHa = carGeometryAreaHa(feature.Geometry)
 		result.PerimeterM = carGeometryPerimeterM(feature.Geometry)
@@ -426,63 +462,9 @@ func carLayerUF(uf string) string {
 }
 
 func lookupCARPublic(ctx context.Context, car, uf string) (*carGeoFeature, error) {
-	versions := []struct{ version, typeKey string }{{"2.0.0", "typeNames"}, {"1.1.0", "typeName"}, {"1.0.0", "typeName"}}
-	var lastErr error
-	for _, code := range carLookupCodes(car) {
-		for _, v := range versions {
-			f, err := lookupCARPublicVersion(ctx, code, uf, v.version, v.typeKey)
-			if err == nil && f != nil {
-				return f, nil
-			}
-			if err != nil {
-				lastErr = err
-			}
-		}
-	}
-	if lastErr != nil {
-		return nil, lastErr
-	}
-	return nil, nil
+	feature, _, err := lookupCARPublicDetailed(ctx, car, uf)
+	return feature, err
 }
-
-func lookupCARPublicVersion(ctx context.Context, car, uf, version, typeKey string) (*carGeoFeature, error) {
-	params := url.Values{}
-	params.Set("service", "WFS")
-	params.Set("version", version)
-	params.Set("request", "GetFeature")
-	params.Set(typeKey, "sicar:sicar_imoveis_"+carLayerUF(uf))
-	params.Set("outputFormat", "application/json")
-	params.Set("srsName", "EPSG:4326")
-	if version == "2.0.0" {
-		params.Set("count", "2")
-	} else {
-		params.Set("maxFeatures", "2")
-	}
-	params.Set("CQL_FILTER", "cod_imovel='"+strings.ReplaceAll(car, "'", "''")+"'")
-
-	var lastErr error
-	for _, endpoint := range []string{carWFSURL, carWFSFallback} {
-		body, err := fetchCARBody(ctx, endpoint+"?"+params.Encode())
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		var fc carGeoJSON
-		if err := json.Unmarshal(body, &fc); err != nil {
-			lastErr = err
-			continue
-		}
-		if len(fc.Features) == 0 {
-			return nil, nil
-		}
-		return &fc.Features[0], nil
-	}
-	if lastErr != nil {
-		return nil, lastErr
-	}
-	return nil, errors.New("consulta SICAR sem resposta")
-}
-
 // fetchCARBody tenta primeiro o cliente HTTP nativo. Alguns servidores do SICAR
 // recusam esporadicamente o handshake TLS do Go/Windows embora funcionem no
 // navegador. Nessa situação usamos o curl.exe do próprio Windows (Schannel)
@@ -494,7 +476,7 @@ func fetchCARBody(ctx context.Context, target string) ([]byte, error) {
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Cache-Control", "no-cache")
-	req.Header.Set("User-Agent", "Mozilla/5.0 ViaVerdeCAR/1.0.1")
+	req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion+" SICAR-WFS")
 	resp, directErr := (&http.Client{Timeout: 18 * time.Second}).Do(req)
 	if directErr == nil {
 		defer resp.Body.Close()
@@ -525,10 +507,13 @@ func fetchCARWithCurl(ctx context.Context, target string) ([]byte, error) {
 		"--silent",
 		"--show-error",
 		"--fail-with-body",
+		"--retry", "2",
+		"--retry-delay", "1",
+		"--retry-connrefused",
 		"--connect-timeout", "10",
-		"--max-time", "20",
+		"--max-time", "24",
 		"--header", "Accept: application/json",
-		"--user-agent", "Mozilla/5.0 ViaVerdeCAR/1.0.1",
+		"--user-agent", "ViaVerdeCAR/"+AppVersion+" SICAR-WFS",
 		target,
 	)
 	hideExternalProcessWindow(cmd)

@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const AppVersion = "1.9.5"
+const AppVersion = "2.0.8"
 
 type App struct {
 	ctx     context.Context
@@ -163,6 +163,9 @@ func (a *App) migrate() error {
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_properties_client ON properties(client_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_properties_car ON properties(car_number);`,
+		`CREATE INDEX IF NOT EXISTS idx_clients_cpf_cnpj ON clients(cpf_cnpj);`,
+		`CREATE INDEX IF NOT EXISTS idx_properties_registry ON properties(registry);`,
+		`CREATE INDEX IF NOT EXISTS idx_properties_municipality ON properties(municipality,uf);`,
 		`CREATE TABLE IF NOT EXISTS car_checks (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			property_id INTEGER NOT NULL,
@@ -241,7 +244,37 @@ func (a *App) migrate() error {
 			FOREIGN KEY(area_id) REFERENCES project_areas(id) ON DELETE CASCADE
 		);`,
 		`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
-		`UPDATE schema_version SET version=4 WHERE version < 4;`,
+		`CREATE TABLE IF NOT EXISTS property_documents (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			property_id INTEGER NOT NULL,
+			doc_type TEXT NOT NULL,
+			title TEXT NOT NULL DEFAULT '',
+			original_name TEXT NOT NULL DEFAULT '',
+			stored_path TEXT NOT NULL DEFAULT '',
+			source TEXT NOT NULL DEFAULT '',
+			issue_date TEXT NOT NULL DEFAULT '',
+			expiry_date TEXT NOT NULL DEFAULT '',
+			reference_year TEXT NOT NULL DEFAULT '',
+			notes TEXT NOT NULL DEFAULT '',
+			sha256 TEXT NOT NULL DEFAULT '',
+			size_bytes INTEGER NOT NULL DEFAULT 0,
+			is_current INTEGER NOT NULL DEFAULT 1,
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL,
+			FOREIGN KEY(property_id) REFERENCES properties(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_property_documents_property ON property_documents(property_id,doc_type,is_current,updated_at DESC);`,
+		`CREATE INDEX IF NOT EXISTS idx_property_documents_sha ON property_documents(property_id,sha256);`,
+		`CREATE TABLE IF NOT EXISTS property_document_status (
+			property_id INTEGER NOT NULL,
+			doc_type TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'review',
+			notes TEXT NOT NULL DEFAULT '',
+			updated_at TEXT NOT NULL,
+			PRIMARY KEY(property_id,doc_type),
+			FOREIGN KEY(property_id) REFERENCES properties(id) ON DELETE CASCADE
+		);`,
+		`UPDATE schema_version SET version=6 WHERE version < 6;`,
 	}
 	for _, stmt := range stmts {
 		if _, err := a.db.Exec(stmt); err != nil {

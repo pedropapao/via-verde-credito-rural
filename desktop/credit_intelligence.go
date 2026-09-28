@@ -222,9 +222,20 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 		ZARCSourceURL: creditIntelligenceZARCURL,
 		Scope: "Informações públicas localizadas no SICOR/BCB para operações vinculadas ao CAR. Valores identificados não representam necessariamente toda a dívida, todo o crédito privado ou toda a exposição financeira do produtor.",
 	}
+	marketBase := context.Background()
+	if a.ctx != nil {
+		marketBase = a.ctx
+	}
+	marketCtx, marketCancel := context.WithTimeout(marketBase, 35*time.Second)
+	market, marketErr := queryCreditMarketContext(marketCtx, car.Municipality, car.UF, car.MunicipalityCode)
+	marketCancel()
+	out.Market = market
+	if marketErr != nil {
+		out.Warnings = append(out.Warnings, "Contexto de mercado MDCR: "+marketErr.Error())
+	}
 	if len(xray.Operations) == 0 {
 		out.Warnings = append(out.Warnings, "Nenhuma operação pública vinculada ao CAR foi localizada para enriquecer.")
-		completeCreditIntelligenceProgress("Nenhuma operação pública vinculada ao CAR foi localizada para detalhamento financeiro.")
+		completeCreditIntelligenceProgress("Nenhuma operação pública vinculada ao CAR foi localizada; o contexto agregado do mercado permanece disponível.")
 		return out, nil
 	}
 	sourceDir := filepath.Join(a.dataDir, "cache", "sicor_credit_intelligence")
@@ -311,13 +322,7 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 	updateCreditIntelligenceProgress(10, "zarc", "ZARC", "Cruzando plantio, cultura, solo e ciclo com a Tábua de Risco oficial disponível.")
 	a.enrichCreditZARC(ctx, sourceDir, car, byKey, &out)
 
-	updateCreditIntelligenceProgress(11, "market", "Contexto de mercado", "Consultando o contexto agregado do crédito rural no município e na UF.")
-	if market, marketErr := queryCreditMarketContext(ctx, car.Municipality, car.UF, car.MunicipalityCode); marketErr == nil {
-		out.Market = market
-	} else {
-		out.Market = market
-		out.Warnings = append(out.Warnings, "Contexto de mercado MDCR: "+marketErr.Error())
-	}
+	updateCreditIntelligenceProgress(11, "market", "Contexto de mercado", "Contexto agregado MDCR já carregado; organizando o resultado final.")
 
 	for _, op := range byKey {
 		sort.SliceStable(op.Releases, func(i, j int) bool { return op.Releases[i].Date < op.Releases[j].Date })

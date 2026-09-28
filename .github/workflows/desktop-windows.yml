@@ -45,6 +45,15 @@ jobs:
       - name: Testes
         run: go test ./...
 
+      - name: Validar JavaScript do frontend
+        shell: pwsh
+        run: |
+          Get-ChildItem frontend/dist -Filter *.js | ForEach-Object {
+            Write-Host "Validando $($_.Name)"
+            node --check $_.FullName
+            if ($LASTEXITCODE -ne 0) { throw "JavaScript inválido: $($_.Name)" }
+          }
+
       - name: Instalar Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
 

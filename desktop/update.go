@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"regexp"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,7 +21,15 @@ import (
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-const updateManifestURL = "https://igrxqbroklfwujcwbiwh.supabase.co/functions/v1/via-verde-desktop-update?action=manifest"
+const (
+	updateManifestURL = "https://igrxqbroklfwujcwbiwh.supabase.co/functions/v1/via-verde-desktop-update?action=manifest"
+	updateAllowedHost = "igrxqbroklfwujcwbiwh.supabase.co"
+)
+
+var (
+	updateVersionPattern = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+	updateSHA256Pattern  = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
+)
 
 type UpdateManifest struct {
 	Version     string `json:"version"`
@@ -47,6 +57,65 @@ type UpdateInstallResult struct {
 	Started bool   `json:"started"`
 	Message string `json:"message"`
 }
+var errNoPublishedUpdate = errors.New("nenhuma atualização publicada")
+
+func fetchUpdateManifest(ctx context.Context) (UpdateManifest, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateManifestURL, nil)
+	if err != nil {
+		return UpdateManifest{}, err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion)
+	resp, err := (&http.Client{Timeout: 15 * time.Second}).Do(req)
+	if err != nil {
+		return UpdateManifest{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return UpdateManifest{}, fmt.Errorf("servidor de atualização respondeu HTTP %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 512<<10))
+	if err != nil {
+		return UpdateManifest{}, err
+	}
+	var m UpdateManifest
+	if err := json.Unmarshal(body, &m); err != nil {
+		return UpdateManifest{}, errors.New("manifesto de atualização inválido")
+	}
+	if strings.TrimSpace(m.Version) == "" || strings.TrimSpace(m.DownloadURL) == "" {
+		return UpdateManifest{}, errNoPublishedUpdate
+	}
+	if err := validateUpdateManifest(m); err != nil {
+		return UpdateManifest{}, err
+	}
+	return m, nil
+}
+
+func validateUpdateManifest(m UpdateManifest) error {
+	if !updateVersionPattern.MatchString(strings.TrimSpace(m.Version)) {
+		return errors.New("versão do manifesto inválida")
+	}
+	if strings.TrimSpace(m.Channel) != "" && !strings.EqualFold(strings.TrimSpace(m.Channel), "stable") {
+		return errors.New("canal de atualização não autorizado")
+	}
+	if !updateSHA256Pattern.MatchString(strings.TrimSpace(m.SHA256)) {
+		return errors.New("SHA-256 do manifesto inválido")
+	}
+	if m.Size < 1024*1024 || m.Size > 50*1024*1024 {
+		return fmt.Errorf("tamanho de atualização fora do limite permitido: %d bytes", m.Size)
+	}
+	u, err := url.Parse(strings.TrimSpace(m.DownloadURL))
+	if err != nil || !strings.EqualFold(u.Scheme, "https") {
+		return errors.New("URL de download do manifesto inválida")
+	}
+	if !strings.EqualFold(u.Hostname(), updateAllowedHost) {
+		return errors.New("host de download não autorizado")
+	}
+	if !strings.HasPrefix(u.EscapedPath(), "/storage/v1/object/sign/via-verde-files/desktop-updates/") {
+		return errors.New("caminho de download não autorizado")
+	}
+	return nil
+}
 
 func (a *App) CheckUpdates() UpdateInfo {
 	out := UpdateInfo{CurrentVersion: AppVersion, Message: "Você está usando a versão " + AppVersion + "."}
@@ -57,35 +126,13 @@ func (a *App) CheckUpdates() UpdateInfo {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateManifestURL, nil)
+	m, err := fetchUpdateManifest(ctx)
 	if err != nil {
-		out.Message = err.Error()
-		return out
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "ViaVerdeCAR/"+AppVersion)
-	resp, err := (&http.Client{Timeout: 15 * time.Second}).Do(req)
-	if err != nil {
-		out.Message = "Não foi possível verificar atualizações agora."
-		return out
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		out.Message = fmt.Sprintf("Servidor de atualização respondeu HTTP %d.", resp.StatusCode)
-		return out
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 512<<10))
-	if err != nil {
-		out.Message = err.Error()
-		return out
-	}
-	var m UpdateManifest
-	if err := json.Unmarshal(body, &m); err != nil {
-		out.Message = "Manifesto de atualização inválido."
-		return out
-	}
-	if strings.TrimSpace(m.Version) == "" || strings.TrimSpace(m.DownloadURL) == "" {
-		out.Message = "Nenhuma atualização publicada no canal estável."
+		if errors.Is(err, errNoPublishedUpdate) {
+			out.Message = "Nenhuma atualização publicada no canal estável."
+		} else {
+			out.Message = "Não foi possível verificar atualizações agora: " + err.Error()
+		}
 		return out
 	}
 	out.AvailableVersion = m.Version
@@ -113,15 +160,28 @@ func (a *App) InstallUpdate(info UpdateInfo) (UpdateInstallResult, error) {
 	if a.ctx == nil {
 		return UpdateInstallResult{}, errors.New("aplicativo ainda não inicializado")
 	}
-	if !versionGreater(info.AvailableVersion, AppVersion) {
+
+	ctx, cancel := context.WithTimeout(a.ctx, 20*time.Second)
+	defer cancel()
+	manifest, err := fetchUpdateManifest(ctx)
+	if err != nil {
+		return UpdateInstallResult{}, fmt.Errorf("não foi possível validar novamente a atualização: %w", err)
+	}
+	if info.AvailableVersion != "" && !strings.EqualFold(strings.TrimSpace(info.AvailableVersion), strings.TrimSpace(manifest.Version)) {
+		return UpdateInstallResult{}, errors.New("a versão publicada mudou desde a verificação; verifique atualizações novamente")
+	}
+	if !versionGreater(manifest.Version, AppVersion) {
 		return UpdateInstallResult{}, errors.New("não há versão mais nova para instalar")
 	}
-	if !strings.HasPrefix(strings.ToLower(strings.TrimSpace(info.DownloadURL)), "https://") {
-		return UpdateInstallResult{}, errors.New("endereço de atualização inválido")
-	}
-	if len(strings.TrimSpace(info.SHA256)) != 64 {
-		return UpdateInstallResult{}, errors.New("assinatura SHA-256 da atualização ausente")
-	}
+
+	// O backend reconsulta o manifesto oficial no instante da instalação.
+	// URL, SHA-256 e tamanho recebidos da interface nunca são confiados.
+	info.AvailableVersion = manifest.Version
+	info.DownloadURL = manifest.DownloadURL
+	info.SHA256 = strings.ToLower(strings.TrimSpace(manifest.SHA256))
+	info.Size = manifest.Size
+	info.Notes = manifest.Notes
+	info.PublishedAt = manifest.PublishedAt
 
 	updateDir := filepath.Join(a.dataDir, "updates")
 	backupDir := filepath.Join(a.dataDir, "backups")
