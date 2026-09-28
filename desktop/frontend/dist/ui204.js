@@ -220,6 +220,7 @@
         ${tabButton('credit','bank','Crédito Rural')}
         ${tabButton('map','map','Mapa')}
         ${tabButton('docs','folder','Documentos')}
+        ${tabButton('pending','alert','Pendências')}
         ${tabButton('reports','print','Relatórios')}
       </nav>
       <section id="vv204Pane" class="vv204-pane"></section>`;
@@ -247,6 +248,7 @@
       case 'credit': pane.innerHTML=creditTab(current);bindSourceLinks(pane);break;
       case 'map': pane.innerHTML=mapTab(current);setTimeout(()=>drawMap(current,'vv204BigMap',true),60);break;
       case 'docs': pane.innerHTML=documentsTab(current);bindDocumentActions(current);break;
+      case 'pending': pane.innerHTML=pendingTab(current);bindPendingActions(current);break;
       case 'reports': pane.innerHTML=reportsTab(current);bindReportActions(current);break;
       default: pane.innerHTML=summaryTab(current);bindSummary(current);setTimeout(()=>drawMap(current,'vv204SummaryMap',false),60);
     }
@@ -491,22 +493,188 @@
   }
 
   function documentsTab(r){
-    const c=r.car||{},p=state?.selectedProperty,k=state?.kml;
+    const saved=Number(r.property_id)||0;
     return `
-      <div class="vv204-tab-title"><div><span>DOCUMENTOS</span><h2>Arquivos e evidências do imóvel</h2><p>KMLs, evidências ambientais e pacote técnico.</p></div></div>
-      <div class="vv204-doc-grid">
-        <article class="vv204-panel vv204-doc-card"><span>${icon('map')}</span><div><h3>KML SICAR</h3><p>${c.has_geometry?'Geometria pública disponível para exportação.':'Geometria não disponível.'}</p></div><button id="vv204DocKml" ${c.has_geometry?'':'disabled'}>Exportar KML</button></article>
-        <article class="vv204-panel vv204-doc-card"><span>${icon('folder')}</span><div><h3>KML do cliente</h3><p>${k?.geojson?'KML externo carregado para comparação.':p?'Você pode anexar um KML externo ao imóvel salvo.':'Salve/vincule o imóvel antes de anexar.'}</p></div><button id="vv204AttachKml" ${p?'':'disabled'}>Anexar KML</button></article>
-        <article class="vv204-panel vv204-doc-card"><span>${icon('database')}</span><div><h3>Evidências ambientais</h3><p>Exporta os dados estruturados usados na análise ambiental.</p></div><button id="vv204Evidence" ${r.property_id?'':'disabled'}>Exportar JSON</button></article>
-        <article class="vv204-panel vv204-doc-card"><span>${icon('file')}</span><div><h3>Dossiê completo</h3><p>Pacote com PDF, KMLs, JSON e histórico disponível.</p></div><button id="vv204Package" ${r.property_id?'':'disabled'}>Gerar dossiê</button></article>
+      <div class="vv204-tab-title"><div><span>DOCUMENTOS</span><h2>Central de documentos do imóvel</h2><p>Arquivos ficam guardados dentro do ViaVerdeCAR, entram no backup e mantêm versões anteriores.</p></div><span class="vv204-big-status ${saved?'ok':'warn'}">${saved?'Imóvel salvo':'Vincule o imóvel'}</span></div>
+      ${saved?'<section id="vv208DocWorkspace" class="vv208-workspace">'+documentLoadingHTML()+'</section>':unsavedDocumentHTML()}
+      <div class="vv208-technical-tools">
+        <button id="vv204DocKml" ${r.car?.has_geometry?'':'disabled'}>${icon('map')}<span><strong>Exportar KML SICAR</strong><small>Geometria pública da consulta atual</small></span></button>
+        <button id="vv204AttachKml" ${saved?'':'disabled'}>${icon('folder')}<span><strong>KML do cliente</strong><small>Anexar levantamento externo para comparação</small></span></button>
+        <button id="vv204Evidence" ${saved?'':'disabled'}>${icon('database')}<span><strong>Evidências JSON</strong><small>Rastreabilidade estruturada da análise</small></span></button>
+        <button id="vv204Package" ${saved?'':'disabled'}>${icon('file')}<span><strong>Pacote técnico ZIP</strong><small>Arquivos técnicos e histórico disponível</small></span></button>
       </div>`;
   }
 
+  function pendingTab(r){
+    const saved=Number(r.property_id)||0;
+    return `
+      <div class="vv204-tab-title"><div><span>PENDÊNCIAS</span><h2>O que já existe e o que ainda precisa ser resolvido</h2><p>Pendência documental é separada de indisponibilidade de fonte pública e de documentos condicionais ao projeto.</p></div><span class="vv204-big-status ${saved?'ok':'warn'}">${saved?'Checklist do imóvel':'Vincule o imóvel'}</span></div>
+      ${saved?'<section id="vv208PendingWorkspace" class="vv208-workspace">'+documentLoadingHTML()+'</section>':unsavedDocumentHTML()}`;
+  }
+
+  function documentLoadingHTML(){
+    return '<div class="vv208-loading"><div class="vv204-spinner"></div><span>Carregando documentos e pendências...</span></div>';
+  }
+
+  function unsavedDocumentHTML(){
+    return `<article class="vv204-panel vv208-unsaved">
+      <span>${icon('folder')}</span>
+      <div><h3>Salve ou vincule este CAR a um imóvel</h3><p>A consulta avulsa continua funcionando normalmente, inclusive para PDFs. A Central de Documentos precisa de um imóvel salvo para armazenar arquivos, versões e estados de pendência.</p></div>
+      <button id="vv208GoCAR">Ir para CAR</button>
+    </article>`;
+  }
+
   function bindDocumentActions(r){
-    E('vv204DocKml').onclick=()=>safeAction(()=>exportKML());
-    E('vv204AttachKml').onclick=()=>safeAction(()=>attachKML());
-    E('vv204Evidence').onclick=()=>safeAction(()=>api().ExportEnvironmentalEvidenceJSON(r.property_id,false).then(p=>toast('Evidências salvas em '+p)));
-    E('vv204Package').onclick=()=>safeAction(()=>exportPackage());
+    if(E('vv208GoCAR'))E('vv208GoCAR').onclick=()=>{activeTab='car';renderShell()};
+    if(E('vv204DocKml'))E('vv204DocKml').onclick=()=>safeAction(()=>exportKML());
+    if(E('vv204AttachKml'))E('vv204AttachKml').onclick=()=>safeAction(async()=>{await attachKML();await loadDocumentWorkspace(r,'docs')});
+    if(E('vv204Evidence'))E('vv204Evidence').onclick=()=>safeAction(()=>api().ExportEnvironmentalEvidenceJSON(r.property_id,false).then(p=>toast('Evidências salvas em '+p)));
+    if(E('vv204Package'))E('vv204Package').onclick=()=>safeAction(()=>exportPackage());
+    if(r.property_id)loadDocumentWorkspace(r,'docs');
+  }
+
+  function bindPendingActions(r){
+    if(E('vv208GoCAR'))E('vv208GoCAR').onclick=()=>{activeTab='car';renderShell()};
+    if(r.property_id)loadDocumentWorkspace(r,'pending');
+  }
+
+  async function loadDocumentWorkspace(r,mode){
+    const target=E(mode==='pending'?'vv208PendingWorkspace':'vv208DocWorkspace');
+    if(!target||!r.property_id)return;
+    target.innerHTML=documentLoadingHTML();
+    try{
+      const center=await api().GetPropertyDocumentCenter(Number(r.property_id));
+      target.innerHTML=renderDocumentCenter(center,mode);
+      bindDocumentCenter(center,r,mode,target);
+    }catch(e){
+      target.innerHTML='<div class="vv204-error">'+icon('alert')+'<div><strong>Não foi possível carregar a central de documentos</strong><p>'+H(String(e))+'</p></div></div>';
+    }
+  }
+
+  function renderDocumentCenter(center,mode){
+    const s=center.summary||{},items=A(center.items);
+    const attention=items.filter(x=>['pending','review','expired'].includes(x.status));
+    const groups=[...new Set(items.map(x=>x.group).filter(Boolean))];
+    const shown=mode==='pending'?attention:items;
+    return `
+      <div class="vv208-summary">
+        ${docSummaryCard('check','Recebidos',s.received||0,'received')}
+        ${docSummaryCard('alert','Pendentes',s.pending||0,'pending')}
+        ${docSummaryCard('info','Conferir',s.review||0,'review')}
+        ${docSummaryCard('clock','Vencidos',s.expired||0,'expired')}
+        ${docSummaryCard('close','Não se aplica',s.not_applicable||0,'not_applicable')}
+      </div>
+      ${mode==='pending'?'<div class="vv208-pending-intro"><strong>'+attention.length+' item(ns) pedem atenção</strong><span>Documentos condicionais permanecem como “Conferir” até você definir se são necessários para aquele projeto.</span></div>':''}
+      <div class="vv208-groups">
+        ${groups.map(g=>{
+          const rows=shown.filter(x=>x.group===g);
+          if(!rows.length)return '';
+          return '<article class="vv204-panel vv208-group"><div class="vv204-panel-head"><div><span>CHECKLIST</span><h3>'+H(g)+'</h3></div><b>'+rows.length+' item(ns)</b></div><div class="vv208-list">'+rows.map(renderDocumentRow).join('')+'</div></article>';
+        }).join('')}
+        ${mode==='pending'&&!attention.length?'<article class="vv204-panel vv208-all-ok">'+icon('check')+'<div><h3>Nenhuma pendência documental ativa</h3><p>Os itens do checklist estão recebidos ou marcados como não aplicáveis.</p></div></article>':''}
+      </div>`;
+  }
+
+  function docSummaryCard(ico,label,value,status){
+    return '<article class="vv208-summary-card '+status+'"><span>'+icon(ico)+'</span><div><small>'+H(label)+'</small><strong>'+Number(value||0)+'</strong></div></article>';
+  }
+
+  function renderDocumentRow(item){
+    const d=item.current||null;
+    const file=d?H(d.original_name||'Documento'):'';
+    const meta=d?[d.reference_year,d.issue_date?'emissão '+dateBR(d.issue_date):'',d.expiry_date?'validade '+dateBR(d.expiry_date):'',d.size_bytes?formatBytes(d.size_bytes):''].filter(Boolean).join(' • '):'';
+    return `<div class="vv208-row status-${H(item.status)}" data-doc-type="${H(item.doc_type)}">
+      <div class="vv208-status"><i></i><span>${H(item.status_label||item.status)}</span></div>
+      <div class="vv208-doc-main">
+        <strong>${H(item.label)}</strong>
+        <small>${H(item.source_label||'')}</small>
+        <p>${H(item.detail||'')}</p>
+        ${d?'<div class="vv208-file">'+icon('file')+'<span><b>'+file+'</b><small>'+H(meta)+'</small></span></div>':''}
+        ${item.notes?'<em>'+H(item.notes)+'</em>':''}
+      </div>
+      <div class="vv208-row-actions">
+        ${item.source_url?'<button data-doc-source="'+H(item.source_url)+'" title="Abrir fonte oficial">'+icon('link')+'Fonte</button>':''}
+        ${item.doc_type==='kml_sicar'?'<button data-doc-auto="kml">'+icon('download')+'Exportar</button>':''}
+        ${item.doc_type==='kml_client'?'<button data-doc-auto="kml_client">'+icon('folder')+(item.status==='received'?'Substituir':'Anexar')+'</button>':''}
+        ${!item.automatic?'<button data-doc-add="'+H(item.doc_type)+'">'+icon('folder')+(d?'Substituir':'Adicionar')+'</button>':''}
+        ${d?'<button data-doc-open="'+d.id+'">'+icon('file')+'Abrir</button><button data-doc-meta="'+d.id+'">'+icon('info')+'Detalhes</button>':''}
+        ${Number(item.version_count||0)>1?'<button data-doc-history="'+H(item.doc_type)+'">'+icon('history')+'Versões</button>':''}
+      </div>
+      ${!item.automatic?'<div class="vv208-state-control"><label>Status</label><select data-doc-status="'+H(item.doc_type)+'">'+documentStatusOptions(item.status)+'</select></div>':''}
+    </div>`;
+  }
+
+  function documentStatusOptions(current){
+    const opts=[['received','Recebido'],['pending','Pendente'],['review','Conferir'],['expired','Vencido / desatualizado'],['not_applicable','Não se aplica']];
+    return opts.map(([v,l])=>'<option value="'+v+'" '+(v===current?'selected':'')+'>'+l+'</option>').join('');
+  }
+
+  function bindDocumentCenter(center,r,mode,target){
+    target.querySelectorAll('[data-doc-source]').forEach(b=>b.onclick=()=>openExternal(b.dataset.docSource));
+    target.querySelectorAll('[data-doc-auto="kml"]').forEach(b=>b.onclick=()=>safeAction(()=>exportKML()));
+    target.querySelectorAll('[data-doc-auto="kml_client"]').forEach(b=>b.onclick=()=>safeAction(async()=>{await attachKML();await loadDocumentWorkspace(r,mode)}));
+    target.querySelectorAll('[data-doc-add]').forEach(b=>b.onclick=()=>safeAction(async()=>{
+      const type=b.dataset.docAdd;
+      const doc=await api().AddPropertyDocument(Number(r.property_id),type);
+      toast('Documento armazenado: '+(doc.original_name||'arquivo'));
+      await loadDocumentWorkspace(r,mode);
+    }));
+    target.querySelectorAll('[data-doc-open]').forEach(b=>b.onclick=()=>safeAction(()=>api().OpenPropertyDocument(Number(b.dataset.docOpen))));
+    target.querySelectorAll('[data-doc-meta]').forEach(b=>b.onclick=()=>{
+      const id=Number(b.dataset.docMeta);
+      const item=A(center.items).find(x=>Number(x.current?.id)===id);
+      if(item)openDocumentMetaModal(item,r,mode);
+    });
+    target.querySelectorAll('[data-doc-history]').forEach(b=>b.onclick=()=>safeAction(()=>openDocumentHistoryModal(r,b.dataset.docHistory)));
+    target.querySelectorAll('[data-doc-status]').forEach(sel=>sel.onchange=()=>safeAction(async()=>{
+      await api().SetPropertyDocumentStatus(Number(r.property_id),sel.dataset.docStatus,sel.value,'');
+      await loadDocumentWorkspace(r,mode);
+    }));
+  }
+
+  function openDocumentMetaModal(item,r,mode){
+    const d=item.current;if(!d)return;
+    closeDocumentModal();
+    const modal=document.createElement('div');modal.id='vv208Modal';modal.className='vv208-modal';
+    modal.innerHTML=`<div class="vv208-modal-card">
+      <div class="vv208-modal-head"><div><span>DETALHES DO DOCUMENTO</span><h3>${H(item.label)}</h3></div><button id="vv208ModalClose">${icon('close')}</button></div>
+      <div class="vv208-modal-body">
+        <label>Arquivo<input value="${H(d.original_name||'')}" disabled></label>
+        <div class="vv208-form-two"><label>Data de emissão<input id="vv208Issue" type="date" value="${H(d.issue_date||'')}"></label><label>Data de validade<input id="vv208Expiry" type="date" value="${H(d.expiry_date||'')}"></label></div>
+        <label>Ano / exercício<input id="vv208Year" maxlength="12" value="${H(d.reference_year||'')}" placeholder="Ex.: 2026"></label>
+        <label>Observações<textarea id="vv208Notes" rows="4" placeholder="Observação objetiva sobre o documento">${H(d.notes||'')}</textarea></label>
+        <div class="vv208-hash"><span>SHA-256</span><code>${H(d.sha256||'')}</code></div>
+      </div>
+      <div class="vv208-modal-actions"><button id="vv208Archive" class="danger">Arquivar versão atual</button><span></span><button id="vv208Cancel">Cancelar</button><button id="vv208Save" class="primary">Salvar detalhes</button></div>
+    </div>`;
+    document.body.appendChild(modal);
+    E('vv208ModalClose').onclick=closeDocumentModal;E('vv208Cancel').onclick=closeDocumentModal;
+    E('vv208Save').onclick=()=>safeAction(async()=>{
+      await api().UpdatePropertyDocumentMeta({...d,issue_date:E('vv208Issue').value,expiry_date:E('vv208Expiry').value,reference_year:E('vv208Year').value,notes:E('vv208Notes').value});
+      closeDocumentModal();toast('Detalhes do documento atualizados.');await loadDocumentWorkspace(r,mode);
+    });
+    E('vv208Archive').onclick=()=>safeAction(async()=>{
+      if(!confirm('Arquivar esta versão? O arquivo será preservado no histórico, mas deixará de ser a versão atual.'))return;
+      await api().ArchivePropertyDocument(Number(d.id));closeDocumentModal();toast('Versão arquivada.');await loadDocumentWorkspace(r,mode);
+    });
+  }
+
+  async function openDocumentHistoryModal(r,docType){
+    const history=A(await api().ListPropertyDocumentHistory(Number(r.property_id),docType));
+    closeDocumentModal();
+    const modal=document.createElement('div');modal.id='vv208Modal';modal.className='vv208-modal';
+    modal.innerHTML=`<div class="vv208-modal-card vv208-history-card">
+      <div class="vv208-modal-head"><div><span>HISTÓRICO DE VERSÕES</span><h3>${H(history[0]?.title||docType)}</h3></div><button id="vv208ModalClose">${icon('close')}</button></div>
+      <div class="vv208-history-list">${history.length?history.map(d=>'<button data-history-open="'+d.id+'"><span>'+icon('file')+'<b>'+H(d.original_name)+'</b></span><small>'+(d.is_current?'VERSÃO ATUAL • ':'')+H(dateBR(d.created_at))+' • '+formatBytes(d.size_bytes)+'</small></button>').join(''):'<div class="vv204-empty">Nenhuma versão encontrada.</div>'}</div>
+    </div>`;
+    document.body.appendChild(modal);E('vv208ModalClose').onclick=closeDocumentModal;
+    modal.querySelectorAll('[data-history-open]').forEach(b=>b.onclick=()=>safeAction(()=>api().OpenPropertyDocument(Number(b.dataset.historyOpen))));
+  }
+
+  function closeDocumentModal(){E('vv208Modal')?.remove()}
+
+  function formatBytes(v){
+    const n=Number(v)||0;if(!n)return '0 B';if(n<1024)return n+' B';if(n<1024*1024)return N(n/1024,1)+' KB';return N(n/(1024*1024),1)+' MB';
   }
 
   function reportsTab(r){
