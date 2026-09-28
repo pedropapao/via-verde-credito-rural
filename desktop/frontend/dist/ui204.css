@@ -176,3 +176,25 @@ body.vv204 #view-clients .panel,body.vv204 #view-settings .panel,body.vv204 #vie
 .vv208-history-card{width:min(720px,94vw)}.vv208-history-list{padding:10px 16px 16px;display:grid;gap:7px}.vv208-history-list>button{border:1px solid #dde6df;background:#fbfdfb;border-radius:9px;padding:10px 11px;display:flex;justify-content:space-between;gap:10px;align-items:center;text-align:left;cursor:pointer}.vv208-history-list>button:hover{border-color:#b7d4c0;background:#f4faf6}.vv208-history-list>button>span{display:flex;align-items:center;gap:7px;min-width:0}.vv208-history-list .vv204-icon{width:15px;height:15px;color:#0c8247}.vv208-history-list b{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vv208-history-list small{font-size:9px;color:#78857e;white-space:nowrap}
 @media(max-width:1380px){.vv208-summary{grid-template-columns:repeat(3,1fr)}.vv208-row{grid-template-columns:120px 1fr;align-items:start}.vv208-row-actions{justify-content:flex-start}.vv208-state-control{max-width:220px}.vv208-technical-tools{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:800px){.vv208-summary{grid-template-columns:1fr 1fr}.vv208-row{grid-template-columns:1fr}.vv208-technical-tools{grid-template-columns:1fr}.vv208-pending-intro{display:grid}.vv208-pending-intro span{text-align:left}.vv208-unsaved{grid-template-columns:1fr}.vv208-form-two{grid-template-columns:1fr}.vv208-modal-actions{grid-template-columns:1fr 1fr}.vv208-modal-actions>span{display:none}}
+
+
+/* ViaVerdeCAR 2.0.9 - contexto documental e pendências inteligentes */
+.vv209-context{margin-bottom:18px}
+.vv209-context .vv204-panel-head p{margin:4px 0 0;color:#66756c;font-size:12px;font-weight:500}
+.vv209-context-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding-top:14px}
+.vv209-context-grid label{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:800;color:#425449;text-transform:uppercase;letter-spacing:.04em}
+.vv209-context-grid label.wide{grid-column:span 4}
+.vv209-context-grid select,.vv209-context-grid textarea{width:100%;box-sizing:border-box;border:1px solid #d8e1db;border-radius:9px;background:#fff;padding:9px 10px;color:#20392b;font:600 13px/1.35 inherit;text-transform:none;letter-spacing:0;outline:none}
+.vv209-context-grid select:focus,.vv209-context-grid textarea:focus{border-color:#75a587;box-shadow:0 0 0 3px rgba(52,115,75,.08)}
+.vv209-context-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-top:12px}
+.vv209-context-actions small{color:#68786f;max-width:720px}
+.vv209-context-actions button{border:0;border-radius:9px;padding:10px 16px;font-weight:800;cursor:pointer}
+.vv209-context-actions button.primary{background:#22693f;color:#fff}
+.vv209-requirement{display:flex;gap:8px;align-items:flex-start;margin-top:7px;padding:7px 9px;border-radius:8px;background:#f5f7f5;font-size:11px}
+.vv209-requirement b{white-space:nowrap;font-size:10px;letter-spacing:.04em}
+.vv209-requirement span{color:#596b61}
+.vv209-requirement.required{background:#fff4ec;border:1px solid #f1d3bc}
+.vv209-requirement.required b{color:#a84a16}
+.vv209-requirement.contextual{border:1px solid #e3e8e4}
+@media(max-width:1050px){.vv209-context-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.vv209-context-grid label.wide{grid-column:span 2}}
+@media(max-width:680px){.vv209-context-grid{grid-template-columns:1fr}.vv209-context-grid label.wide{grid-column:span 1}.vv209-context-actions{align-items:stretch;flex-direction:column}.vv209-context-actions button{width:100%}}
