@@ -62,7 +62,13 @@ func (a *App) ExportPropertyAutomationDossierPDF(result CARAutomationResult) (st
 	}
 	p := a.propertyForAutomationReport(result)
 	kml, cmp := a.savedKMLForAutomationReport(result, p)
-	pdf := buildPropertyTechnicalDossierPDF(p, result, kml, cmp)
+	docs := dossierDocumentCenterForResult(result)
+	if result.PropertyID > 0 {
+		if savedDocs, docsErr := a.GetPropertyDocumentCenter(result.PropertyID); docsErr == nil {
+			docs = savedDocs
+		}
+	}
+	pdf := buildPropertyTechnicalDossierPDF(p, result, kml, cmp, docs)
 	name := "Dossie_Tecnico_" + safeFilePart(firstNonEmptyText(p.Name, result.CAR.PropertyName, "Imovel")) + "_" + safeCARFilename(result.CAR.CAR) + ".pdf"
 	return a.saveProfessionalPDF("Salvar dossiê técnico do imóvel", name, pdf)
 }
@@ -188,7 +194,11 @@ func (a *App) ExportPropertyTechnicalDossierPDF(propertyID int64, force bool) (s
 			comparison = a.CompareKMLWithCAR(kml, result.CAR)
 		}
 	}
-	pdf := buildPropertyTechnicalDossierPDF(p, result, kml, comparison)
+	docs := dossierDocumentCenterForResult(result)
+	if savedDocs, docsErr := a.GetPropertyDocumentCenter(propertyID); docsErr == nil {
+		docs = savedDocs
+	}
+	pdf := buildPropertyTechnicalDossierPDF(p, result, kml, comparison, docs)
 	name := "Dossie_Tecnico_" + safeFilePart(p.Name) + "_" + safeCARFilename(result.CAR.CAR) + ".pdf"
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		Title:           "Salvar dossiê técnico do imóvel",
@@ -632,7 +642,7 @@ func environmentalEvidenceSourcesPage(p Property, car CARResult, intel Environme
 	return c.b.String()
 }
 
-func buildPropertyTechnicalDossierPDF(p Property, r CARAutomationResult, kml KMLResult, cmp GeometryComparison) []byte {
+func buildPropertyTechnicalDossierPDF(p Property, r CARAutomationResult, kml KMLResult, cmp GeometryComparison, docs PropertyDocumentCenter) []byte {
 	pages := []string{}
 	page := 1
 	pages = append(pages, dossierCoverPage(p, r, page)); page++
@@ -641,7 +651,8 @@ func buildPropertyTechnicalDossierPDF(p Property, r CARAutomationResult, kml KML
 	pages = append(pages, dossierLandPage(p, r, page)); page++
 	pages = append(pages, dossierCreditPage(p, r, page)); page++
 	pages = append(pages, dossierBCBPage(p, r, page)); page++
-	pages = append(pages, dossierSourcesPage(p, r, page))
+	pages = append(pages, dossierSourcesPage(p, r, page)); page++
+	pages = append(pages, dossierDocumentsPage(p, r, docs, page))
 	return assembleMultiPagePDF(pages)
 }
 
@@ -884,6 +895,85 @@ func dossierBCBPage(p Property, r CARAutomationResult, page int) string {
 		}
 	}
 	proNotice(&c, &y, "SALVAGUARDA", "Os dados do Banco Central são públicos e agregados. Não representam taxa garantida, aprovação, limite, dívida, inadimplência ou risco individual do produtor.", "")
+	proFooter(&c, page)
+	return c.b.String()
+}
+
+func dossierDocumentCenterForResult(r CARAutomationResult) PropertyDocumentCenter {
+	out := PropertyDocumentCenter{PropertyID: r.PropertyID, UpdatedAt: time.Now().Format(time.RFC3339)}
+	carStatus := "pending"
+	carDetail := "CAR ainda não confirmado."
+	if strings.TrimSpace(r.CAR.CAR) != "" {
+		carStatus = "received"
+		carDetail = r.CAR.CAR
+	}
+	kmlStatus := "pending"
+	kmlDetail := "KML automático não confirmado."
+	if strings.TrimSpace(r.CAR.AutoKMLPath) != "" {
+		kmlStatus = "received"
+		kmlDetail = "Perímetro SICAR gerado automaticamente."
+	} else if r.CAR.HasGeometry {
+		kmlStatus = "review"
+		kmlDetail = "Geometria disponível; KML automático não persistido nesta consulta."
+	}
+	out.Items = []DocumentChecklistItem{
+		{DocType: "car", Label: "Cadastro Ambiental Rural (CAR)", Group: "Imóvel e cadastro", SourceLabel: "SICAR", Automatic: true, Status: carStatus, StatusLabel: documentStatusLabel(carStatus), Detail: carDetail},
+		{DocType: "kml_sicar", Label: "KML SICAR", Group: "Imóvel e cadastro", SourceLabel: "SICAR", Automatic: true, Status: kmlStatus, StatusLabel: documentStatusLabel(kmlStatus), Detail: kmlDetail},
+	}
+	for _, item := range out.Items {
+		switch item.Status {
+		case "received":
+			out.Summary.Received++
+		case "pending":
+			out.Summary.Pending++
+		case "review":
+			out.Summary.Review++
+		}
+	}
+	return out
+}
+
+func dossierDocumentsPage(p Property, r CARAutomationResult, docs PropertyDocumentCenter, page int) string {
+	var c pdfCanvas
+	proHeader(&c, "DOSSIÊ TÉCNICO DO IMÓVEL", "Documentos, pendências e estado do dossiê", page)
+	y := 720.0
+
+	proSection(&c, &y, "RESUMO DOCUMENTAL", "checklist do imóvel e documentos condicionais ao projeto")
+	proMetric(&c, 40, y-72, 96, 60, "RECEBIDOS", fmt.Sprintf("%d", docs.Summary.Received), "documentos disponíveis", "")
+	proMetric(&c, 145, y-72, 96, 60, "PENDENTES", fmt.Sprintf("%d", docs.Summary.Pending), "itens ainda necessários", func() string { if docs.Summary.Pending > 0 { return "danger" }; return "" }())
+	proMetric(&c, 250, y-72, 96, 60, "CONFERIR", fmt.Sprintf("%d", docs.Summary.Review), "aplicabilidade ou conteúdo", func() string { if docs.Summary.Review > 0 { return "warn" }; return "" }())
+	proMetric(&c, 355, y-72, 96, 60, "VENCIDOS", fmt.Sprintf("%d", docs.Summary.Expired), "validade objetiva expirada", func() string { if docs.Summary.Expired > 0 { return "danger" }; return "" }())
+	proMetric(&c, 460, y-72, 95, 60, "NÃO SE APLICA", fmt.Sprintf("%d", docs.Summary.NotApplicable), "dispensados no contexto", "")
+	y -= 92
+
+	proSection(&c, &y, "CHECKLIST", "")
+	if len(docs.Items) == 0 {
+		proParagraph(&c, &y, "A consulta foi realizada sem imóvel salvo. O CAR e os relatórios podem ser gerados normalmente, mas a Central de Documentos exige vínculo com um imóvel local para armazenar arquivos e acompanhar pendências.")
+	} else {
+		for i, item := range docs.Items {
+			if i >= 15 || y < 150 {
+				break
+			}
+			value := item.StatusLabel
+			if item.Status == "received" && item.Current != nil && strings.TrimSpace(item.Current.OriginalName) != "" {
+				value += " • " + item.Current.OriginalName
+			} else if strings.TrimSpace(item.Detail) != "" {
+				value += " • " + item.Detail
+			}
+			if item.Conditional && item.Status == "review" {
+				value += " • verificar necessidade conforme a finalidade do projeto"
+			}
+			proKV(&c, &y, item.Label, value)
+		}
+	}
+
+	if r.PropertyID <= 0 {
+		proNotice(&c, &y, "CONSULTA AVULSA", "Nenhum cliente ou imóvel foi criado automaticamente para gerar este dossiê. Para guardar matrícula, CCIR, ITR, orçamentos e demais documentos, vincule o CAR a um imóvel na Central de Documentos.", "warn")
+	} else if docs.Summary.Pending+docs.Summary.Expired > 0 {
+		proNotice(&c, &y, "PENDÊNCIAS DOCUMENTAIS", "Existem documentos pendentes ou vencidos no checklist. O ViaVerdeCAR registra o estado documental, mas a exigência final depende da finalidade do financiamento e da instituição financeira.", "warn")
+	} else {
+		proNotice(&c, &y, "ESTADO DOCUMENTAL", "O checklist não apresenta documento básico pendente ou vencido neste momento. Itens marcados como “Conferir” continuam dependendo da finalidade do projeto e da exigência da instituição financeira.", "")
+	}
 	proFooter(&c, page)
 	return c.b.String()
 }
