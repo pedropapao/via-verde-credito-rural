@@ -204,7 +204,59 @@ try {
         "cache-control" = "max-age=3600"
         "x-upsert" = "true"
     }
-    Invoke-WebRequest -Method Put -Uri ([string]$Prepare.upload_url) -InFile $ExePath -ContentType "application/vnd.microsoft.portable-executable" -Headers $UploadHeaders -TimeoutSec 600 | Out-Null
+
+    $UploadSucceeded = $false
+    $LastUploadError = $null
+    $MaxUploadAttempts = 3
+
+    for ($UploadAttempt = 1; $UploadAttempt -le $MaxUploadAttempts; $UploadAttempt++) {
+        if ($UploadAttempt -gt 1) {
+            Write-Host "    Nova tentativa de upload ($UploadAttempt/$MaxUploadAttempts)..." -ForegroundColor Yellow
+
+            # Uma URL assinada pode ter expirado ou ter sido invalidada apos uma falha
+            # temporaria do Storage/Cloudflare. Solicita outra antes de repetir.
+            $Prepare = Invoke-RestMethod -Method Post -Uri "${Endpoint}?action=prepare" -Headers $Headers -TimeoutSec 60 -ErrorAction Stop
+            if (-not $Prepare.ok -or [string]::IsNullOrWhiteSpace([string]$Prepare.upload_url)) {
+                Fail "O servidor nao autorizou uma nova tentativa de upload."
+            }
+        }
+
+        try {
+            Invoke-WebRequest -Method Put -Uri ([string]$Prepare.upload_url) -InFile $ExePath -ContentType "application/vnd.microsoft.portable-executable" -Headers $UploadHeaders -TimeoutSec 600 -ErrorAction Stop | Out-Null
+            $UploadSucceeded = $true
+            break
+        }
+        catch {
+            $LastUploadError = $_
+            $StatusCode = $null
+            try {
+                if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
+                    $StatusCode = [int]$_.Exception.Response.StatusCode
+                }
+            }
+            catch {
+                $StatusCode = $null
+            }
+
+            $IsTransient = ($null -eq $StatusCode) -or ($StatusCode -eq 408) -or ($StatusCode -eq 429) -or ($StatusCode -ge 500)
+            if (-not $IsTransient -or $UploadAttempt -ge $MaxUploadAttempts) {
+                throw
+            }
+
+            $DelaySeconds = 3 * $UploadAttempt
+            if ($StatusCode) {
+                Write-Host "    Upload retornou HTTP $StatusCode. Tentando novamente em $DelaySeconds s..." -ForegroundColor Yellow
+            }
+            else {
+                Write-Host "    Falha temporaria no upload. Tentando novamente em $DelaySeconds s..." -ForegroundColor Yellow
+            }
+            Start-Sleep -Seconds $DelaySeconds
+        }
+    }
+
+    if (-not $UploadSucceeded) {
+        throw $LastUploadError
+    }
 
     $Body = @{ notes = $Notes } | ConvertTo-Json -Compress
     $Finalize = Invoke-RestMethod -Method Post -Uri "${Endpoint}?action=finalize" -Headers $Headers -ContentType "application/json" -Body $Body -TimeoutSec 60
