@@ -939,6 +939,11 @@ func dossierDocumentsPage(p Property, r CARAutomationResult, docs PropertyDocume
 	y := 720.0
 
 	proSection(&c, &y, "RESUMO DOCUMENTAL", "checklist do imóvel e documentos condicionais ao projeto")
+	if docs.Automation != nil && strings.TrimSpace(docs.Automation.CheckedAt) != "" {
+		proKV(&c, &y, "Última automação documental", fmt.Sprintf("%s • prontos %d • pendentes %d • conferir %d • fontes indisponíveis %d",
+			docs.Automation.CheckedAt, docs.Automation.Summary.Ready, docs.Automation.Summary.Pending,
+			docs.Automation.Summary.Review, docs.Automation.Summary.SourceUnavailable))
+	}
 	proMetric(&c, 40, y-72, 96, 60, "RECEBIDOS", fmt.Sprintf("%d", docs.Summary.Received), "documentos disponíveis", "")
 	proMetric(&c, 145, y-72, 96, 60, "PENDENTES", fmt.Sprintf("%d", docs.Summary.Pending), "itens ainda necessários", func() string { if docs.Summary.Pending > 0 { return "danger" }; return "" }())
 	proMetric(&c, 250, y-72, 96, 60, "CONFERIR", fmt.Sprintf("%d", docs.Summary.Review), "aplicabilidade ou conteúdo", func() string { if docs.Summary.Review > 0 { return "warn" }; return "" }())
