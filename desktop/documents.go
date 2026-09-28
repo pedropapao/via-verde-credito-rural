@@ -213,7 +213,27 @@ func (a *App) AddPropertyDocument(propertyID int64, docType string) (PropertyDoc
 			&existing.IssueDate, &existing.ExpiryDate, &existing.ReferenceYear, &existing.Notes, &existing.SHA256, &existing.SizeBytes, &existing.IsCurrent, &existing.CreatedAt, &existing.UpdatedAt)
 	if err == nil {
 		_ = os.Remove(dest)
-		return existing, nil
+		nowText := now.Format(time.RFC3339)
+		tx, txErr := a.db.Begin()
+		if txErr != nil {
+			return PropertyDocument{}, txErr
+		}
+		defer tx.Rollback()
+		if _, txErr = tx.Exec(`UPDATE property_documents SET is_current=0,updated_at=? WHERE property_id=? AND doc_type=? AND is_current=1`, nowText, propertyID, docType); txErr != nil {
+			return PropertyDocument{}, txErr
+		}
+		if _, txErr = tx.Exec(`UPDATE property_documents SET is_current=1,updated_at=? WHERE id=?`, nowText, existing.ID); txErr != nil {
+			return PropertyDocument{}, txErr
+		}
+		if _, txErr = tx.Exec(`INSERT INTO property_document_status(property_id,doc_type,status,notes,updated_at)
+			VALUES(?,?,?,?,?) ON CONFLICT(property_id,doc_type) DO UPDATE SET status=excluded.status,updated_at=excluded.updated_at`,
+			propertyID, docType, "received", "", nowText); txErr != nil {
+			return PropertyDocument{}, txErr
+		}
+		if txErr = tx.Commit(); txErr != nil {
+			return PropertyDocument{}, txErr
+		}
+		return a.getPropertyDocument(existing.ID)
 	}
 
 	tx, err := a.db.Begin()
