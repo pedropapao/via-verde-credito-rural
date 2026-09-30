@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion211(t *testing.T) {
-	if AppVersion != "2.1.1" {
+func TestReleaseVersion212(t *testing.T) {
+	if AppVersion != "2.1.2" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.1.1"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.1.1")
+	if !strings.Contains(string(b), `"productVersion": "2.1.2"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.1.2")
 	}
 }
 
@@ -307,6 +307,63 @@ func TestRelease211CreditOperationDetails(t *testing.T) {
 	} {
 		if !strings.Contains(src, marker) {
 			t.Fatalf("backend 2.1.1 sem marcador %q", marker)
+		}
+	}
+}
+
+
+func TestRelease212DarkOperationalUI(t *testing.T) {
+	for _, path := range []string{"frontend/dist/ui212.js", "frontend/dist/ui212.css"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("asset visual 2.1.2 ausente: %s", path)
+		}
+	}
+	htmlb, err := os.ReadFile("frontend/dist/index.html")
+	if err != nil { t.Fatal(err) }
+	html := string(htmlb)
+	for _, asset := range []string{"ui211.css", "ui212.css", "ui211.js", "ui212.js"} {
+		if !strings.Contains(html, asset) {
+			t.Fatalf("index não carrega %s", asset)
+		}
+	}
+	if strings.Index(html, "ui212.css") < strings.Index(html, "ui211.css") {
+		t.Fatal("ui212.css deve ser carregado depois do ui211.css")
+	}
+	if strings.Index(html, "ui212.js") < strings.Index(html, "ui211.js") {
+		t.Fatal("ui212.js deve ser carregado depois do ui211.js")
+	}
+
+	jsb, err := os.ReadFile("frontend/dist/ui212.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"interface escura operacional",
+		"Crédito Rural",
+		"Documentos",
+		"Pendências",
+		"GetPropertyDocumentCenter",
+		"Gerar Dossiê",
+		"connectionLabel",
+		"versionLabel",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.1.2 sem marcador %q", marker)
+		}
+	}
+
+	cssb, err := os.ReadFile("frontend/dist/ui212.css")
+	if err != nil { t.Fatal(err) }
+	css := string(cssb)
+	for _, marker := range []string{
+		"body.vv204.vv212-dark",
+		"grid-template-columns:214px",
+		".vv212-summary-mode",
+		".vv212-summary-side",
+		".vv212-dossier",
+		".vv211-modal-card",
+	} {
+		if !strings.Contains(css, marker) {
+			t.Fatalf("tema 2.1.2 sem marcador %q", marker)
 		}
 	}
 }
