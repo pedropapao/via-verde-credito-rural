@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +14,8 @@ import (
 )
 
 const (
+	creditIntelligenceCacheVersion = 1
+	creditIntelligenceCacheTTL     = 12 * time.Hour
 	creditIntelligenceBCBURL = "https://www.bcb.gov.br/estabilidadefinanceira/tabelas-credito-rural-proagro"
 	creditIntelligenceMCRURL = "https://www3.bcb.gov.br/mcr/completo"
 	creditIntelligenceZARCURL = "https://dados.agricultura.gov.br/dataset/tabua-de-risco-zoneamento-agricola-de-risco-climatico"
@@ -90,9 +93,13 @@ type CreditProagro struct {
 
 type CreditOperationIntelligence struct {
 	RefBacen               string                 `json:"ref_bacen"`
+	EffectiveRefBacen      string                 `json:"effective_ref_bacen"`
 	Order                  string                 `json:"order"`
 	Year                   int                    `json:"year"`
 	Institution            string                 `json:"institution"`
+	AgencyCode             string                 `json:"agency_code"`
+	MunicipalityCode       string                 `json:"municipality_code"`
+	RegisteringInstitution string                 `json:"registering_institution"`
 	Program                string                 `json:"program"`
 	Subprogram             string                 `json:"subprogram"`
 	Resource               string                 `json:"resource"`
@@ -110,7 +117,12 @@ type CreditOperationIntelligence struct {
 	InterestRatePct         float64                `json:"interest_rate_pct"`
 	PostFixedInterestPct    float64                `json:"post_fixed_interest_pct"`
 	EffectiveCostPct        float64                `json:"effective_cost_pct"`
+	CreditInstallment       float64                `json:"credit_installment"`
 	InvestmentInstallment   float64                `json:"investment_installment"`
+	STNRiskPct              float64                `json:"stn_risk_pct"`
+	ConstitutionalFundRiskPct float64              `json:"constitutional_fund_risk_pct"`
+	MinimumIncomeGuarantee  float64                `json:"minimum_income_guarantee"`
+	STNContractCode         string                 `json:"stn_contract_code"`
 	ForecastProduction      float64                `json:"forecast_production"`
 	Quantity                float64                `json:"quantity"`
 	ExpectedRevenue         float64                `json:"expected_revenue"`
@@ -152,6 +164,7 @@ type CreditOperationIntelligence struct {
 	Renegotiations          []CreditRenegotiation  `json:"renegotiations"`
 	Proagro                 CreditProagro           `json:"proagro"`
 	ZARC                    ZARCCheck               `json:"zarc"`
+	Glebas                  []SICORGleba             `json:"glebas"`
 }
 
 type CreditIntelligenceTotals struct {
@@ -169,6 +182,8 @@ type CreditIntelligenceTotals struct {
 }
 
 type CreditIntelligenceResult struct {
+	CacheVersion int                           `json:"cache_version"`
+	UsedCache    bool                          `json:"used_cache"`
 	CAR          string                        `json:"car"`
 	Municipality string                        `json:"municipality"`
 	UF           string                        `json:"uf"`
@@ -181,6 +196,55 @@ type CreditIntelligenceResult struct {
 	ZARCSourceURL string                       `json:"zarc_source_url"`
 	Market       CreditMarketContext          `json:"market"`
 	Scope        string                        `json:"scope"`
+}
+
+
+func creditIntelligenceResultCachePath(dataDir, car string) string {
+	return filepath.Join(dataDir, "cache", "sicor_credit_intelligence", "results", safeFilePart(car)+".json")
+}
+
+func loadCreditIntelligenceResultCache(path string, maxAge time.Duration) (CreditIntelligenceResult, bool) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return CreditIntelligenceResult{}, false
+	}
+	var out CreditIntelligenceResult
+	if json.Unmarshal(b, &out) != nil || out.CacheVersion != creditIntelligenceCacheVersion || strings.TrimSpace(out.CAR) == "" {
+		return CreditIntelligenceResult{}, false
+	}
+	generated, err := time.Parse(time.RFC3339, out.GeneratedAt)
+	if err != nil || time.Since(generated) < 0 || time.Since(generated) > maxAge {
+		return CreditIntelligenceResult{}, false
+	}
+	out.UsedCache = true
+	return out, true
+}
+
+func saveCreditIntelligenceResultCache(path string, out CreditIntelligenceResult) error {
+	out.UsedCache = false
+	out.CacheVersion = creditIntelligenceCacheVersion
+	b, err := json.Marshal(out)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o600); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		// No Windows, Rename não substitui um destino existente. Como este
+		// arquivo é somente cache derivado, removemos o cache antigo e
+		// repetimos a troca sem tocar em nenhum dado persistente do usuário.
+		_ = os.Remove(path)
+		if retryErr := os.Rename(tmp, path); retryErr != nil {
+			_ = os.Remove(tmp)
+			return retryErr
+		}
+	}
+	return nil
 }
 
 type creditDomains struct {
@@ -209,12 +273,20 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 		failCreditIntelligenceProgress(err)
 		return CreditIntelligenceResult{}, err
 	}
+	cachePath := creditIntelligenceResultCachePath(a.dataDir, car.CAR)
+	if !force {
+		if cached, ok := loadCreditIntelligenceResultCache(cachePath, creditIntelligenceCacheTTL); ok {
+			completeCreditIntelligenceProgress("Inteligência financeira carregada do cache local recente.")
+			return cached, nil
+		}
+	}
 	xray, err := a.BuildSICORPropertyXRay(propertyID, force)
 	if err != nil {
 		failCreditIntelligenceProgress(err)
 		return CreditIntelligenceResult{}, err
 	}
 	out := CreditIntelligenceResult{
+		CacheVersion: creditIntelligenceCacheVersion,
 		CAR: car.CAR, Municipality: car.Municipality, UF: car.UF,
 		GeneratedAt: time.Now().Format(time.RFC3339),
 		BCBSourceURL: creditIntelligenceBCBURL,
@@ -235,6 +307,7 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 	}
 	if len(xray.Operations) == 0 {
 		out.Warnings = append(out.Warnings, "Nenhuma operação pública vinculada ao CAR foi localizada para enriquecer.")
+		_ = saveCreditIntelligenceResultCache(cachePath, out)
 		completeCreditIntelligenceProgress("Nenhuma operação pública vinculada ao CAR foi localizada; o contexto agregado do mercado permanece disponível.")
 		return out, nil
 	}
@@ -270,7 +343,7 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 			DueDate: old.DueDate, CreditValue: old.CreditValue,
 			OwnResources: old.OwnResources, FinancedAreaHa: old.FinancedAreaHa,
 			InformedAreaHa: old.InformedAreaHa, InterestRatePct: old.InterestRatePct,
-			InsuranceCode: old.InsuranceCode,
+			InsuranceCode: old.InsuranceCode, Glebas: append([]SICORGleba(nil), old.Glebas...),
 		}
 		byKey[key] = op
 	}
@@ -286,6 +359,11 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 		if e = scanCreditOperationDetails(path, byKey, dom); e != nil {
 			out.Warnings = append(out.Warnings, fmt.Sprintf("%d: falha ao ler detalhes financeiros (%v)", year, e))
 		}
+	}
+	if complementPath, e := a.ensureSICORSourceFile(ctx, sicorRawBaseURL+"SICOR_COMPLEMENTO_OPERACAO_BASICA.gz", filepath.Join(sourceDir, "SICOR_COMPLEMENTO_OPERACAO_BASICA.gz"), 36*time.Hour); e != nil {
+		out.Warnings = append(out.Warnings, "Complemento da operação: "+e.Error())
+	} else if e = scanCreditOperationComplement(complementPath, byKey); e != nil {
+		out.Warnings = append(out.Warnings, "Complemento da operação: "+e.Error())
 	}
 
 	type dataset struct {
@@ -352,6 +430,9 @@ func (a *App) GetCreditIntelligence(propertyID int64, force bool) (CreditIntelli
 		}
 		return out.Operations[i].IssueDate > out.Operations[j].IssueDate
 	})
+	if err := saveCreditIntelligenceResultCache(cachePath, out); err != nil {
+		out.Warnings = append(out.Warnings, "Cache da inteligência financeira: "+err.Error())
+	}
 	completeCreditIntelligenceProgress("Inteligência financeira concluída. Os dados disponíveis foram organizados para conferência.")
 	return out, nil
 }
@@ -366,7 +447,13 @@ func scanCreditOperationDetails(path string, byKey map[string]*CreditOperationIn
 		op.InterestRatePct = parseSICORNumber(fieldCSV(h,row,"VL_JUROS"))
 		op.PostFixedInterestPct = parseSICORNumber(fieldCSV(h,row,"VL_JUROS_ENC_FINAN_POSFIX"))
 		op.EffectiveCostPct = parseSICORNumber(fieldCSV(h,row,"VL_PERC_CUSTO_EFET_TOTAL"))
+		op.CreditInstallment = parseSICORNumber(fieldCSV(h,row,"VL_PARC_CREDITO"))
 		op.InvestmentInstallment = parseSICORNumber(fieldCSV(h,row,"VL_PRESTACAO_INVESTIMENTO"))
+		op.STNRiskPct = parseSICORNumber(fieldCSV(h,row,"VL_PERC_RISCO_STN"))
+		op.ConstitutionalFundRiskPct = parseSICORNumber(fieldCSV(h,row,"VL_PERC_RISCO_FUNDO_CONST"))
+		op.MinimumIncomeGuarantee = parseSICORNumber(firstExistingCSV(h,row,"VL_REC_PROPRIO_SRV","VL_GRM"))
+		op.STNContractCode = fieldCSV(h,row,"CD_CONTRATO_STN")
+		op.RegisteringInstitution = fieldCSV(h,row,"CD_CNPJ_CADASTRANTE")
 		op.ForecastProduction = parseSICORNumber(fieldCSV(h,row,"VL_PREV_PROD"))
 		op.Quantity = parseSICORNumber(fieldCSV(h,row,"VL_QUANTIDADE"))
 		op.ExpectedRevenue = parseSICORNumber(fieldCSV(h,row,"VL_RECEITA_BRUTA_ESPERADA"))
@@ -388,6 +475,22 @@ func scanCreditOperationDetails(path string, byKey map[string]*CreditOperationIn
 		op.PlantingEnd = fieldCSV(h,row,"DT_FIM_PLANTIO")
 		op.HarvestStart = fieldCSV(h,row,"DT_INIC_COLHEITA")
 		op.HarvestEnd = fieldCSV(h,row,"DT_FIM_COLHEITA")
+		return nil
+	})
+}
+
+
+func scanCreditOperationComplement(path string, byKey map[string]*CreditOperationIntelligence) error {
+	return readGzipCSV(path, ';', func(h map[string]int, row []string) error {
+		ref := firstExistingCSV(h, row, "REF_BACEN", "#REF_BACEN")
+		order := firstExistingCSV(h, row, "NU_ORDEM")
+		op := byKey[sicorOperationKey(ref, order)]
+		if op == nil {
+			return nil
+		}
+		op.AgencyCode = firstExistingCSV(h, row, "AGENCIA_IF", "CD_AGENCIA_IF")
+		op.MunicipalityCode = firstExistingCSV(h, row, "CD_IBGE_MUNICIPIO", "CD_MUNICIPIO")
+		op.EffectiveRefBacen = firstExistingCSV(h, row, "REF_BACEN_EFETIVO")
 		return nil
 	})
 }

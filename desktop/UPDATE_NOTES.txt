@@ -1,3 +1,20 @@
+ViaVerdeCAR 2.1.1 — Ficha Completa da Operação de Crédito Rural
+
+• Mantém o Raio X inicial rápido e abre o detalhamento financeiro somente sob demanda.
+• Cada operação SICOR encontrada no CAR ganha o comando “Ver operação completa”.
+• Reaproveita a inteligência financeira existente e a integra à interface operacional 2.x, sem reescrever o fluxo de CAR.
+• Mostra REF BACEN, ordem/destinação, instituição, programa, subprograma, fonte de recursos, finalidade, atividade, modalidade, produto e variedade.
+• Exibe emissão, vencimento, valor contratado, recursos próprios, juros, encargos pós-fixados, custo efetivo total e prestação de investimento quando publicados.
+• Passa a ler também parcela de crédito, risco STN, risco de fundo constitucional, garantia de renda mínima, contrato STN e IF cadastrante quando disponíveis nos microdados.
+• Integra o complemento oficial da operação para agência da instituição financeira, município IBGE da operação e REF BACEN efetivo quando publicados.
+• Organiza liberações efetivas, cronograma previsto de desembolso, último saldo, médias, situação SICOR, desclassificações e renegociações/prorrogações.
+• Mantém Proagro e ZARC por operação, com aviso explícito de que a consulta pública não substitui a validação normativa/técnica.
+• A ficha mostra as glebas publicadas para a destinação em mapa, comparadas visualmente com o perímetro do CAR.
+• A inteligência detalhada usa cache local de resultado por 12 horas; atualização manual força nova sincronização.
+• A tela exibe progresso real das 11 etapas da consulta aprofundada.
+• Falha ou ausência de um conjunto de dados não é convertida em “sem financiamento”; limitações permanecem visíveis.
+• Nenhuma migração de banco é necessária na 2.1.1; banco, documentos, clientes, imóveis, CAR, ambiental, fundiário, PDFs e automação documental permanecem preservados.
+
 ViaVerdeCAR 2.1.0 — Automação Documental
 
 • Evolui a Central de Documentos e as Pendências Inteligentes sem remover nenhum recurso da 2.0.9.
