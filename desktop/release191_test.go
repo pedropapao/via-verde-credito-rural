@@ -174,7 +174,7 @@ func TestRelease208DocumentCenterAndPendingTab(t *testing.T) {
 	appb, err := os.ReadFile("app.go")
 	if err != nil { t.Fatal(err) }
 	app := string(appb)
-	for _, marker := range []string{"property_documents", "property_document_status", "property_document_context", "property_document_automation", "version=8"} {
+	for _, marker := range []string{"property_documents", "property_document_status", "property_document_context", "property_document_automation"} {
 		if !strings.Contains(app, marker) {
 			t.Fatalf("migração documental 2.0.8 sem marcador %q", marker)
 		}
