@@ -51,7 +51,7 @@
         navButton('map','Mapa','map')+
         navButton('dossier','Dossiê','dossier')+
       '</nav>'+
-      '<div class="vv212-side-bottom">'+navButton('settings','Configurações','settings')+'<small>ViaVerdeCAR 2.1.2</small></div>';
+      '<div class="vv212-side-bottom">'+navButton('settings','Configurações','settings')+'<small>ViaVerdeCAR 2.1.2</small><div class="vv212-system-meta"><span id="connectionLabel">Internet</span><span id="versionLabel">Via Verde CAR</span></div></div>';
 
     E('vv212Brand').onclick=function(){goNav('home')};
     side.querySelectorAll('[data-vv212-nav]').forEach(function(b){
