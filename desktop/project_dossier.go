@@ -119,32 +119,25 @@ type projectDossierPage struct {
 
 func newProjectDossierPage(title,subtitle string)*projectDossierPage{
 	p:=&projectDossierPage{y:746}
-	p.c.b.WriteString("0.055 0.42 0.29 rg
-");p.c.rect(0,772,595,70,true)
-	p.c.b.WriteString("1 1 1 rg
-");p.c.text(38,814,16,true,"VIA VERDE CAR");p.c.text(38,793,9,false,title)
-	p.c.b.WriteString("0.08 0.16 0.12 rg
-");p.c.text(38,754,13,true,firstNonEmptyText(subtitle,"Projeto rural"))
+	p.c.b.WriteString("0.055 0.42 0.29 rg\n");p.c.rect(0,772,595,70,true)
+	p.c.b.WriteString("1 1 1 rg\n");p.c.text(38,814,16,true,"VIA VERDE CAR");p.c.text(38,793,9,false,title)
+	p.c.b.WriteString("0.08 0.16 0.12 rg\n");p.c.text(38,754,13,true,firstNonEmptyText(subtitle,"Projeto rural"))
 	p.y=724
 	return p
 }
 
 func (p *projectDossierPage)section(v string){
 	if p.y<100{return}
-	p.c.b.WriteString("0.91 0.96 0.93 rg
-");p.c.rect(38,p.y-4,519,22,true)
-	p.c.b.WriteString("0.06 0.34 0.22 rg
-");p.c.text(46,p.y+3,8,true,v)
+	p.c.b.WriteString("0.91 0.96 0.93 rg\n");p.c.rect(38,p.y-4,519,22,true)
+	p.c.b.WriteString("0.06 0.34 0.22 rg\n");p.c.text(46,p.y+3,8,true,v)
 	p.y-=33
 }
 
 func (p *projectDossierPage)row(label,value string){
 	if p.y<90{return}
 	value=firstNonEmptyText(strings.TrimSpace(value),"Não informado")
-	p.c.b.WriteString("0.36 0.43 0.39 rg
-");p.c.text(40,p.y,7.5,true,label)
-	p.c.b.WriteString("0.10 0.17 0.13 rg
-")
+	p.c.b.WriteString("0.36 0.43 0.39 rg\n");p.c.text(40,p.y,7.5,true,label)
+	p.c.b.WriteString("0.10 0.17 0.13 rg\n")
 	lines:=pdfWrap(value,72)
 	if len(lines)>4{lines=append(lines[:4],"...")}
 	for _,line:=range lines{p.c.text(175,p.y,8,false,line);p.y-=10}
@@ -154,39 +147,30 @@ func (p *projectDossierPage)row(label,value string){
 func (p *projectDossierPage)note(title,value string){
 	if p.y<130{return}
 	h:=75.0
-	p.c.b.WriteString("0.95 0.97 0.95 rg
-");p.c.rect(38,p.y-h+10,519,h,true)
-	p.c.b.WriteString("0.08 0.30 0.21 rg
-");p.c.text(48,p.y-6,8,true,title)
-	p.c.b.WriteString("0.22 0.29 0.25 rg
-")
+	p.c.b.WriteString("0.95 0.97 0.95 rg\n");p.c.rect(38,p.y-h+10,519,h,true)
+	p.c.b.WriteString("0.08 0.30 0.21 rg\n");p.c.text(48,p.y-6,8,true,title)
+	p.c.b.WriteString("0.22 0.29 0.25 rg\n")
 	y:=p.y-22
 	for _,line:=range pdfWrap(value,100){p.c.text(48,y,7.5,false,line);y-=10;if y<p.y-h+18{break}}
 	p.y-=h+4
 }
 
 func (p *projectDossierPage)footer(v string){
-	p.c.b.WriteString("0.42 0.48 0.44 rg
-");p.c.text(38,42,6.5,false,v)
+	p.c.b.WriteString("0.42 0.48 0.44 rg\n");p.c.text(38,42,6.5,false,v)
 }
 func (p *projectDossierPage)content()string{return p.c.b.String()}
 
 func assembleProjectDossierPDF(contents []string) []byte {
 	if len(contents)==0{return nil}
 	var out bytes.Buffer
-	out.WriteString("%PDF-1.4
-%âãÏÓ
-")
+	out.WriteString("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n")
 	n:=len(contents)
 	font1:=3+n
 	font2:=font1+1
 	firstContent:=font2+1
 	size:=firstContent+n
 	offsets:=make([]int,size)
-	writeObj:=func(id int,body string){offsets[id]=out.Len();fmt.Fprintf(&out,"%d 0 obj
-%s
-endobj
-",id,body)}
+	writeObj:=func(id int,body string){offsets[id]=out.Len();fmt.Fprintf(&out,"%d 0 obj\n%s\nendobj\n",id,body)}
 	writeObj(1,"<< /Type /Catalog /Pages 2 0 R >>")
 	kids:=make([]string,n)
 	for i:=0;i<n;i++{kids[i]=fmt.Sprintf("%d 0 R",3+i)}
@@ -196,22 +180,10 @@ endobj
 	}
 	writeObj(font1,"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>")
 	writeObj(font2,"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>")
-	for i,c:=range contents{writeObj(firstContent+i,fmt.Sprintf("<< /Length %d >>
-stream
-%s
-endstream",len(c),c))}
+	for i,content:=range contents{writeObj(firstContent+i,fmt.Sprintf("<< /Length %d >>\nstream\n%s\nendstream",len(content),content))}
 	xref:=out.Len()
-	fmt.Fprintf(&out,"xref
-0 %d
-0000000000 65535 f 
-",size)
-	for i:=1;i<size;i++{fmt.Fprintf(&out,"%010d 00000 n 
-",offsets[i])}
-	fmt.Fprintf(&out,"trailer
-<< /Size %d /Root 1 0 R >>
-startxref
-%d
-%%%%EOF
-",size,xref)
+	fmt.Fprintf(&out,"xref\n0 %d\n0000000000 65535 f \n",size)
+	for i:=1;i<size;i++{fmt.Fprintf(&out,"%010d 00000 n \n",offsets[i])}
+	fmt.Fprintf(&out,"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n",size,xref)
 	return out.Bytes()
 }
