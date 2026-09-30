@@ -81,7 +81,7 @@
       (S.data?summaryHTML(S.data):'<div class="vv211-panel-state">A consulta detalhada é executada somente quando solicitada para preservar a velocidade do Raio X inicial.</div>');
     pane.insertBefore(panel,grid);
 
-    var firstList=pane.querySelector('.vv204-operation-list');
+    var firstList=pane.querySelector('.vv204-operation-list')||pane.querySelector('.vv211-op-list');
     if(firstList){
       var parent=firstList.closest('.vv204-panel');
       if(parent)parent.classList.add('vv211-ops-panel','vv204-credit-wide');
@@ -175,7 +175,8 @@
       field211('REF BACEN',op.ref_bacen),field211('REF BACEN efetivo',op.effective_ref_bacen),field211('Ordem / destinação',op.order),field211('Ano',op.year),
       field211('Instituição',op.institution),field211('Agência IF',op.agency_code),field211('Município IBGE da operação',op.municipality_code),
       field211('Programa',op.program),field211('Subprograma',op.subprogram),field211('Fonte de recursos',op.resource),
-      field211('Instrumento',op.instrument||op.instrument_code),field211('Categoria emitente',op.issuer_category||op.issuer_category_code)
+      field211('Instrumento',op.instrument||op.instrument_code),field211('Categoria emitente',op.issuer_category||op.issuer_category_code),
+      field211('Seguro / garantia',op.insurance||op.insurance_code)
     ]);
     var financial=fields211([
       money211('Valor contratado',op.credit_value),money211('Recursos próprios',op.own_resources),money211('Parcela de crédito',op.credit_installment),
