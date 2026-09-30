@@ -104,6 +104,7 @@ body.vv204.vv212-dark .main-area{
 }
 .vv212-side-bottom{margin-top:auto;padding:10px 9px 14px;border-top:1px solid #182832}
 .vv212-side-bottom>small{display:block;padding:8px 12px 0;color:#667984;font-size:9px}
+.vv212-system-meta{display:none!important}
 
 /* Topbar */
 body.vv204.vv212-dark .topbar{
