@@ -1,3 +1,20 @@
+ViaVerdeCAR 2.2.1 — Projeto Inteligente
+
+• Evolui o botão “Preparar projeto” com um motor local e conservador de regras por atividade e tipo de operação.
+• Classifica automaticamente perfis como Café, Agricultura, Pecuária, Irrigação, Agricultura Irrigada e Atividade Mista usando nome, atividade e linha/programa do projeto.
+• Mantém atividade como campo livre e acrescenta sugestões para padronizar o preenchimento sem quebrar projetos existentes.
+• Aplica regras específicas sem alterar automaticamente documentos, CAR ou dados do imóvel.
+• Documentação base do produtor/imóvel é conferida por projeto usando a Central de Documentos já existente.
+• Irrigação passa a exigir conferência de outorga/regularização hídrica e relevo da gleba.
+• Aquisição pecuária passa a exigir conferência de GTA/trânsito animal.
+• Investimento e aquisição passam a exigir orçamento; nota fiscal e laudo permanecem condicionais à etapa/contexto.
+• Custeio agrícola/café sinaliza aplicabilidade do ZARC; quando faltam parâmetros técnicos do novo projeto, o sistema marca “conferir” em vez de inventar conclusão.
+• Renegociação/prorrogação sinaliza necessidade de conferir laudo/justificativa técnica sem assumir exigência universal.
+• Quando a atividade não é reconhecida com segurança, somente regras gerais são aplicadas e o sistema pede revisão.
+• A tela de preparação separa exigências inteligentes do projeto das conferências gerais do imóvel e mostra o perfil detectado.
+• Nenhuma nova API externa e nenhuma migração de banco nesta versão; schema permanece 9.
+• A Central de Projetos 2.2.0, Crédito Rural 2.1.1, documentos, CAR, mapas, análises e dados existentes são preservados.
+
 ViaVerdeCAR 2.2.0 — Central de Projetos
 
 • Cria a Central de Projetos vinculada aos imóveis existentes sem duplicar CAR, documentos ou análises.
