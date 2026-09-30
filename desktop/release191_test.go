@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion210(t *testing.T) {
-	if AppVersion != "2.1.0" {
+func TestReleaseVersion211(t *testing.T) {
+	if AppVersion != "2.1.1" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.1.0"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.1.0")
+	if !strings.Contains(string(b), `"productVersion": "2.1.1"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.1.1")
 	}
 }
 
@@ -259,5 +259,54 @@ func TestRelease210DocumentAutomation(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	if !strings.Contains(string(pdf), "Última automação documental") {
 		t.Fatal("dossiê 2.1.0 sem resumo da automação documental")
+	}
+}
+
+
+func TestRelease211CreditOperationDetails(t *testing.T) {
+	for _, path := range []string{"frontend/dist/ui211.js", "frontend/dist/ui211.css"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("asset 2.1.1 ausente: %s", path)
+		}
+	}
+	htmlb, err := os.ReadFile("frontend/dist/index.html")
+	if err != nil { t.Fatal(err) }
+	html := string(htmlb)
+	for _, asset := range []string{"ui211.js", "ui211.css"} {
+		if !strings.Contains(html, asset) {
+			t.Fatalf("index não carrega %s", asset)
+		}
+	}
+
+	jsb, err := os.ReadFile("frontend/dist/ui211.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"FICHA COMPLETA • SICOR/BCB",
+		"Ver operação completa",
+		"GetCreditIntelligenceProgress",
+		"Área financiada / glebas",
+		"Fontes oficiais e rastreabilidade",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.1.1 sem marcador %q", marker)
+		}
+	}
+
+	srcb, err := os.ReadFile("credit_intelligence.go")
+	if err != nil { t.Fatal(err) }
+	src := string(srcb)
+	for _, marker := range []string{
+		"creditIntelligenceResultCachePath",
+		"scanCreditOperationComplement",
+		"SICOR_COMPLEMENTO_OPERACAO_BASICA.gz",
+		"VL_PARC_CREDITO",
+		"VL_PERC_RISCO_STN",
+		"REF_BACEN_EFETIVO",
+		"Glebas",
+	} {
+		if !strings.Contains(src, marker) {
+			t.Fatalf("backend 2.1.1 sem marcador %q", marker)
+		}
 	}
 }
