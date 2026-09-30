@@ -1,3 +1,20 @@
+ViaVerdeCAR 2.3.0 — Automação Técnica do Projeto
+
+• Cria o botão “Automatizar projeto”, mantendo “Preparar projeto (local)” como alternativa rápida e sem consultas externas.
+• Orquestra em uma única execução as conferências locais, ZARC do novo projeto, Agritec/Embrapa, ANA/HidroWebService, SATVeg/NDVI e geração de pendências.
+• Cada integração é independente: falha, timeout, autenticação ausente ou fonte indisponível em um módulo não interrompe os demais.
+• ZARC passa a ser executado diretamente para custeio agrícola quando houver CAR/código IBGE, cultura, data de plantio, solo e ciclo. Resultado sem combinação exata ou sem indicação é tratado como “conferir”, nunca como conclusão automática de impedimento.
+• Agritec v2 usa token Bearer da AgroAPI/Embrapa configurado localmente. Identifica a cultura no município, pode listar cultivares e, quando os parâmetros avançados estiverem disponíveis, consultar produtividade.
+• SATVeg v2 usa o mesmo token da AgroAPI/Embrapa e preferencialmente a gleba vinculada ao projeto. Gera resumo da série NDVI e gráfico na interface; a série é evidência auxiliar e não identificação automática de cultura.
+• ANA/HidroWebService usa credencial própria configurada localmente, obtém token temporário, localiza estações da UF, ordena pela distância da gleba/CAR e consulta chuva/vazão do último ano quando a fonte responde.
+• A tela Configurações ganhou uma seção para credenciais Embrapa e ANA. Segredos não são exibidos de volta pela interface e não são gravados no código-fonte.
+• As novas integrações distinguem: concluído, pendente, conferir, fonte indisponível, não configurado, não se aplica, não consultado e erro.
+• Pendências e próximas ações são derivadas das verificações contabilizadas; fontes não configuradas/indisponíveis aparecem separadamente e não reduzem artificialmente a prontidão.
+• A última automação é persistida por projeto com cache de 12 horas. Atualizar fontes força nova execução; não é criado histórico a cada clique.
+• Cria o dossiê técnico PDF do projeto com identificação, dados técnicos, resultados das fontes e pendências.
+• Migração segura do schema 10 para o schema 11 com tabela rural_project_automation. Banco, projetos, dados técnicos, documentos, CAR, áreas e análises existentes são preservados.
+• Central de Projetos 2.2.0, Projeto Inteligente 2.2.1, Dados Técnicos 2.2.2 e Crédito Rural 2.1.1 permanecem preservados.
+
 ViaVerdeCAR 2.2.2 — Dados Técnicos do Projeto
 
 • Corrige a prontidão para não penalizar duas vezes a mesma situação documental: o resumo geral de Documentos continua visível, mas passa a ser informativo e não entra novamente no cálculo quando os requisitos específicos já são contados.
