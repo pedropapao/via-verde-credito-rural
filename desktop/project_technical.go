@@ -28,6 +28,9 @@ type ProjectTechnicalData struct {
 	Soil                 string                 `json:"soil"`
 	Cycle                string                 `json:"cycle"`
 	BenefitedAreaHa      float64                `json:"benefited_area_ha"`
+	AgritecCultureID     int64                  `json:"agritec_culture_id"`
+	AgritecCultivarID    int64                  `json:"agritec_cultivar_id"`
+	SoilCAD              int                    `json:"soil_cad"`
 
 	Items []ProjectTechnicalItem `json:"items"`
 
@@ -67,7 +70,7 @@ func normalizeProjectTechnicalData(v ProjectTechnicalData) (ProjectTechnicalData
 	}
 	if v.ExpectedProductivity < 0 || v.BenefitedAreaHa < 0 || v.AverageWeightKg < 0 ||
 		v.DailyGainKg < 0 || v.TargetArroba < 0 || v.IrrigatedAreaHa < 0 || v.FlowM3H < 0 ||
-		v.AnimalCount < 0 || v.CycleDays < 0 {
+		v.AnimalCount < 0 || v.CycleDays < 0 || v.AgritecCultureID < 0 || v.AgritecCultivarID < 0 || v.SoilCAD < 0 {
 		return ProjectTechnicalData{}, errors.New("dados técnicos não podem conter valores negativos")
 	}
 	if len(v.Items) > 100 {
