@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const AppVersion = "2.1.1"
+const AppVersion = "2.2.0"
 
 type App struct {
 	ctx     context.Context
@@ -293,7 +293,28 @@ func (a *App) migrate() error {
 			result_json TEXT NOT NULL DEFAULT '',
 			FOREIGN KEY(property_id) REFERENCES properties(id) ON DELETE CASCADE
 		);`,
-		`UPDATE schema_version SET version=8 WHERE version < 8;`,
+		`CREATE TABLE IF NOT EXISTS rural_projects (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			property_id INTEGER NOT NULL,
+			name TEXT NOT NULL,
+			bank TEXT NOT NULL DEFAULT '',
+			credit_line TEXT NOT NULL DEFAULT '',
+			operation_type TEXT NOT NULL DEFAULT '',
+			activity TEXT NOT NULL DEFAULT '',
+			requested_amount REAL NOT NULL DEFAULT 0,
+			term_months INTEGER NOT NULL DEFAULT 0,
+			interest_rate_pct REAL NOT NULL DEFAULT 0,
+			area_ha REAL NOT NULL DEFAULT 0,
+			area_id INTEGER NOT NULL DEFAULT 0,
+			status TEXT NOT NULL DEFAULT 'draft',
+			notes TEXT NOT NULL DEFAULT '',
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL,
+			FOREIGN KEY(property_id) REFERENCES properties(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_rural_projects_property ON rural_projects(property_id,updated_at DESC);`,
+		`CREATE INDEX IF NOT EXISTS idx_rural_projects_status ON rural_projects(status,updated_at DESC);`,
+		`UPDATE schema_version SET version=9 WHERE version < 9;`,
 	}
 	for _, stmt := range stmts {
 		if _, err := a.db.Exec(stmt); err != nil {
