@@ -63,7 +63,7 @@
     var total=projects.length, value=projects.reduce(function(s,p){return s+(Number(p.requested_amount)||0)},0);
     var pending=projects.filter(function(p){return p.status==='bank_pending'||p.status==='review'}).length;
     root.innerHTML=
-      '<div class="vv220-head"><div><span>PROJETO INTELIGENTE • 2.2.1</span><h2>Projetos e operações do imóvel</h2><p>O projeto reutiliza CAR, áreas, documentos, análises e crédito rural já existentes no ViaVerdeCAR.</p></div><button id="vv220New" class="primary">+ Novo projeto</button></div>'+
+      '<div class="vv220-head"><div><span>CENTRAL DE PROJETOS • PROJETO INTELIGENTE • 2.2.1</span><h2>Projetos e operações do imóvel</h2><p>O projeto reutiliza CAR, áreas, documentos, análises e crédito rural já existentes no ViaVerdeCAR.</p></div><button id="vv220New" class="primary">+ Novo projeto</button></div>'+
       '<div class="vv220-toolbar"><select id="vv220PropertyFilter">'+propertyOptions(filterProperty)+'</select><button id="vv220Refresh">Atualizar lista</button></div>'+
       '<div class="vv220-stats"><article><span>Projetos</span><strong>'+total+'</strong><small>cadastrados no filtro atual</small></article><article><span>Valor solicitado</span><strong>'+money(value)+'</strong><small>soma dos projetos exibidos</small></article><article><span>Em revisão / pendência</span><strong>'+pending+'</strong><small>exigem acompanhamento</small></article></div>'+
       '<div class="vv220-list">'+(projects.length?projects.map(projectCard).join(''):'<div class="vv220-empty"><strong>Nenhum projeto cadastrado.</strong><span>Crie o primeiro projeto e reaproveite os dados que o ViaVerdeCAR já conhece do imóvel.</span></div>')+'</div>';
