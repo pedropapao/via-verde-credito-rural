@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion221(t *testing.T) {
-	if AppVersion != "2.2.1" {
+func TestReleaseVersion222(t *testing.T) {
+	if AppVersion != "2.2.2" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.2.1"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.2.1")
+	if !strings.Contains(string(b), `"productVersion": "2.2.2"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.2.2")
 	}
 }
 
@@ -338,7 +338,7 @@ func TestRelease221SmartProjectRules(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	js := string(jsb)
 	for _, marker := range []string{
-		"PROJETO INTELIGENTE • 2.2.1",
+		"PROJETO INTELIGENTE",
 		"PERFIL DETECTADO",
 		"Exigências detectadas para este projeto",
 		"vv221ActivityOptions",
@@ -362,5 +362,44 @@ func TestRelease221SmartProjectRules(t *testing.T) {
 		if !strings.Contains(rules, marker) {
 			t.Fatalf("motor inteligente 2.2.1 sem marcador %q", marker)
 		}
+	}
+}
+
+
+func TestRelease222ProjectTechnicalData(t *testing.T) {
+	for _, path := range []string{"project_technical.go", "frontend/dist/ui220.js", "frontend/dist/ui220.css"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("Dados Técnicos 2.2.2 ausentes: %s", path)
+		}
+	}
+	appb, err := os.ReadFile("app.go")
+	if err != nil { t.Fatal(err) }
+	app := string(appb)
+	for _, marker := range []string{"rural_project_technical_data", "version=10"} {
+		if !strings.Contains(app, marker) { t.Fatalf("migração 2.2.2 sem marcador %q", marker) }
+	}
+	jsb, err := os.ReadFile("frontend/dist/ui220.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"Dados técnicos",
+		"SaveRuralProjectTechnicalData",
+		"GetRuralProjectTechnicalData",
+		"DADOS TÉCNICOS • 2.2.2",
+		"Resumos informativos não entram duas vezes na prontidão",
+	} {
+		if !strings.Contains(js, marker) { t.Fatalf("interface 2.2.2 sem marcador %q", marker) }
+	}
+	srcb, err := os.ReadFile("project_technical.go")
+	if err != nil { t.Fatal(err) }
+	src := string(srcb)
+	for _, marker := range []string{
+		"ProjectTechnicalData",
+		"ProjectTechnicalItem",
+		"projectTechnicalChecks",
+		"technical_zarc_input",
+		"Dados de irrigação",
+	} {
+		if !strings.Contains(src, marker) { t.Fatalf("backend técnico 2.2.2 sem marcador %q", marker) }
 	}
 }

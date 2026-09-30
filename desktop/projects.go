@@ -38,6 +38,7 @@ type ProjectPreparationCheck struct {
 	Detail string `json:"detail"`
 	Source string `json:"source"`
 	Group string `json:"group"`
+	Informational bool `json:"informational"`
 }
 
 type ProjectPreparationResult struct {
@@ -54,6 +55,7 @@ type ProjectPreparationResult struct {
 	PublicCreditValue float64 `json:"public_credit_value"`
 	EnvironmentalHits int `json:"environmental_hits"`
 	SmartProfile ProjectSmartProfile `json:"smart_profile"`
+	TechnicalData ProjectTechnicalData `json:"technical_data"`
 	Scope string `json:"scope"`
 }
 
@@ -196,7 +198,7 @@ func (a *App) PrepareRuralProject(id int64) (ProjectPreparationResult,error) {
 	project,err:=a.GetRuralProject(id); if err!=nil { return ProjectPreparationResult{},err }
 	property,err:=a.GetProperty(project.PropertyID); if err!=nil { return ProjectPreparationResult{},err }
 	out:=ProjectPreparationResult{Project:project,Property:property,GeneratedAt:time.Now().Format(time.RFC3339),
-		Scope:"Prontidão operacional do cadastro local. Não representa aprovação bancária, limite de crédito, enquadramento definitivo ou parecer técnico."}
+		Scope:"Prontidão operacional do projeto. Resumos informativos não são contados novamente quando seus requisitos específicos já entram no cálculo. Não representa aprovação bancária, limite de crédito, enquadramento definitivo ou parecer técnico."}
 
 	if ok,d:=projectFieldsReady(project); ok { out.Checks=append(out.Checks,prepCheck("project_data","Dados do projeto","ready",d,"Cadastro local")) } else {
 		out.Checks=append(out.Checks,prepCheck("project_data","Dados do projeto","pending",d,"Cadastro local"))
@@ -249,10 +251,17 @@ func (a *App) PrepareRuralProject(id int64) (ProjectPreparationResult,error) {
 		documentCenter=&center
 		out.DocumentSummary=center.Summary
 		pending:=center.Summary.Pending+center.Summary.Expired
-		if pending>0 { out.Checks=append(out.Checks,prepCheck("documents","Documentos","pending",fmt.Sprintf("%d pendência(s) documental(is) e %d item(ns) para conferir.",pending,center.Summary.Review),"Central de Documentos")) } else if center.Summary.Review>0 {
-			out.Checks=append(out.Checks,prepCheck("documents","Documentos","review",fmt.Sprintf("%d item(ns) precisam de conferência.",center.Summary.Review),"Central de Documentos"))
-		} else { out.Checks=append(out.Checks,prepCheck("documents","Documentos","ready",fmt.Sprintf("%d documento(s) recebido(s); nenhuma pendência ativa no checklist atual.",center.Summary.Received),"Central de Documentos")) }
-	} else { out.Checks=append(out.Checks,prepCheck("documents","Documentos","review","Não foi possível carregar a Central de Documentos nesta execução.","Central de Documentos")) }
+		var summary ProjectPreparationCheck
+		if pending>0 { summary=prepCheck("documents","Documentos","pending",fmt.Sprintf("%d pendência(s) documental(is) e %d item(ns) para conferir.",pending,center.Summary.Review),"Central de Documentos") } else if center.Summary.Review>0 {
+			summary=prepCheck("documents","Documentos","review",fmt.Sprintf("%d item(ns) precisam de conferência.",center.Summary.Review),"Central de Documentos")
+		} else { summary=prepCheck("documents","Documentos","ready",fmt.Sprintf("%d documento(s) recebido(s); nenhuma pendência ativa no checklist atual.",center.Summary.Received),"Central de Documentos") }
+		summary.Informational=true
+		out.Checks=append(out.Checks,summary)
+	} else {
+		summary:=prepCheck("documents","Documentos","review","Não foi possível carregar a Central de Documentos nesta execução.","Central de Documentos")
+		summary.Informational=true
+		out.Checks=append(out.Checks,summary)
+	}
 
 	if strings.TrimSpace(property.CARNumber)!="" && a.dataDir!="" {
 		cachePath:=filepath.Join(a.dataDir,"cache","sicor_xray",safeFilePart(property.CARNumber)+".json")
@@ -266,8 +275,17 @@ func (a *App) PrepareRuralProject(id int64) (ProjectPreparationResult,error) {
 	out.SmartProfile=profile
 	out.Checks=append(out.Checks,smartChecks...)
 
+	technical,techErr:=a.GetRuralProjectTechnicalData(project.ID)
+	if techErr==nil {
+		out.TechnicalData=technical
+		out.Checks=append(out.Checks,projectTechnicalChecks(project,profile,technical)...)
+	} else {
+		out.Checks=append(out.Checks,technicalPrepCheck("technical_data","Dados técnicos do projeto","review","Não foi possível carregar os dados técnicos deste projeto."))
+	}
+
 	total:=0
 	for _,c:=range out.Checks {
+		if c.Informational { continue }
 		switch c.Status {
 		case "ready": out.Ready++; total++
 		case "pending": out.Pending++; total++
