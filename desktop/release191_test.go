@@ -426,6 +426,9 @@ func TestRelease230TechnicalAutomation(t *testing.T) {
 	for _, asset := range []string{"ui230.js", "ui230.css"} {
 		if !strings.Contains(html, asset) { t.Fatalf("index não carrega %s", asset) }
 	}
+	if strings.Index(html, "ui230.js") < strings.Index(html, "ui220.js") || strings.Index(html, "ui230.css") < strings.Index(html, "ui220.css") {
+		t.Fatal("automação 2.3.0 deve ser carregada depois da Central de Projetos 2.2.x")
+	}
 	jsb, err := os.ReadFile("frontend/dist/ui230.js")
 	if err != nil { t.Fatal(err) }
 	js := string(jsb)
