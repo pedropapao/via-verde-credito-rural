@@ -65,3 +65,28 @@
 .vv221-check-title span{font-size:9px;color:#849188}
 .vv221-smart-checks article.smart{background:#f8fcf9;border-color:#d5e7da}
 .vv221-smart-checks article.smart strong:after{content:"REGRA DO PROJETO";display:inline-block;margin-left:7px;padding:2px 5px;border-radius:999px;background:#e3f3e8;color:#2d7650;font-size:7px;letter-spacing:.05em;vertical-align:1px}
+
+.vv222-tech-card{width:min(1000px,96vw)}
+#vv222ProfileHint{margin:4px 0 0;font-size:10px;color:#718078}
+.vv222-tech-grid{padding:16px;display:grid;gap:12px}
+.vv222-tech-section{border:1px solid #dce7df;border-radius:12px;background:#fbfdfb;overflow:hidden}
+.vv222-tech-section>header{padding:11px 12px;border-bottom:1px solid #e7eee9;background:#f4f8f5}
+.vv222-tech-section>header strong,.vv222-tech-section>header span{display:block}
+.vv222-tech-section>header strong{font-size:12px;color:#294638}
+.vv222-tech-section>header span{font-size:9px;color:#77867d;margin-top:2px}
+.vv222-tech-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:12px}
+.vv222-tech-fields label{display:grid;gap:5px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;color:#65766c}
+.vv222-tech-fields label.wide{grid-column:1/-1}
+.vv222-tech-fields input,.vv222-tech-fields textarea{width:100%;box-sizing:border-box;border:1px solid #cfddd3;border-radius:8px;padding:9px 10px;background:#fff;font:600 12px/1.35 inherit;color:#2d4638;text-transform:none;letter-spacing:0}
+#vv222Items{display:grid;gap:7px;padding:12px 12px 6px}
+.vv222-item-row{display:grid;grid-template-columns:2fr .7fr .8fr 1fr 1.4fr 34px;gap:7px}
+.vv222-item-row input{min-width:0;border:1px solid #cfddd3;border-radius:8px;padding:9px;background:#fff;font-size:11px;color:#2d4638}
+.vv222-item-row button{border:1px solid #e8c9c5;background:#fff7f6;color:#b7473d;border-radius:8px;cursor:pointer;font-size:17px}
+.vv222-add-item{margin:0 12px 12px;border:1px dashed #bcd5c3;background:#f5fbf7;color:#257348;border-radius:8px;padding:8px 10px;font-size:10px;font-weight:900;cursor:pointer}
+.vv222-technical-checks article.technical{background:#f6fafc;border-color:#d7e5eb}
+.vv222-technical-checks article.technical strong:after{content:"DADO TÉCNICO";display:inline-block;margin-left:7px;padding:2px 5px;border-radius:999px;background:#e5f0f5;color:#376679;font-size:7px;letter-spacing:.05em;vertical-align:1px}
+.vv220-checks article.informational{background:#f7f8f7;border-style:dashed;opacity:.92}
+.vv220-checks article.informational i{background:#91a097}
+.vv220-checks article.informational strong em{font-style:normal;font-size:7px;padding:2px 5px;border-radius:999px;background:#ecefed;color:#65756b;margin-left:6px}
+@media(max-width:900px){.vv222-tech-fields{grid-template-columns:1fr 1fr}.vv222-item-row{grid-template-columns:1fr 1fr}.vv222-item-row button{min-height:36px}}
+@media(max-width:620px){.vv222-tech-fields,.vv222-item-row{grid-template-columns:1fr}}
