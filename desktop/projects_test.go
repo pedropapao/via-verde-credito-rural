@@ -76,9 +76,9 @@ func TestRuralProjectRejectsAreaFromAnotherProperty220(t *testing.T) {
 	if err == nil { t.Fatal("projeto não pode usar gleba de outro imóvel") }
 }
 
-func TestSchemaVersion222(t *testing.T) {
+func TestSchemaVersion230(t *testing.T) {
 	app := newProjectTestApp(t)
 	var version int
 	if err := app.db.QueryRow("SELECT version FROM schema_version LIMIT 1").Scan(&version); err != nil { t.Fatal(err) }
-	if version != 10 { t.Fatalf("schema esperado 10, obtido %d", version) }
+	if version != 11 { t.Fatalf("schema esperado 11, obtido %d", version) }
 }
