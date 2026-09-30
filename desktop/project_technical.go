@@ -176,9 +176,14 @@ func projectTechnicalChecks(p RuralProject, profile ProjectSmartProfile, data Pr
 			}
 			if data.ExpectedProductivity <= 0 {
 				missing = append(missing, "produtividade esperada")
+			} else if data.ProductivityUnit == "" {
+				missing = append(missing, "unidade da produtividade")
 			}
 		}
-		if len(missing) == 0 {
+		if p.AreaHa > 0 && data.BenefitedAreaHa > p.AreaHa+0.01 {
+			out = append(out, technicalPrepCheck("technical_agriculture", "Dados agrícolas", "pending",
+				fmt.Sprintf("Área beneficiada (%.2f ha) supera a área informada do projeto (%.2f ha).", data.BenefitedAreaHa, p.AreaHa)))
+		} else if len(missing) == 0 {
 			out = append(out, technicalPrepCheck("technical_agriculture", "Dados agrícolas", "ready",
 				fmt.Sprintf("Cultura %s, área beneficiada %.2f ha e parâmetros principais preenchidos.", data.Culture, data.BenefitedAreaHa)))
 		} else {
@@ -219,14 +224,16 @@ func projectTechnicalChecks(p RuralProject, profile ProjectSmartProfile, data Pr
 					fmt.Sprintf("%d item(ns) cadastrado(s), mas %d precisa(m) de descrição, quantidade ou valor.", len(data.Items), incomplete)))
 			} else {
 				detail := fmt.Sprintf("%d item(ns) técnico(s), total estimado R$ %.2f.", len(data.Items), total)
+				status := "ready"
 				if p.RequestedAmount > 0 && total > 0 {
 					diff := total - p.RequestedAmount
 					if diff < 0 { diff = -diff }
 					if diff > 1 {
+						status = "review"
 						detail += fmt.Sprintf(" O total difere em R$ %.2f do valor solicitado; conferir composição.", diff)
 					}
 				}
-				out = append(out, technicalPrepCheck("technical_items", "Itens do investimento/aquisição", "ready", detail))
+				out = append(out, technicalPrepCheck("technical_items", "Itens do investimento/aquisição", status, detail))
 			}
 		}
 	}
