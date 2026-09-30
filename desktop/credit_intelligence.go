@@ -235,8 +235,14 @@ func saveCreditIntelligenceResultCache(path string, out CreditIntelligenceResult
 		return err
 	}
 	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
-		return err
+		// No Windows, Rename não substitui um destino existente. Como este
+		// arquivo é somente cache derivado, removemos o cache antigo e
+		// repetimos a troca sem tocar em nenhum dado persistente do usuário.
+		_ = os.Remove(path)
+		if retryErr := os.Rename(tmp, path); retryErr != nil {
+			_ = os.Remove(tmp)
+			return retryErr
+		}
 	}
 	return nil
 }
