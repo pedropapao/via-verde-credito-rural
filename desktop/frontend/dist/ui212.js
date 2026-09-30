@@ -131,11 +131,14 @@
   }
 
   function buildSummarySide(r){
-    var old=E('vv212SummarySide');if(old)old.remove();
     var pane=E('vv204Pane');if(!pane)return;
     var sic=r&&r.xray&&r.xray.sicor||{},hits=envHitCount(r),pid=Number(r&&r.property_id)||0;
+    var signature=[String(r&&r.car&&r.car.car||''),pid,Number(sic.operation_count)||0,Number(sic.total_credit_value)||0,hits].join('|');
+    var old=E('vv212SummarySide');
+    if(old&&old.dataset.signature===signature)return;
+    if(old)old.remove();
     var side=document.createElement('aside');
-    side.id='vv212SummarySide';side.className='vv212-summary-side';
+    side.id='vv212SummarySide';side.className='vv212-summary-side';side.dataset.signature=signature;
     side.innerHTML=
       '<div class="vv212-summary-side-title"><span>'+svg(icons.analyses)+'</span><strong>Resumo do Imóvel</strong></div>'+
       sideCard('green','Crédito Rural',(Number(sic.operation_count)||0)+' operação(ões)',sic.total_credit_value?MONEY(sic.total_credit_value)+' contratados':'Dados públicos SICOR','credit')+
