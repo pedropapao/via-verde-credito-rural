@@ -1,0 +1,40 @@
+/* ViaVerdeCAR 2.3.0 — Automação Técnica */
+.vv230-settings{grid-column:1/-1}
+.vv230-config-state{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.vv230-config-state span{display:flex;gap:6px;align-items:center;background:#f4f8f5;border:1px solid #dbe6de;border-radius:999px;padding:6px 9px;font-size:10px;color:#65766d}
+.vv230-config-state b{color:#285a3e}
+.vv230-settings-form{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;margin:12px 0}
+.vv230-settings-form label{display:grid;gap:5px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;color:#65766d}
+.vv230-settings-form input{border:1px solid #cfddd3;border-radius:8px;padding:9px 10px;background:#fff;font-size:11px;color:#2d4638}
+.vv230-settings-note{display:block;margin-top:9px;color:#77857d;font-size:9px;line-height:1.45}
+.vv230-auto-card{width:min(1040px,96vw)}
+.vv230-auto-card .vv220-modal-head p{margin:4px 0 0;font-size:10px;color:#728078}
+.vv230-source-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 16px}
+.vv230-source-card{border:1px solid #dce7df;border-radius:12px;padding:12px;background:#fbfdfb}
+.vv230-source-card.ok{border-color:#bfe1cb;background:#f4fbf6}
+.vv230-source-card.warn{border-color:#ecd79e;background:#fffaf1}
+.vv230-source-card.danger{border-color:#edc9c5;background:#fff7f6}
+.vv230-source-card.muted{border-color:#dfe4e1;background:#f8f9f8}
+.vv230-source-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.vv230-source-head strong{font-size:12px;color:#294638}
+.vv230-source-head b{font-size:8px;border-radius:999px;background:#edf2ef;padding:4px 6px;color:#65766d;white-space:nowrap}
+.vv230-source-card.ok .vv230-source-head b{background:#def3e4;color:#167642}
+.vv230-source-card.warn .vv230-source-head b{background:#fff0d5;color:#9b6208}
+.vv230-source-card.danger .vv230-source-head b{background:#ffe0dd;color:#b52d26}
+.vv230-source-card p{font-size:10px;line-height:1.45;color:#69786f;margin:7px 0 0}
+.vv230-mini{display:grid;gap:2px;margin-top:8px;padding-top:8px;border-top:1px solid #e8eeea}
+.vv230-mini b{font-size:9px;color:#3a5a47}.vv230-mini span{font-size:9px;line-height:1.45;color:#708078}
+.vv230-stations{display:grid;gap:4px;margin-top:8px}
+.vv230-stations span{font-size:9px;color:#66766d}.vv230-stations b{color:#365846}
+.vv230-chart{margin-top:9px;border:1px solid #dbe6df;border-radius:9px;background:#fff;padding:7px;color:#238a50}
+.vv230-chart svg{display:block;width:100%;height:100px}
+.vv230-chart>div{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:8px;color:#75847b}
+.vv230-pending{display:grid;gap:8px;padding:0 16px 16px}
+.vv230-pending article{display:grid;grid-template-columns:10px 1fr;gap:9px;border:1px solid #e0e8e2;border-radius:10px;padding:10px;background:#fbfdfb}
+.vv230-pending article i{width:8px;height:8px;border-radius:50%;margin-top:4px;background:#e39a18}
+.vv230-pending article.pending i{background:#e34c3d}
+.vv230-pending article.integration i{background:#87968d}
+.vv230-pending strong{font-size:11px;color:#294638}.vv230-pending p{font-size:10px;line-height:1.45;color:#69786f;margin:3px 0}.vv230-pending small{font-size:8px;color:#89958e}
+.vv230-none{margin:0 16px 16px;padding:12px;border:1px solid #d8e7dc;border-radius:10px;background:#f5fbf7;color:#3e684e;font-size:10px}
+.vv222-tech-fields label small{font-size:7px;font-weight:700;text-transform:none;letter-spacing:0;color:#89958d}
+@media(max-width:900px){.vv230-settings-form,.vv230-source-grid{grid-template-columns:1fr}}

@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 2.2.2 — Dados Técnicos do Projeto */
+/* ViaVerdeCAR 2.3.0 — Central de Projetos + automação técnica */
 (function(){
   'use strict';
   var projects=[], filterProperty=0, editing=null, areas=[];
@@ -63,7 +63,7 @@
     var total=projects.length, value=projects.reduce(function(s,p){return s+(Number(p.requested_amount)||0)},0);
     var pending=projects.filter(function(p){return p.status==='bank_pending'||p.status==='review'}).length;
     root.innerHTML=
-      '<div class="vv220-head"><div><span>CENTRAL DE PROJETOS • PROJETO INTELIGENTE • 2.2.2</span><h2>Projetos e operações do imóvel</h2><p>O projeto reutiliza CAR, áreas, documentos, análises e crédito rural já existentes no ViaVerdeCAR.</p></div><button id="vv220New" class="primary">+ Novo projeto</button></div>'+
+      '<div class="vv220-head"><div><span>CENTRAL DE PROJETOS • AUTOMAÇÃO TÉCNICA • 2.3.0</span><h2>Projetos e operações do imóvel</h2><p>O projeto reutiliza CAR, áreas, documentos, análises e crédito rural já existentes no ViaVerdeCAR.</p></div><button id="vv220New" class="primary">+ Novo projeto</button></div>'+
       '<div class="vv220-toolbar"><select id="vv220PropertyFilter">'+propertyOptions(filterProperty)+'</select><button id="vv220Refresh">Atualizar lista</button></div>'+
       '<div class="vv220-stats"><article><span>Projetos</span><strong>'+total+'</strong><small>cadastrados no filtro atual</small></article><article><span>Valor solicitado</span><strong>'+money(value)+'</strong><small>soma dos projetos exibidos</small></article><article><span>Em revisão / pendência</span><strong>'+pending+'</strong><small>exigem acompanhamento</small></article></div>'+
       '<div class="vv220-list">'+(projects.length?projects.map(projectCard).join(''):'<div class="vv220-empty"><strong>Nenhum projeto cadastrado.</strong><span>Crie o primeiro projeto e reaproveite os dados que o ViaVerdeCAR já conhece do imóvel.</span></div>')+'</div>';
@@ -74,6 +74,8 @@
     root.querySelectorAll('[data-edit-project]').forEach(function(b){b.onclick=function(){var p=projects.find(function(x){return Number(x.id)===Number(b.dataset.editProject)});openForm(p)}});
     root.querySelectorAll('[data-tech-project]').forEach(function(b){b.onclick=function(){openTechnicalData(Number(b.dataset.techProject))}});
     root.querySelectorAll('[data-prepare-project]').forEach(function(b){b.onclick=function(){prepareProject(Number(b.dataset.prepareProject))}});
+    root.querySelectorAll('[data-auto-project]').forEach(function(b){b.onclick=function(){if(window.ViaVerdeTechnicalAutomation)window.ViaVerdeTechnicalAutomation.run(Number(b.dataset.autoProject),false)}});
+    root.querySelectorAll('[data-dossier-project]').forEach(function(b){b.onclick=function(){if(window.ViaVerdeTechnicalAutomation)window.ViaVerdeTechnicalAutomation.dossier(Number(b.dataset.dossierProject))}});
     root.querySelectorAll('[data-delete-project]').forEach(function(b){b.onclick=function(){deleteProject(Number(b.dataset.deleteProject))}});
     root.querySelectorAll('[data-open-property]').forEach(function(b){b.onclick=function(){openPropertyCAR(Number(b.dataset.openProperty))}});
   }
@@ -83,7 +85,7 @@
     return '<article class="vv220-card">'+
       '<div class="vv220-card-top"><div><span>'+H(p.client_name)+' • '+H(p.property_name)+'</span><h3>'+H(p.name)+'</h3><p>'+H(meta||'Complete banco, linha, operação e atividade.')+'</p></div><b class="vv220-badge '+statusTone(p.status)+'">'+H(statusLabel(p.status))+'</b></div>'+
       '<div class="vv220-card-data"><div><small>Valor solicitado</small><strong>'+(p.requested_amount?money(p.requested_amount):'—')+'</strong></div><div><small>Área do projeto</small><strong>'+(p.area_ha?n(p.area_ha,2)+' ha':(p.area_id?'Gleba vinculada':'—'))+'</strong></div><div><small>Prazo</small><strong>'+(p.term_months?p.term_months+' meses':'—')+'</strong></div><div><small>Taxa</small><strong>'+(p.interest_rate_pct?n(p.interest_rate_pct,2)+'% a.a.':'—')+'</strong></div></div>'+
-      '<div class="vv220-card-actions"><button class="primary" data-prepare-project="'+p.id+'">Preparar projeto</button><button data-tech-project="'+p.id+'">Dados técnicos</button><button data-open-property="'+p.property_id+'">Abrir imóvel</button><button data-edit-project="'+p.id+'">Editar</button><button class="danger" data-delete-project="'+p.id+'">Excluir projeto</button></div>'+
+      '<div class="vv220-card-actions"><button class="primary" data-auto-project="'+p.id+'">Automatizar projeto</button><button data-prepare-project="'+p.id+'">Preparar projeto (local)</button><button data-tech-project="'+p.id+'">Dados técnicos</button><button data-dossier-project="'+p.id+'">Gerar dossiê</button><button data-open-property="'+p.property_id+'">Abrir imóvel</button><button data-edit-project="'+p.id+'">Editar</button><button class="danger" data-delete-project="'+p.id+'">Excluir projeto</button></div>'+
     '</article>';
   }
 
@@ -186,6 +188,9 @@
         '<label>Solo<input id="vv222Soil" value="'+H(t.soil||'')+'" placeholder="Classe/tipo usado no projeto"></label>'+
         '<label>Ciclo<input id="vv222Cycle" value="'+H(t.cycle||'')+'" placeholder="Ciclo/cultivar"></label>'+
         '<label>Área beneficiada (ha)<input id="vv222BenefitedArea" type="number" min="0" step="0.0001" value="'+techValue(t.benefited_area_ha)+'"></label>'+
+        '<label>ID cultura Agritec <small>opcional</small><input id="vv230AgritecCultureID" type="number" min="0" step="1" value="'+techValue(t.agritec_culture_id)+'" placeholder="Preenchido quando necessário"></label>'+
+        '<label>ID cultivar Agritec <small>opcional</small><input id="vv230AgritecCultivarID" type="number" min="0" step="1" value="'+techValue(t.agritec_cultivar_id)+'" placeholder="Use um ID retornado pela Agritec"></label>'+
+        '<label>CAD do solo (mm) <small>opcional</small><input id="vv230SoilCAD" type="number" min="0" step="1" value="'+techValue(t.soil_cad)+'" placeholder="Para estimativa Agritec"></label>'+
       '</div></section>'+
       '<section class="vv222-tech-section" data-tech-section="items"><header><strong>Itens do investimento / aquisição</strong><span>Podem ser cadastrados vários itens; o sistema soma quantidade × valor unitário.</span></header>'+
         '<div id="vv222Items">'+(items.length?items.map(technicalItemRow).join(''):technicalItemRow({}))+'</div>'+
@@ -250,6 +255,9 @@
       soil:E('vv222Soil')?E('vv222Soil').value:'',
       cycle:E('vv222Cycle')?E('vv222Cycle').value:'',
       benefited_area_ha:Number(E('vv222BenefitedArea')&&E('vv222BenefitedArea').value)||0,
+      agritec_culture_id:Number(E('vv230AgritecCultureID')&&E('vv230AgritecCultureID').value)||0,
+      agritec_cultivar_id:Number(E('vv230AgritecCultivarID')&&E('vv230AgritecCultivarID').value)||0,
+      soil_cad:Number(E('vv230SoilCAD')&&E('vv230SoilCAD').value)||0,
       items:items,
       animal_count:Number(E('vv222AnimalCount')&&E('vv222AnimalCount').value)||0,
       animal_category:E('vv222AnimalCategory')?E('vv222AnimalCategory').value:'',
@@ -304,7 +312,7 @@
       var checks=A(r.checks), profile=r.smart_profile||{};
       var smart=checks.filter(function(c){return c.group==='smart'}), technical=checks.filter(function(c){return c.group==='technical'}), base=checks.filter(function(c){return c.group!=='smart'&&c.group!=='technical'});
       var rules=A(profile.rules);
-      modal.innerHTML='<div class="vv220-modal-card vv220-prep-card"><div class="vv220-modal-head"><div><span>PROJETO INTELIGENTE • 2.2.2</span><h3>'+H(p.name||'Projeto')+'</h3></div><button id="vv220Close">×</button></div>'+
+      modal.innerHTML='<div class="vv220-modal-card vv220-prep-card"><div class="vv220-modal-head"><div><span>PROJETO INTELIGENTE • 2.3.0</span><h3>'+H(p.name||'Projeto')+'</h3></div><button id="vv220Close">×</button></div>'+
         '<div class="vv221-profile '+(profile.ambiguous?'warn':'ok')+'"><div><span>PERFIL DETECTADO</span><strong>'+H(profile.activity_label||'Atividade não classificada')+' • '+H(profile.operation_label||'Operação não informada')+'</strong><p>'+H(profile.message||'')+'</p></div>'+(rules.length?'<div class="vv221-rules">'+rules.map(function(x){return '<b>'+H(x)+'</b>'}).join('')+'</div>':'')+'</div>'+
         '<div class="vv220-readiness"><div><strong>'+Number(r.readiness_pct||0)+'%</strong><span>prontidão operacional</span></div><div><b>'+Number(r.ready||0)+'</b><small>pronto(s)</small></div><div><b>'+Number(r.pending||0)+'</b><small>pendente(s)</small></div><div><b>'+Number(r.review||0)+'</b><small>conferir</small></div></div>'+
         (technical.length?'<div class="vv221-check-title"><strong>Dados técnicos do projeto</strong><span>Informações próprias desta operação.</span></div><div class="vv220-checks vv222-technical-checks">'+technical.map(renderPrepCheck).join('')+'</div>':'')+

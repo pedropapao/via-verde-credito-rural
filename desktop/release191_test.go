@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion222(t *testing.T) {
-	if AppVersion != "2.2.2" {
+func TestReleaseVersion230(t *testing.T) {
+	if AppVersion != "2.3.0" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.2.2"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.2.2")
+	if !strings.Contains(string(b), `"productVersion": "2.3.0"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.3.0")
 	}
 }
 
@@ -401,5 +401,57 @@ func TestRelease222ProjectTechnicalData(t *testing.T) {
 		"Dados de irrigação",
 	} {
 		if !strings.Contains(src, marker) { t.Fatalf("backend técnico 2.2.2 sem marcador %q", marker) }
+	}
+}
+
+
+func TestRelease230TechnicalAutomation(t *testing.T) {
+	for _, path := range []string{
+		"project_automation.go", "project_integrations.go", "project_dossier.go",
+		"frontend/dist/ui230.js", "frontend/dist/ui230.css",
+	} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("Automação Técnica 2.3.0 ausente: %s", path)
+		}
+	}
+	appb, err := os.ReadFile("app.go")
+	if err != nil { t.Fatal(err) }
+	app := string(appb)
+	for _, marker := range []string{"rural_project_automation", "version=11"} {
+		if !strings.Contains(app, marker) { t.Fatalf("migração 2.3.0 sem marcador %q", marker) }
+	}
+	htmlb, err := os.ReadFile("frontend/dist/index.html")
+	if err != nil { t.Fatal(err) }
+	html := string(htmlb)
+	for _, asset := range []string{"ui230.js", "ui230.css"} {
+		if !strings.Contains(html, asset) { t.Fatalf("index não carrega %s", asset) }
+	}
+	if strings.Index(html, "ui230.js") < strings.Index(html, "ui220.js") || strings.Index(html, "ui230.css") < strings.Index(html, "ui220.css") {
+		t.Fatal("automação 2.3.0 deve ser carregada depois da Central de Projetos 2.2.x")
+	}
+	jsb, err := os.ReadFile("frontend/dist/ui230.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"AUTOMAÇÃO TÉCNICA • 2.3.0",
+		"RunRuralProjectAutomation",
+		"ExportRuralProjectDossierPDF",
+		"Configurar fontes",
+		"SATVeg • NDVI",
+		"ANA • HidroWebService",
+	} {
+		if !strings.Contains(js, marker) { t.Fatalf("interface 2.3.0 sem marcador %q", marker) }
+	}
+	srcb, err := os.ReadFile("project_integrations.go")
+	if err != nil { t.Fatal(err) }
+	src := string(srcb)
+	for _, marker := range []string{
+		"api.cnptia.embrapa.br/agritec/v2",
+		"api.cnptia.embrapa.br/satveg/v2",
+		"hidrowebservice/EstacoesTelemetricas",
+		"OAUth/v1",
+		"seriespoligono",
+	} {
+		if !strings.Contains(src, marker) { t.Fatalf("integração 2.3.0 sem marcador %q", marker) }
 	}
 }
