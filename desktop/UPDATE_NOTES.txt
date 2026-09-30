@@ -1,3 +1,17 @@
+ViaVerdeCAR 2.2.0 — Central de Projetos
+
+• Cria a Central de Projetos vinculada aos imóveis existentes sem duplicar CAR, documentos ou análises.
+• Migração segura do schema 8 para o schema 9; nenhum banco é apagado.
+• Novo cadastro de projeto com banco/cooperativa, linha/programa, tipo de operação, atividade, valor solicitado, prazo, taxa, área, gleba vinculada, status e observações.
+• Um mesmo imóvel pode possuir vários projetos independentes.
+• Fluxo operacional de status: Em elaboração, Em revisão, Enviado ao banco, Pendência do banco, Aprovado, Contratado, Liberado, Reprovado e Cancelado.
+• O projeto pode reutilizar uma gleba já cadastrada em project_areas; é bloqueado o vínculo de gleba pertencente a outro imóvel.
+• Novo comando “Preparar projeto” monta diagnóstico de prontidão usando somente dados já disponíveis localmente: cadastro do projeto, CAR salvo, geometria, análise ambiental armazenada, Central de Documentos e cache SICOR/BCB.
+• A prontidão é explicitamente operacional e não representa aprovação bancária, limite de crédito, enquadramento definitivo ou parecer técnico.
+• Excluir um projeto não exclui imóvel, CAR, documentos, áreas ou análises.
+• Nova tela Central de Projetos adicionada à interface 2.1.1, preservando o restante da navegação e a ficha completa de Crédito Rural.
+• Nenhuma nova API externa foi adicionada nesta etapa; a 2.2.0 primeiro organiza e reutiliza as integrações já existentes.
+
 ViaVerdeCAR 2.1.1 — Ficha Completa da Operação de Crédito Rural
 
 • Mantém o Raio X inicial rápido e abre o detalhamento financeiro somente sob demanda.

@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion211(t *testing.T) {
-	if AppVersion != "2.1.1" {
+func TestReleaseVersion220(t *testing.T) {
+	if AppVersion != "2.2.0" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.1.1"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.1.1")
+	if !strings.Contains(string(b), `"productVersion": "2.2.0"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.2.0")
 	}
 }
 
@@ -174,7 +174,7 @@ func TestRelease208DocumentCenterAndPendingTab(t *testing.T) {
 	appb, err := os.ReadFile("app.go")
 	if err != nil { t.Fatal(err) }
 	app := string(appb)
-	for _, marker := range []string{"property_documents", "property_document_status", "property_document_context", "property_document_automation", "version=8"} {
+	for _, marker := range []string{"property_documents", "property_document_status", "property_document_context", "property_document_automation"} {
 		if !strings.Contains(app, marker) {
 			t.Fatalf("migração documental 2.0.8 sem marcador %q", marker)
 		}
@@ -309,4 +309,20 @@ func TestRelease211CreditOperationDetails(t *testing.T) {
 			t.Fatalf("backend 2.1.1 sem marcador %q", marker)
 		}
 	}
+}
+
+
+func TestRelease220ProjectCenter(t *testing.T) {
+	for _, path := range []string{"projects.go", "frontend/dist/ui220.js", "frontend/dist/ui220.css"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 { t.Fatalf("Central de Projetos ausente: %s", path) }
+	}
+	appb, err := os.ReadFile("app.go"); if err != nil { t.Fatal(err) }
+	app := string(appb)
+	for _, marker := range []string{"rural_projects", "idx_rural_projects_property", "version=9"} { if !strings.Contains(app, marker) { t.Fatalf("migração 2.2.0 sem marcador %q", marker) } }
+	htmlb, err := os.ReadFile("frontend/dist/index.html"); if err != nil { t.Fatal(err) }
+	html := string(htmlb)
+	for _, asset := range []string{"ui220.js", "ui220.css"} { if !strings.Contains(html, asset) { t.Fatalf("index não carrega %s", asset) } }
+	jsb, err := os.ReadFile("frontend/dist/ui220.js"); if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{"CENTRAL DE PROJETOS", "SaveRuralProject", "PrepareRuralProject", "Preparar projeto", "Excluir somente este projeto"} { if !strings.Contains(js, marker) { t.Fatalf("interface 2.2.0 sem marcador %q", marker) } }
 }

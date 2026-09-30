@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 2.1.1 - interface operacional em uma única tela */
+/* ViaVerdeCAR 2.2.0 - interface operacional em uma única tela */
 (()=>{
   const E=id=>document.getElementById(id);
   const A=v=>Array.isArray(v)?v:[];
@@ -57,7 +57,7 @@
       <button class="vv204-brand" id="vv204Home">
         <span class="vv204-brandmark">${icon('leaf')}</span>
         <span><strong>ViaVerdeCAR</strong><small>CONSULTA E ANÁLISE RURAL</small></span>
-        <b id="vv204Version">2.1.1</b>
+        <b id="vv204Version">2.2.0</b>
       </button>
       <div class="vv204-searchbar">
         ${icon('search')}

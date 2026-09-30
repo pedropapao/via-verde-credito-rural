@@ -29,14 +29,14 @@ func newDocumentTestProperty(t *testing.T) (*App, Property) {
 	return a, p
 }
 
-func TestSchemaVersion210(t *testing.T) {
+func TestSchemaVersion220PreservesDocuments(t *testing.T) {
 	a := newV2AutomationTestApp(t)
 	var version int
 	if err := a.db.QueryRow(`SELECT version FROM schema_version LIMIT 1`).Scan(&version); err != nil {
 		t.Fatal(err)
 	}
-	if version != 8 {
-		t.Fatalf("schema esperado=8, obtido=%d", version)
+	if version != 9 {
+		t.Fatalf("schema esperado=9, obtido=%d", version)
 	}
 	for _, table := range []string{"property_documents", "property_document_status", "property_document_context", "property_document_automation"} {
 		var name string

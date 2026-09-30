@@ -1,0 +1,53 @@
+/* ViaVerdeCAR 2.2.0 — Central de Projetos */
+.vv220-root{max-width:1680px;margin:0 auto;padding:22px 24px 30px;color:#20392b}
+.vv220-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:14px}
+.vv220-head>div>span{font-size:10px;font-weight:900;letter-spacing:.08em;color:#61796b}
+.vv220-head h2{margin:4px 0 5px;font-size:25px;color:#223e2e;letter-spacing:-.02em}
+.vv220-head p{margin:0;color:#718078;font-size:13px}
+.vv220-head button,.vv220-toolbar button,.vv220-card-actions button,.vv220-modal-actions button{border:1px solid #d4e1d7;background:#fff;color:#315541;border-radius:9px;padding:10px 13px;font-size:12px;font-weight:800;cursor:pointer}
+.vv220-head button.primary,.vv220-card-actions button.primary,.vv220-modal-actions button.primary{background:#0d8748;border-color:#0d8748;color:#fff}
+.vv220-card-actions button.danger{color:#b23d35;border-color:#edcbc7;background:#fff9f8}
+.vv220-toolbar{display:grid;grid-template-columns:minmax(320px,620px) auto;gap:9px;align-items:center;margin-bottom:12px}
+.vv220-toolbar select{height:42px;border:1px solid #cedbd1;border-radius:9px;background:#fff;padding:0 11px;color:#294638;font-size:12px}
+.vv220-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.vv220-stats article{background:#fff;border:1px solid #d9e5dc;border-radius:13px;padding:15px;box-shadow:0 4px 12px rgba(28,66,43,.035)}
+.vv220-stats span,.vv220-stats strong,.vv220-stats small{display:block}
+.vv220-stats span{font-size:10px;color:#748179}.vv220-stats strong{font-size:22px;color:#284536;margin:3px 0}.vv220-stats small{font-size:11px;color:#7b8780}
+.vv220-list{display:grid;gap:11px}
+.vv220-card{background:#fff;border:1px solid #d9e5dc;border-radius:14px;padding:16px;box-shadow:0 5px 15px rgba(28,66,43,.045)}
+.vv220-card-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.vv220-card-top>div>span{font-size:10px;font-weight:900;color:#708078;letter-spacing:.04em}
+.vv220-card h3{font-size:18px;margin:4px 0 5px;color:#274333}
+.vv220-card p{font-size:12px;color:#718078;margin:0}
+.vv220-badge{font-size:10px;border-radius:999px;padding:6px 9px;background:#eef2ef;color:#62736a;white-space:nowrap}
+.vv220-badge.ok{background:#def3e4;color:#167642}.vv220-badge.warn{background:#fff0d5;color:#9b6208}.vv220-badge.blue{background:#e3efff;color:#1769ba}.vv220-badge.danger{background:#ffe0dd;color:#b52d26}
+.vv220-card-data{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
+.vv220-card-data>div{background:#f6f9f7;border-radius:9px;padding:10px}
+.vv220-card-data small,.vv220-card-data strong{display:block}.vv220-card-data small{font-size:9px;color:#7a8780}.vv220-card-data strong{font-size:13px;color:#2b4637;margin-top:3px}
+.vv220-card-actions{display:flex;gap:7px;flex-wrap:wrap;border-top:1px solid #edf2ee;padding-top:12px}
+.vv220-empty,.vv220-loading,.vv220-error{background:#fff;border:1px solid #d9e5dc;border-radius:14px;padding:26px;text-align:center;color:#718078}
+.vv220-empty{display:grid;gap:4px}.vv220-empty strong{font-size:15px;color:#294638}.vv220-empty span{font-size:12px}
+.vv220-error{border-color:#efcbc8;background:#fff6f4;color:#9c4239}
+.vv220-modal{position:fixed;inset:0;z-index:1400;background:rgba(13,34,22,.48);backdrop-filter:blur(2px);display:grid;place-items:center;padding:20px}
+.vv220-modal-card{width:min(820px,95vw);max-height:90vh;overflow:auto;background:#fff;border:1px solid #dbe5de;border-radius:16px;box-shadow:0 30px 80px rgba(16,45,27,.25)}
+.vv220-modal-head{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;padding:15px 17px;border-bottom:1px solid #edf2ee}
+.vv220-modal-head span{font-size:9px;font-weight:900;letter-spacing:.08em;color:#6b8074}.vv220-modal-head h3{font-size:18px;margin:3px 0 0;color:#294638}
+.vv220-modal-head>button{width:34px;height:34px;border:0;border-radius:8px;background:#f1f5f2;color:#5a6f62;font-size:20px;cursor:pointer}
+.vv220-form{display:grid;grid-template-columns:1fr 1fr;gap:11px;padding:16px}
+.vv220-form label{display:grid;gap:5px;font-size:10px;font-weight:900;color:#5e7065;text-transform:uppercase;letter-spacing:.04em}
+.vv220-form label.wide{grid-column:1/-1}
+.vv220-form input,.vv220-form select,.vv220-form textarea{width:100%;box-sizing:border-box;border:1px solid #cfdcd2;border-radius:8px;padding:9px 10px;background:#fff;font:600 12px/1.35 inherit;color:#2c4637;text-transform:none;letter-spacing:0}
+.vv220-form textarea{resize:vertical}
+.vv220-modal-actions{padding:12px 16px;border-top:1px solid #edf2ee;display:flex;justify-content:flex-end;gap:8px}
+.vv220-prep-card{width:min(760px,95vw)}
+.vv220-readiness{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:9px;padding:16px}
+.vv220-readiness>div{background:#f5f8f6;border:1px solid #e1e9e3;border-radius:10px;padding:12px;display:grid;gap:2px}
+.vv220-readiness strong{font-size:26px;color:#0d7c43}.vv220-readiness b{font-size:18px;color:#294638}.vv220-readiness span,.vv220-readiness small{font-size:10px;color:#728078}
+.vv220-checks{padding:0 16px 16px;display:grid;gap:8px}
+.vv220-checks article{display:grid;grid-template-columns:12px 1fr;gap:9px;border:1px solid #e0e8e2;border-radius:10px;padding:11px;background:#fbfdfb}
+.vv220-checks article i{width:9px;height:9px;border-radius:50%;background:#8e9b94;margin-top:4px}
+.vv220-checks article.ready i{background:#20a85a}.vv220-checks article.pending i{background:#e44c3d}.vv220-checks article.review i{background:#e59a14}
+.vv220-checks strong{font-size:12px;color:#294638}.vv220-checks p{font-size:11px;line-height:1.45;color:#66766d;margin:3px 0}.vv220-checks small{font-size:9px;color:#839088}
+.vv220-scope{margin:0 16px 16px;padding:10px 11px;border-radius:9px;background:#f5f8f6;color:#66766d;font-size:10px;line-height:1.45}
+@media(max-width:900px){.vv220-stats,.vv220-card-data{grid-template-columns:1fr 1fr}.vv220-form{grid-template-columns:1fr}.vv220-form label.wide{grid-column:1}.vv220-readiness{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.vv220-root{padding:14px}.vv220-head{display:grid}.vv220-toolbar,.vv220-stats,.vv220-card-data,.vv220-readiness{grid-template-columns:1fr}.vv220-card-top{display:grid}}
