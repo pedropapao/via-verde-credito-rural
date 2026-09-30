@@ -1,3 +1,19 @@
+ViaVerdeCAR 2.2.2 — Dados Técnicos do Projeto
+
+• Corrige a prontidão para não penalizar duas vezes a mesma situação documental: o resumo geral de Documentos continua visível, mas passa a ser informativo e não entra novamente no cálculo quando os requisitos específicos já são contados.
+• Adiciona dados técnicos próprios por projeto, sem alterar os dados cadastrais do imóvel.
+• Nova tabela rural_project_technical_data com JSON versionável por projeto; migração segura do schema 9 para o schema 10.
+• Projetos agrícolas podem armazenar cultura, safra, período de plantio, produtividade esperada/unidade, solo, ciclo e área beneficiada.
+• Investimentos/aquisições podem armazenar vários itens com descrição, quantidade, unidade, valor unitário e fornecedor; o sistema soma a composição e compara com o valor solicitado.
+• Projetos pecuários podem armazenar quantidade de animais, categoria, peso médio, GMD, ciclo em dias e meta de arrobas.
+• Projetos de irrigação podem armazenar área irrigada, sistema, vazão e fonte de água; outorga continua tratada como documento/regularização.
+• A preparação inteligente passa a validar coerência entre área beneficiada e área do projeto e sinaliza divergência de composição financeira para conferência.
+• Custeio agrícola passa a indicar se os parâmetros técnicos mínimos para a próxima etapa de automação do ZARC estão preenchidos.
+• A tela Central de Projetos ganhou o botão “Dados técnicos” em cada projeto e mantém os blocos visíveis conforme o perfil da operação.
+• Excluir um projeto remove apenas os dados próprios do projeto, inclusive seus dados técnicos; imóvel, CAR, documentos, áreas e análises permanecem preservados.
+• Nenhuma API externa nova foi adicionada nesta versão. A automação usa somente dados locais e integrações já existentes.
+• Central de Projetos 2.2.0, Projeto Inteligente 2.2.1 e Crédito Rural 2.1.1 permanecem preservados.
+
 ViaVerdeCAR 2.2.1 — Projeto Inteligente
 
 • Evolui o botão “Preparar projeto” com um motor local e conservador de regras por atividade e tipo de operação.
