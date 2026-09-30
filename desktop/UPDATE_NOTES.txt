@@ -1,3 +1,18 @@
+ViaVerdeCAR 2.1.2 — Interface Escura Operacional
+
+• Atualização visual inspirada no conceito aprovado pelo usuário: interface escura, limpa e orientada ao imóvel.
+• Nenhuma migração de banco é necessária; a alteração é de interface e navegação.
+• Reativa a barra lateral como navegação principal com Início, Imóveis, CAR, Crédito Rural, Documentos, Pendências, Análises, Mapa, Dossiê e Configurações.
+• As abas horizontais da interface 2.x ficam ocultas visualmente, mas continuam preservadas internamente para reutilizar os fluxos existentes.
+• O Resumo do Imóvel foi reorganizado para destacar somente informações essenciais: identificação, CAR, município, área, situação e mapa.
+• O mapa passa a ocupar a maior área da tela, mantendo as camadas e ferramentas Leaflet existentes.
+• O painel lateral do resumo mostra Crédito Rural, Documentos, Pendências, últimas análises e acesso direto ao Dossiê.
+• A Central de Documentos é consultada somente para montar os contadores do resumo quando o imóvel está salvo.
+• Crédito Rural 2.1.1, ficha completa SICOR/BCB, CAR, ambiental, fundiário, documentos, pendências, PDFs e automações permanecem funcionais e preservados.
+• Modais, formulários, documentos e ficha completa de crédito receberam tratamento visual escuro sem alterar a lógica de negócio.
+• IDs internos usados pelo boot, estado de internet e versão foram preservados mesmo com a nova sidebar.
+• A nova camada visual fica isolada em ui212.js e ui212.css para facilitar manutenção e eventual reversão sem destruir a interface 2.1.1.
+
 ViaVerdeCAR 2.1.1 — Ficha Completa da Operação de Crédito Rural
 
 • Mantém o Raio X inicial rápido e abre o detalhamento financeiro somente sob demanda.
