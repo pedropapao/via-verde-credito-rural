@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 2.2.0 — Central de Projetos */
+/* ViaVerdeCAR 2.2.1 — Projeto Inteligente */
 (function(){
   'use strict';
   var projects=[], filterProperty=0, editing=null, areas=[];
@@ -63,7 +63,7 @@
     var total=projects.length, value=projects.reduce(function(s,p){return s+(Number(p.requested_amount)||0)},0);
     var pending=projects.filter(function(p){return p.status==='bank_pending'||p.status==='review'}).length;
     root.innerHTML=
-      '<div class="vv220-head"><div><span>CENTRAL DE PROJETOS • 2.2.0</span><h2>Projetos e operações do imóvel</h2><p>O projeto reutiliza CAR, áreas, documentos, análises e crédito rural já existentes no ViaVerdeCAR.</p></div><button id="vv220New" class="primary">+ Novo projeto</button></div>'+
+      '<div class="vv220-head"><div><span>CENTRAL DE PROJETOS • PROJETO INTELIGENTE • 2.2.1</span><h2>Projetos e operações do imóvel</h2><p>O projeto reutiliza CAR, áreas, documentos, análises e crédito rural já existentes no ViaVerdeCAR.</p></div><button id="vv220New" class="primary">+ Novo projeto</button></div>'+
       '<div class="vv220-toolbar"><select id="vv220PropertyFilter">'+propertyOptions(filterProperty)+'</select><button id="vv220Refresh">Atualizar lista</button></div>'+
       '<div class="vv220-stats"><article><span>Projetos</span><strong>'+total+'</strong><small>cadastrados no filtro atual</small></article><article><span>Valor solicitado</span><strong>'+money(value)+'</strong><small>soma dos projetos exibidos</small></article><article><span>Em revisão / pendência</span><strong>'+pending+'</strong><small>exigem acompanhamento</small></article></div>'+
       '<div class="vv220-list">'+(projects.length?projects.map(projectCard).join(''):'<div class="vv220-empty"><strong>Nenhum projeto cadastrado.</strong><span>Crie o primeiro projeto e reaproveite os dados que o ViaVerdeCAR já conhece do imóvel.</span></div>')+'</div>';
@@ -100,7 +100,7 @@
       '<label>Banco / cooperativa<input id="vv220FBank" value="'+H(p&&p.bank||'')+'" placeholder="Ex.: Banco do Brasil"></label>'+
       '<label>Linha / programa<input id="vv220FLine" value="'+H(p&&p.credit_line||'')+'" placeholder="Ex.: Pronaf Custeio"></label>'+
       '<label>Tipo de operação<select id="vv220FOperation">'+operationOptions(p&&p.operation_type)+'</select></label>'+
-      '<label>Atividade<input id="vv220FActivity" value="'+H(p&&p.activity||'')+'" placeholder="Ex.: Café, pecuária, soja"></label>'+
+      '<label>Atividade<input id="vv220FActivity" list="vv221ActivityOptions" value="'+H(p&&p.activity||'')+'" placeholder="Ex.: Café, Pecuária, Irrigação"><datalist id="vv221ActivityOptions"><option value="Café"><option value="Agricultura"><option value="Pecuária"><option value="Irrigação"><option value="Soja"><option value="Milho"><option value="Misto"></datalist></label>'+
       '<label>Valor solicitado (R$)<input id="vv220FAmount" type="number" min="0" step="0.01" value="'+Number(p&&p.requested_amount||0)+'"></label>'+
       '<label>Prazo (meses)<input id="vv220FTerm" type="number" min="0" step="1" value="'+Number(p&&p.term_months||0)+'"></label>'+
       '<label>Taxa (% a.a.)<input id="vv220FRate" type="number" min="0" step="0.01" value="'+Number(p&&p.interest_rate_pct||0)+'"></label>'+
@@ -169,15 +169,23 @@
     document.body.appendChild(modal);
     try{
       var r=await appAPI().PrepareRuralProject(id), p=r.project||{};
-      var checks=A(r.checks);
-      modal.innerHTML='<div class="vv220-modal-card vv220-prep-card"><div class="vv220-modal-head"><div><span>PREPARAÇÃO AUTOMÁTICA</span><h3>'+H(p.name||'Projeto')+'</h3></div><button id="vv220Close">×</button></div>'+
+      var checks=A(r.checks), profile=r.smart_profile||{};
+      var smart=checks.filter(function(c){return c.group==='smart'}), base=checks.filter(function(c){return c.group!=='smart'});
+      var rules=A(profile.rules);
+      modal.innerHTML='<div class="vv220-modal-card vv220-prep-card"><div class="vv220-modal-head"><div><span>PROJETO INTELIGENTE • 2.2.1</span><h3>'+H(p.name||'Projeto')+'</h3></div><button id="vv220Close">×</button></div>'+
+        '<div class="vv221-profile '+(profile.ambiguous?'warn':'ok')+'"><div><span>PERFIL DETECTADO</span><strong>'+H(profile.activity_label||'Atividade não classificada')+' • '+H(profile.operation_label||'Operação não informada')+'</strong><p>'+H(profile.message||'')+'</p></div>'+(rules.length?'<div class="vv221-rules">'+rules.map(function(x){return '<b>'+H(x)+'</b>'}).join('')+'</div>':'')+'</div>'+
         '<div class="vv220-readiness"><div><strong>'+Number(r.readiness_pct||0)+'%</strong><span>prontidão operacional</span></div><div><b>'+Number(r.ready||0)+'</b><small>pronto(s)</small></div><div><b>'+Number(r.pending||0)+'</b><small>pendente(s)</small></div><div><b>'+Number(r.review||0)+'</b><small>conferir</small></div></div>'+
-        '<div class="vv220-checks">'+checks.map(function(c){return '<article class="'+H(c.status)+'"><i></i><div><strong>'+H(c.label)+'</strong><p>'+H(c.detail)+'</p><small>'+H(c.source||'')+'</small></div></article>'}).join('')+'</div>'+
+        (smart.length?'<div class="vv221-check-title"><strong>Exigências detectadas para este projeto</strong><span>Aplicadas automaticamente conforme atividade e operação.</span></div><div class="vv220-checks vv221-smart-checks">'+smart.map(renderPrepCheck).join('')+'</div>':'')+
+        '<div class="vv221-check-title"><strong>Conferências gerais do imóvel</strong><span>Dados reaproveitados da estrutura existente.</span></div><div class="vv220-checks">'+base.map(renderPrepCheck).join('')+'</div>'+
         '<div class="vv220-scope">'+H(r.scope||'')+'</div>'+
         '<div class="vv220-modal-actions"><button id="vv220OpenProperty">Abrir imóvel e análises</button><button id="vv220PrepClose" class="primary">Fechar</button></div></div>';
       E('vv220Close').onclick=closeModal;E('vv220PrepClose').onclick=closeModal;
       E('vv220OpenProperty').onclick=function(){closeModal();openPropertyCAR(Number(p.property_id)||0)};
     }catch(e){modal.innerHTML='<div class="vv220-modal-card"><div class="vv220-error">'+H(String(e))+'</div><div class="vv220-modal-actions"><button id="vv220PrepClose">Fechar</button></div></div>';E('vv220PrepClose').onclick=closeModal}
+  }
+
+  function renderPrepCheck(c){
+    return '<article class="'+H(c.status)+' '+(c.group==='smart'?'smart':'')+'"><i></i><div><strong>'+H(c.label)+'</strong><p>'+H(c.detail)+'</p><small>'+H(c.source||'')+'</small></div></article>';
   }
 
   function openPropertyCAR(propertyID){

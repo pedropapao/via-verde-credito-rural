@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion220(t *testing.T) {
-	if AppVersion != "2.2.0" {
+func TestReleaseVersion221(t *testing.T) {
+	if AppVersion != "2.2.1" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.2.0"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.2.0")
+	if !strings.Contains(string(b), `"productVersion": "2.2.1"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.2.1")
 	}
 }
 
@@ -325,4 +325,42 @@ func TestRelease220ProjectCenter(t *testing.T) {
 	jsb, err := os.ReadFile("frontend/dist/ui220.js"); if err != nil { t.Fatal(err) }
 	js := string(jsb)
 	for _, marker := range []string{"CENTRAL DE PROJETOS", "SaveRuralProject", "PrepareRuralProject", "Preparar projeto", "Excluir somente este projeto"} { if !strings.Contains(js, marker) { t.Fatalf("interface 2.2.0 sem marcador %q", marker) } }
+}
+
+
+func TestRelease221SmartProjectRules(t *testing.T) {
+	for _, path := range []string{"project_rules.go", "frontend/dist/ui220.js", "frontend/dist/ui220.css"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("Projeto Inteligente 2.2.1 ausente: %s", path)
+		}
+	}
+	jsb, err := os.ReadFile("frontend/dist/ui220.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"PROJETO INTELIGENTE • 2.2.1",
+		"PERFIL DETECTADO",
+		"Exigências detectadas para este projeto",
+		"vv221ActivityOptions",
+		"smart_profile",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.2.1 sem marcador %q", marker)
+		}
+	}
+	rulesb, err := os.ReadFile("project_rules.go")
+	if err != nil { t.Fatal(err) }
+	rules := string(rulesb)
+	for _, marker := range []string{
+		"ProjectSmartProfile",
+		"buildProjectSmartProfile",
+		"projectSmartChecks",
+		"Outorga / regularização hídrica",
+		"GTA / trânsito animal",
+		"ZARC do novo projeto",
+	} {
+		if !strings.Contains(rules, marker) {
+			t.Fatalf("motor inteligente 2.2.1 sem marcador %q", marker)
+		}
+	}
 }

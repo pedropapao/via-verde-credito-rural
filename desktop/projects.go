@@ -37,6 +37,7 @@ type ProjectPreparationCheck struct {
 	Status string `json:"status"`
 	Detail string `json:"detail"`
 	Source string `json:"source"`
+	Group string `json:"group"`
 }
 
 type ProjectPreparationResult struct {
@@ -52,6 +53,7 @@ type ProjectPreparationResult struct {
 	PublicCreditOps int `json:"public_credit_operations"`
 	PublicCreditValue float64 `json:"public_credit_value"`
 	EnvironmentalHits int `json:"environmental_hits"`
+	SmartProfile ProjectSmartProfile `json:"smart_profile"`
 	Scope string `json:"scope"`
 }
 
@@ -177,7 +179,7 @@ func (a *App) DeleteRuralProject(id int64) error {
 }
 
 func prepCheck(key,label,status,detail,source string) ProjectPreparationCheck {
-	return ProjectPreparationCheck{Key:key,Label:label,Status:status,Detail:detail,Source:source}
+	return ProjectPreparationCheck{Key:key,Label:label,Status:status,Detail:detail,Source:source,Group:"base"}
 }
 
 func projectFieldsReady(p RuralProject) (bool,string) {
@@ -242,7 +244,9 @@ func (a *App) PrepareRuralProject(id int64) (ProjectPreparationResult,error) {
 		} else { out.Checks=append(out.Checks,prepCheck("environment","Análise ambiental","ready","Nenhuma ocorrência foi registrada nas bases que responderam na última consulta.","IBAMA/FUNAI/ICMBio/MMA")) }
 	} else { out.Checks=append(out.Checks,prepCheck("environment","Análise ambiental","review","Consulte o CAR para executar e armazenar os cruzamentos ambientais.","Bases ambientais")) }
 
+	var documentCenter *PropertyDocumentCenter
 	if center,e:=a.GetPropertyDocumentCenter(project.PropertyID); e==nil {
+		documentCenter=&center
 		out.DocumentSummary=center.Summary
 		pending:=center.Summary.Pending+center.Summary.Expired
 		if pending>0 { out.Checks=append(out.Checks,prepCheck("documents","Documentos","pending",fmt.Sprintf("%d pendência(s) documental(is) e %d item(ns) para conferir.",pending,center.Summary.Review),"Central de Documentos")) } else if center.Summary.Review>0 {
@@ -257,6 +261,10 @@ func (a *App) PrepareRuralProject(id int64) (ProjectPreparationResult,error) {
 			out.Checks=append(out.Checks,prepCheck("credit","Crédito rural anterior","ready",fmt.Sprintf("%d operação(ões) pública(s) localizada(s), total R$ %.2f.",x.OperationCount,x.TotalCreditValue),"SICOR/BCB"))
 		} else { out.Checks=append(out.Checks,prepCheck("credit","Crédito rural anterior","review","Não há Raio X SICOR recente em cache. Atualize a análise de Crédito Rural quando necessário.","SICOR/BCB")) }
 	} else { out.Checks=append(out.Checks,prepCheck("credit","Crédito rural anterior","review","CAR ainda não disponível para cruzamento com o SICOR.","SICOR/BCB")) }
+
+	profile,smartChecks:=a.projectSmartChecks(project,documentCenter)
+	out.SmartProfile=profile
+	out.Checks=append(out.Checks,smartChecks...)
 
 	total:=0
 	for _,c:=range out.Checks {
