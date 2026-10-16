@@ -32,3 +32,11 @@
 .themes-warnings{margin-top:10px;padding:10px 12px;border-radius:9px;background:#f2f5f1;border:1px solid #e3e9e2;color:#6c776e;font-size:9px;display:grid;gap:3px}
 @media(max-width:1450px){.themes-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.themes-grid{grid-template-columns:1fr 1fr}}
+
+/* Leaflet local: evita dependência de imagens externas do pacote vendor. */
+.leaflet-control-layers-toggle,
+.leaflet-retina .leaflet-control-layers-toggle {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='none' stroke='%23334b3f' stroke-width='2.2' stroke-linejoin='round' d='M16 5 28 11 16 17 4 11 16 5Zm-12 12 12 6 12-6M4 22l12 6 12-6'/%3E%3C/svg%3E") !important;
+  background-size: 24px 24px !important;
+}
+.leaflet-default-icon-path { background-image: none !important; }
