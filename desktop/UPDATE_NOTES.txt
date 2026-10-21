@@ -1,3 +1,15 @@
+ViaVerdeCAR 2.3.1 — Exportações de Crédito Rural
+
+• Adiciona exportação KML das glebas publicadas no SICOR/BCB para operações vinculadas ao CAR.
+• O KML inclui somente geometrias efetivamente localizadas nos microdados SICOR; ausência de geometria é informada e nunca interpretada como ausência de financiamento.
+• O KML organiza as glebas por REF BACEN e ordem/destinação e leva atributos de instituição, programa, produto, valor contratado, área da gleba e percentual dentro do CAR.
+• Adiciona PDF completo de Crédito Rural do CAR com resumo financeiro e detalhamento de todas as operações públicas localizadas.
+• O PDF reúne identificação/enquadramento, valores, taxas, liberações, desembolsos, saldos, desclassificação, renegociação/prorrogação, produção, Proagro, ZARC e glebas publicadas.
+• Novos botões “KML das glebas” e “PDF completo” ficam na Ficha Completa SICOR/BCB.
+• As exportações reutilizam a inteligência financeira/cache já existente; não criam histórico novo nem duplicam dados.
+• Nenhuma migração de banco nesta versão; schema permanece 11.
+• ViaVerdeCAR 2.3.0 e todos os módulos anteriores permanecem preservados.
+
 ViaVerdeCAR 2.3.0 — Automação Técnica do Projeto
 
 • Cria o botão “Automatizar projeto”, mantendo “Preparar projeto (local)” como alternativa rápida e sem consultas externas.
