@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 2.1.1 - ficha completa de operacao de credito rural */
+/* ViaVerdeCAR 2.3.1 - ficha completa de credito rural + exportacoes */
 (function(){
   'use strict';
 
@@ -76,7 +76,7 @@
     var panel=document.createElement('article');
     panel.id='vv211CreditPanel';panel.className='vv204-panel vv211-panel';
     panel.innerHTML='<div class="vv211-panel-head"><div><span>FICHA COMPLETA • SICOR/BCB</span><h3>Detalhamento das operações vinculadas ao CAR</h3><p>Taxas, liberações, saldos, situação, produção, renegociação, Proagro, ZARC e glebas quando publicados pelo Banco Central.</p></div>'+
-      '<button id="vv211Load" '+(ops.length?'':'disabled')+'>'+icon211('database')+'<span>'+(S.data?'Atualizar inteligência':'Carregar detalhes')+'</span></button></div>'+
+      '<div class="vv211-head-actions"><button id="vv211Load" '+(ops.length?'':'disabled')+'>'+icon211('database')+'<span>'+(S.data?'Atualizar inteligência':'Carregar detalhes')+'</span></button><button id="vv231KML" '+(ops.length?'':'disabled')+'>'+icon211('file')+'<span>KML das glebas</span></button><button id="vv231PDF" '+(ops.length?'':'disabled')+'>'+icon211('file')+'<span>PDF completo</span></button></div></div>'+
       '<div class="vv211-panel-note"><strong>Leitura correta:</strong> são registros públicos identificados no SICOR/BCB. Ausência de registro não prova ausência de financiamento, dívida, seguro ou renegociação.</div>'+
       (S.data?summaryHTML(S.data):'<div class="vv211-panel-state">A consulta detalhada é executada somente quando solicitada para preservar a velocidade do Raio X inicial.</div>');
     pane.insertBefore(panel,grid);
@@ -90,6 +90,8 @@
     }
 
     if(E('vv211Load'))E('vv211Load').onclick=function(){load211(r,true,'')};
+    if(E('vv231KML'))E('vv231KML').onclick=function(){exportCredit211('kml',r)};
+    if(E('vv231PDF'))E('vv231PDF').onclick=function(){exportCredit211('pdf',r)};
     pane.querySelectorAll('[data-vv211-op]').forEach(function(b){
       b.onclick=function(){
         var k=b.getAttribute('data-vv211-op')||'';
@@ -97,6 +99,30 @@
         else load211(r,false,k);
       };
     });
+  }
+
+  async function exportCredit211(kind,r){
+    if(S.loading)return;
+    var propertyID=Number(r&&r.property_id)||0;
+    if(!propertyID){try{toast('Salve ou selecione o imóvel antes de exportar.',true)}catch(_e){}return}
+    S.loading=true;S.car=String(r&&r.car&&r.car.car||'');
+    showProgress211();startProgress211();
+    try{
+      if(E('vv211PTitle'))E('vv211PTitle').textContent=kind==='kml'?'Preparando KML das glebas SICOR':'Preparando PDF completo de crédito';
+      if(E('vv211PDetail'))E('vv211PDetail').textContent='Conferindo a inteligência financeira pública vinculada ao CAR.';
+      var path=kind==='kml'
+        ?await api211().ExportSICORGlebasKML(propertyID,false)
+        :await api211().ExportCreditIntelligencePDF(propertyID,false);
+      stopProgress211();closeModal211();
+      try{toast((kind==='kml'?'KML das glebas SICOR salvo. ':'PDF completo de crédito salvo. ')+path)}catch(_e){}
+    }catch(e){
+      stopProgress211();
+      var msg=String(e||'');
+      if(/cancelad/i.test(msg)){closeModal211();return}
+      var card=E('vv211Modal')&&E('vv211Modal').querySelector('.vv211-modal-card');
+      if(card)card.innerHTML='<div class="vv211-error">'+icon211('alert')+'<h3>Exportação não concluída</h3><p>'+H(msg)+'</p><div><button id="vv211Cancel">Fechar</button></div></div>';
+      if(E('vv211Cancel'))E('vv211Cancel').onclick=closeModal211;
+    }finally{S.loading=false}
   }
 
   function stopProgress211(){
