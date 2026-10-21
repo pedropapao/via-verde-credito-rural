@@ -57,6 +57,21 @@ func (a *App) ExportEnvironmentalEvidenceJSON(propertyID int64, force bool)(stri
 	return path,nil
 }
 
+func reportCheckedCount(checked bool,count int)string{
+	if !checked{return "Não verificado"}
+	return fmt.Sprintf("%d",count)
+}
+
+func reportCheckedDetail(checked bool,detail string)string{
+	if !checked{return "base indisponível nesta execução"}
+	return detail
+}
+
+func reportCheckedIntersectionDetail(checked bool,count int,label string)string{
+	if !checked{return "base indisponível nesta execução"}
+	return fmt.Sprintf("%d interseção(ões) com %s no CAR",count,label)
+}
+
 func buildEnvironmentalTechnicalPDF(p Property,car CARResult,intel EnvironmentalIntelligenceResult,alertFilter string)[]byte{
 	// O relatório usa apenas fontes obtidas automaticamente nesta execução.
 	car.Themes = SICARThemesSummary{}
@@ -72,7 +87,9 @@ func buildEnvironmentalTechnicalPDF(p Property,car CARResult,intel Environmental
 	var pages []string
 	page:=1
 	pages=append(pages,environmentalCoverPage(p,car,intel,title,subtitle,alerts,page));page++
-	pages=append(pages,environmentalProfilePage(p,car,intel,title,page));page++
+	if intel.Profile.LandCoverAvailable || len(intel.Profile.LandCoverClasses)>0 {
+		pages=append(pages,environmentalProfilePage(p,car,intel,title,page));page++
+	}
 	pages=append(pages,environmentalFirePage(p,car,intel,title,page));page++
 	pages=append(pages,environmentalMapPage(p,car,intel,title,alerts,page));page++
 	for _,a:=range alerts{
@@ -105,9 +122,9 @@ func environmentalCoverPage(p Property,car CARResult,intel EnvironmentalIntellig
 	envMetricBox(&c,304,y-60,122,54,"Alta prioridade",fmt.Sprintf("%d",s.HighAttentionAlerts),"alerta(s) para conferência")
 	envMetricBox(&c,436,y-60,119,54,"Última detecção",dateBR(s.LatestDetection),"MapBiomas Alerta")
 	y-=76
-	envMetricBox(&c,40,y-60,122,54,"Embargo IBAMA",fmt.Sprintf("%d",s.AlertsOverIBAMA),"alerta(s) com interseção")
-	envMetricBox(&c,172,y-60,122,54,"Terra Indígena",fmt.Sprintf("%d",s.AlertsOverIndigenousLand),"alerta(s) com interseção")
-	envMetricBox(&c,304,y-60,122,54,"UC Federal",fmt.Sprintf("%d",s.AlertsOverFederalUC),"alerta(s) com interseção")
+	envMetricBox(&c,40,y-60,122,54,"Embargo IBAMA",reportCheckedCount(intel.Environment.IBAMAChecked,s.AlertsOverIBAMA),reportCheckedDetail(intel.Environment.IBAMAChecked,"alerta(s) com interseção"))
+	envMetricBox(&c,172,y-60,122,54,"Terra Indígena",reportCheckedCount(intel.Environment.FUNAIChecked,s.AlertsOverIndigenousLand),reportCheckedDetail(intel.Environment.FUNAIChecked,"alerta(s) com interseção"))
+	envMetricBox(&c,304,y-60,122,54,"UC Federal",reportCheckedCount(intel.Environment.ICMBioChecked,s.AlertsOverFederalUC),reportCheckedDetail(intel.Environment.ICMBioChecked,"alerta(s) com interseção"))
 	mcr:="Não listado"
 	if intel.Environment.MCRListed{mcr="LISTADO"}
 	if !intel.Environment.MCRChecked{mcr="Não verificado"}
@@ -238,9 +255,9 @@ func environmentalMapPage(p Property,car CARResult,intel EnvironmentalIntelligen
 	envSourceRow(&c,&y,"INPE / Programa Queimadas",fireStatus,fireValue+" • "+fireDetail)
 	mbStatus,mbDetail:=mapBiomasReportState(intel.MapBiomas)
 	envSourceRow(&c,&y,"MapBiomas Alerta",mbStatus,mbDetail)
-	envSourceRow(&c,&y,"IBAMA / PAMGIA",sourceState(intel.Environment.IBAMAChecked,intel.Environment.IBAMAEmbargoCount),fmt.Sprintf("%d interseção(ões) com embargo no CAR",intel.Environment.IBAMAEmbargoCount))
-	envSourceRow(&c,&y,"FUNAI",sourceState(intel.Environment.FUNAIChecked,intel.Environment.IndigenousCount),fmt.Sprintf("%d interseção(ões) com Terra Indígena no CAR",intel.Environment.IndigenousCount))
-	envSourceRow(&c,&y,"ICMBio",sourceState(intel.Environment.ICMBioChecked,intel.Environment.FederalUCCount),fmt.Sprintf("%d interseção(ões) com UC federal no CAR",intel.Environment.FederalUCCount))
+	envSourceRow(&c,&y,"IBAMA / PAMGIA",sourceState(intel.Environment.IBAMAChecked,intel.Environment.IBAMAEmbargoCount),reportCheckedIntersectionDetail(intel.Environment.IBAMAChecked,intel.Environment.IBAMAEmbargoCount,"embargo"))
+	envSourceRow(&c,&y,"FUNAI",sourceState(intel.Environment.FUNAIChecked,intel.Environment.IndigenousCount),reportCheckedIntersectionDetail(intel.Environment.FUNAIChecked,intel.Environment.IndigenousCount,"Terra Indígena"))
+	envSourceRow(&c,&y,"ICMBio",sourceState(intel.Environment.ICMBioChecked,intel.Environment.FederalUCCount),reportCheckedIntersectionDetail(intel.Environment.ICMBioChecked,intel.Environment.FederalUCCount,"UC federal"))
 	envSourceRow(&c,&y,"MMA / MCR-PRODES",sourceState(intel.Environment.MCRChecked,boolInt(intel.Environment.MCRListed)),mcrSourceSummary(intel.Environment))
 	envReportFooter(&c,page)
 	return c.b.String()
@@ -299,7 +316,7 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 	envReportHeader(&c,title,"Metodologia, rastreabilidade e limitações",page)
 	y:=718.0
 	envSection(&c,&y,"METODOLOGIA")
-	method:="1) identificação do imóvel pela geometria pública do CAR; 2) identificação automática do bioma no ponto central do imóvel; 3) amostragem espacial de pontos internos ao CAR e classificação no ESA WorldCover 2021; 4) consulta automática ao Programa Queimadas/INPE e cruzamento espacial dos focos com o polígono do CAR; 5) manutenção das consultas automáticas MapBiomas Alerta, IBAMA/PAMGIA, FUNAI, ICMBio e MMA/MCR já existentes."
+	method:="1) identificação do imóvel pela geometria pública do CAR; 2) identificação automática do bioma no ponto central do imóvel; 3) quando disponível, amostragem espacial no ESA WorldCover 2021 para triagem de cobertura do solo; 4) consulta automática ao Programa Queimadas/INPE e cruzamento espacial dos focos com o polígono do CAR; 5) manutenção das consultas automáticas MapBiomas Alerta, IBAMA/PAMGIA, FUNAI, ICMBio e MMA/MCR."
 	c.b.WriteString("0.15 0.23 0.19 rg\n")
 	y=c.wrapped(42,y,8,false,method,104,11)
 	y-=10
@@ -334,9 +351,10 @@ func environmentalSourcesPage(p Property,car CARResult,intel EnvironmentalIntell
 	}
 	for _,v:=range limits{y=c.wrapped(46,y,7.4,false,"• "+v,100,10);y-=3}
 
-	if len(intel.Warnings)>0 && y>145{
-		envSection(&c,&y,"OCORRÊNCIAS DA CONSULTA")
-		for _,v:=range intel.Warnings{
+	reportWarnings:=professionalReportWarnings(intel.Warnings)
+	if len(reportWarnings)>0 && y>145{
+		envSection(&c,&y,"PONTOS DE ATENÇÃO DA CONSULTA")
+		for _,v:=range reportWarnings{
 			if y<105{break}
 			y=c.wrapped(46,y,6.8,false,"• "+v,102,9);y-=2
 		}
@@ -389,18 +407,11 @@ func environmentalConclusionText(intel EnvironmentalIntelligenceResult,alerts []
 }
 
 func envReportHeader(c *pdfCanvas,title,subtitle string,page int){
-	c.b.WriteString("0.055 0.42 0.29 rg\n");c.rect(0,760,595,82,true)
-	c.b.WriteString("1 1 1 rg\n");c.text(38,808,15,true,"VIA VERDE CAR")
-	c.text(38,788,9,true,title);c.text(38,774,7,false,subtitle)
-	c.b.WriteString("0.10 0.18 0.14 rg\n")
-	c.text(520,744,6.5,false,fmt.Sprintf("p. %d",page))
+	proHeader(c,title,subtitle,page)
 }
 
 func envReportFooter(c *pdfCanvas,page int){
-	c.b.WriteString("0.82 0.87 0.84 RG 0.5 w\n");c.line(40,45,555,45)
-	c.b.WriteString("0.35 0.42 0.39 rg\n")
-	c.text(40,30,6.3,false,"Gerado em "+time.Now().Format("02/01/2006 15:04")+" • Via Verde CAR v"+AppVersion+" • relatório técnico auxiliar")
-	c.text(520,30,6.3,false,fmt.Sprintf("%d",page))
+	proFooter(c,page)
 }
 
 func envSection(c *pdfCanvas,y *float64,title string){

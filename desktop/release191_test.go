@@ -6,21 +6,488 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion195(t *testing.T) {
-	if AppVersion != "1.9.5" {
+func TestReleaseVersion231(t *testing.T) {
+	if AppVersion != "2.3.1" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "1.9.5"`) {
-		t.Fatal("wails.json não está alinhado com a versão 1.9.5")
+	if !strings.Contains(string(b), `"productVersion": "2.3.1"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.3.1")
 	}
 }
 
 func TestReleaseFirePipeline191(t *testing.T) {
 	if fireStatusFound == "" || fireStatusNone == "" || fireStatusUnavailable == "" || fireStatusNotRun == "" {
 		t.Fatal("estados da consulta de focos não podem ficar vazios")
+	}
+}
+
+func TestReleaseLegacyShellAssetsRemainVersioned(t *testing.T) {
+	for _, path := range []string{
+		"frontend/dist/ui201.css", "frontend/dist/ui201.js",
+		"frontend/dist/ui202.css", "frontend/dist/ui202.js",
+	} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("asset legado ausente: %s", path)
+		}
+	}
+}
+
+func TestRelease204LoadsOnlyOperationalShell(t *testing.T) {
+	b, err := os.ReadFile("frontend/dist/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	html := string(b)
+	for _, asset := range []string{"ui200.js", "ui200.css", "ui201.js", "ui201.css", "ui202.js", "ui202.css"} {
+		if strings.Contains(html, asset) {
+			t.Fatalf("shell legado não deve ser carregado na 2.0.4: %s", asset)
+		}
+	}
+	for _, asset := range []string{"ui204.js", "ui204.css"} {
+		if !strings.Contains(html, asset) {
+			t.Fatalf("shell 2.0.4 obrigatório não carregado: %s", asset)
+		}
+	}
+}
+
+func TestRelease204UsesSVGAndSingleScreenTabs(t *testing.T) {
+	jsb, err := os.ReadFile("frontend/dist/ui204.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	js := string(jsb)
+	for _, marker := range []string{
+		"<svg class=\"vv204-icon",
+		"Resumo",
+		"Ambiental",
+		"Fundiário",
+		"Crédito Rural",
+		"Mapa",
+		"Documentos",
+		"Relatórios",
+		"BANCO CENTRAL",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.0.4 sem marcador %q", marker)
+		}
+	}
+	cssb, err := os.ReadFile("frontend/dist/ui204.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(cssb)
+	if !strings.Contains(css, "body.vv204 .sidebar{display:none!important}") {
+		t.Fatal("interface 2.0.4 deve remover a sidebar fixa da experiência principal")
+	}
+}
+
+func TestRelease203BCBModulePreserved(t *testing.T) {
+	for _, path := range []string{"bcb_public.go", "bcb_public_test.go"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("módulo BCB ausente: %s", path)
+		}
+	}
+}
+
+
+func TestRelease205ProfessionalPDFsPreserved(t *testing.T) {
+	if st, err := os.Stat("professional_reports.go"); err != nil || st.Size() == 0 {
+		t.Fatal("módulo de PDFs profissionais ausente")
+	}
+	b, err := os.ReadFile("frontend/dist/ui204.js")
+	if err != nil { t.Fatal(err) }
+	js := string(b)
+	for _, marker := range []string{
+		"Gerar Demonstrativo PDF",
+		"Gerar Laudo PDF",
+		"Gerar Evidências PDF",
+		"Gerar Dossiê PDF",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface sem saída PDF %q", marker)
+		}
+	}
+}
+
+
+func TestRelease206PDFsDoNotRequireSavedProperty(t *testing.T) {
+	b, err := os.ReadFile("frontend/dist/ui204.js")
+	if err != nil { t.Fatal(err) }
+	js := string(b)
+	for _, marker := range []string{
+		"ExportCARAutomationPDF(r)",
+		"ExportEnvironmentalAutomationPDF(r)",
+		"ExportEnvironmentalAutomationEvidencePDF(r)",
+		"ExportPropertyAutomationDossierPDF(r)",
+		"Salvar/vincular o imóvel é opcional",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("consulta avulsa sem integração PDF %q", marker)
+		}
+	}
+	if strings.Contains(js, "const can=!!r.property_id;") {
+		t.Fatal("relatórios 2.0.6 não podem depender de property_id")
+	}
+}
+
+
+func TestRelease207KeepsInternalErrorsOutOfProfessionalPDFs(t *testing.T) {
+	b, err := os.ReadFile("professional_reports.go")
+	if err != nil { t.Fatal(err) }
+	src := string(b)
+	for _, marker := range []string{
+		"professionalReportWarnings",
+		"professionalSourceDetail",
+		"reportAutomationSourceStatus",
+		"Fonte externa indisponível nesta execução",
+	} {
+		if !strings.Contains(src, marker) {
+			t.Fatalf("acabamento PDF 2.0.7 sem marcador %q", marker)
+		}
+	}
+}
+
+
+func TestRelease208DocumentCenterAndPendingTab(t *testing.T) {
+	if st, err := os.Stat("documents.go"); err != nil || st.Size() == 0 {
+		t.Fatal("módulo de documentos 2.0.8 ausente")
+	}
+	jsb, err := os.ReadFile("frontend/dist/ui204.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"Central de documentos do imóvel",
+		"Pendências",
+		"GetPropertyDocumentCenter",
+		"AddPropertyDocument",
+		"SetPropertyDocumentStatus",
+		"ListPropertyDocumentHistory",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.0.8 sem marcador %q", marker)
+		}
+	}
+	appb, err := os.ReadFile("app.go")
+	if err != nil { t.Fatal(err) }
+	app := string(appb)
+	for _, marker := range []string{"property_documents", "property_document_status", "property_document_context", "property_document_automation"} {
+		if !strings.Contains(app, marker) {
+			t.Fatalf("migração documental 2.0.8 sem marcador %q", marker)
+		}
+	}
+}
+
+func TestRelease208DossierIncludesDocumentsPage(t *testing.T) {
+	b, err := os.ReadFile("professional_reports.go")
+	if err != nil { t.Fatal(err) }
+	src := string(b)
+	for _, marker := range []string{
+		"dossierDocumentsPage",
+		"Documentos, pendências e estado do dossiê",
+		"GetPropertyDocumentCenter",
+	} {
+		if !strings.Contains(src, marker) {
+			t.Fatalf("dossiê 2.0.8 sem integração documental %q", marker)
+		}
+	}
+}
+
+
+func TestRelease209SmartPending(t *testing.T) {
+	jsb, err := os.ReadFile("frontend/dist/ui204.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"Pendências inteligentes",
+		"SavePropertyDocumentContext",
+		"OBRIGATÓRIO PELO CONTEXTO",
+		"Automático / não sei",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.0.9 sem marcador %q", marker)
+		}
+	}
+	db, err := os.ReadFile("documents.go")
+	if err != nil { t.Fatal(err) }
+	src := string(db)
+	for _, marker := range []string{
+		"DocumentProjectContext",
+		"documentRequirements",
+		"requirementByTriState",
+		"RequirementReason",
+	} {
+		if !strings.Contains(src, marker) {
+			t.Fatalf("backend 2.0.9 sem marcador %q", marker)
+		}
+	}
+}
+
+
+func TestRelease210DocumentAutomation(t *testing.T) {
+	jsb, err := os.ReadFile("frontend/dist/ui204.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"AUTOMAÇÃO DOCUMENTAL • 2.1.0",
+		"RunPropertyDocumentAutomation",
+		"Executar automação",
+		"Fontes indisponíveis",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.1.0 sem marcador %q", marker)
+		}
+	}
+	db, err := os.ReadFile("documents.go")
+	if err != nil { t.Fatal(err) }
+	src := string(db)
+	for _, marker := range []string{
+		"PropertyDocumentAutomationResult",
+		"probeOfficialDocumentSource",
+		"GetLastPropertyDocumentAutomation",
+		"extractDocumentReferenceYear",
+		"Fonte oficial indisponível nesta execução",
+	} {
+		if !strings.Contains(src, marker) {
+			t.Fatalf("backend 2.1.0 sem marcador %q", marker)
+		}
+	}
+	pdf, err := os.ReadFile("professional_reports.go")
+	if err != nil { t.Fatal(err) }
+	if !strings.Contains(string(pdf), "Última automação documental") {
+		t.Fatal("dossiê 2.1.0 sem resumo da automação documental")
+	}
+}
+
+
+func TestRelease211CreditOperationDetails(t *testing.T) {
+	for _, path := range []string{"frontend/dist/ui211.js", "frontend/dist/ui211.css"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("asset 2.1.1 ausente: %s", path)
+		}
+	}
+	htmlb, err := os.ReadFile("frontend/dist/index.html")
+	if err != nil { t.Fatal(err) }
+	html := string(htmlb)
+	for _, asset := range []string{"ui211.js", "ui211.css"} {
+		if !strings.Contains(html, asset) {
+			t.Fatalf("index não carrega %s", asset)
+		}
+	}
+
+	jsb, err := os.ReadFile("frontend/dist/ui211.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"FICHA COMPLETA • SICOR/BCB",
+		"Ver operação completa",
+		"GetCreditIntelligenceProgress",
+		"Área financiada / glebas",
+		"Fontes oficiais e rastreabilidade",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.1.1 sem marcador %q", marker)
+		}
+	}
+
+	srcb, err := os.ReadFile("credit_intelligence.go")
+	if err != nil { t.Fatal(err) }
+	src := string(srcb)
+	for _, marker := range []string{
+		"creditIntelligenceResultCachePath",
+		"scanCreditOperationComplement",
+		"SICOR_COMPLEMENTO_OPERACAO_BASICA.gz",
+		"VL_PARC_CREDITO",
+		"VL_PERC_RISCO_STN",
+		"REF_BACEN_EFETIVO",
+		"Glebas",
+	} {
+		if !strings.Contains(src, marker) {
+			t.Fatalf("backend 2.1.1 sem marcador %q", marker)
+		}
+	}
+}
+
+
+func TestRelease220ProjectCenter(t *testing.T) {
+	for _, path := range []string{"projects.go", "frontend/dist/ui220.js", "frontend/dist/ui220.css"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 { t.Fatalf("Central de Projetos ausente: %s", path) }
+	}
+	appb, err := os.ReadFile("app.go"); if err != nil { t.Fatal(err) }
+	app := string(appb)
+	for _, marker := range []string{"rural_projects", "idx_rural_projects_property", "version=9"} { if !strings.Contains(app, marker) { t.Fatalf("migração 2.2.0 sem marcador %q", marker) } }
+	htmlb, err := os.ReadFile("frontend/dist/index.html"); if err != nil { t.Fatal(err) }
+	html := string(htmlb)
+	for _, asset := range []string{"ui220.js", "ui220.css"} { if !strings.Contains(html, asset) { t.Fatalf("index não carrega %s", asset) } }
+	jsb, err := os.ReadFile("frontend/dist/ui220.js"); if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{"CENTRAL DE PROJETOS", "SaveRuralProject", "PrepareRuralProject", "Preparar projeto", "Excluir somente este projeto"} { if !strings.Contains(js, marker) { t.Fatalf("interface 2.2.0 sem marcador %q", marker) } }
+}
+
+
+func TestRelease221SmartProjectRules(t *testing.T) {
+	for _, path := range []string{"project_rules.go", "frontend/dist/ui220.js", "frontend/dist/ui220.css"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("Projeto Inteligente 2.2.1 ausente: %s", path)
+		}
+	}
+	jsb, err := os.ReadFile("frontend/dist/ui220.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"PROJETO INTELIGENTE",
+		"PERFIL DETECTADO",
+		"Exigências detectadas para este projeto",
+		"vv221ActivityOptions",
+		"smart_profile",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.2.1 sem marcador %q", marker)
+		}
+	}
+	rulesb, err := os.ReadFile("project_rules.go")
+	if err != nil { t.Fatal(err) }
+	rules := string(rulesb)
+	for _, marker := range []string{
+		"ProjectSmartProfile",
+		"buildProjectSmartProfile",
+		"projectSmartChecks",
+		"Outorga / regularização hídrica",
+		"GTA / trânsito animal",
+		"ZARC do novo projeto",
+	} {
+		if !strings.Contains(rules, marker) {
+			t.Fatalf("motor inteligente 2.2.1 sem marcador %q", marker)
+		}
+	}
+}
+
+
+func TestRelease222ProjectTechnicalData(t *testing.T) {
+	for _, path := range []string{"project_technical.go", "frontend/dist/ui220.js", "frontend/dist/ui220.css"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("Dados Técnicos 2.2.2 ausentes: %s", path)
+		}
+	}
+	appb, err := os.ReadFile("app.go")
+	if err != nil { t.Fatal(err) }
+	app := string(appb)
+	for _, marker := range []string{"rural_project_technical_data", "version=10"} {
+		if !strings.Contains(app, marker) { t.Fatalf("migração 2.2.2 sem marcador %q", marker) }
+	}
+	jsb, err := os.ReadFile("frontend/dist/ui220.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"Dados técnicos",
+		"SaveRuralProjectTechnicalData",
+		"GetRuralProjectTechnicalData",
+		"DADOS TÉCNICOS • 2.2.2",
+		"Resumos informativos não entram duas vezes na prontidão",
+	} {
+		if !strings.Contains(js, marker) { t.Fatalf("interface 2.2.2 sem marcador %q", marker) }
+	}
+	srcb, err := os.ReadFile("project_technical.go")
+	if err != nil { t.Fatal(err) }
+	src := string(srcb)
+	for _, marker := range []string{
+		"ProjectTechnicalData",
+		"ProjectTechnicalItem",
+		"projectTechnicalChecks",
+		"technical_zarc_input",
+		"Dados de irrigação",
+	} {
+		if !strings.Contains(src, marker) { t.Fatalf("backend técnico 2.2.2 sem marcador %q", marker) }
+	}
+}
+
+
+func TestRelease230TechnicalAutomation(t *testing.T) {
+	for _, path := range []string{
+		"project_automation.go", "project_integrations.go", "project_dossier.go",
+		"frontend/dist/ui230.js", "frontend/dist/ui230.css",
+	} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("Automação Técnica 2.3.0 ausente: %s", path)
+		}
+	}
+	appb, err := os.ReadFile("app.go")
+	if err != nil { t.Fatal(err) }
+	app := string(appb)
+	for _, marker := range []string{"rural_project_automation", "version=11"} {
+		if !strings.Contains(app, marker) { t.Fatalf("migração 2.3.0 sem marcador %q", marker) }
+	}
+	htmlb, err := os.ReadFile("frontend/dist/index.html")
+	if err != nil { t.Fatal(err) }
+	html := string(htmlb)
+	for _, asset := range []string{"ui230.js", "ui230.css"} {
+		if !strings.Contains(html, asset) { t.Fatalf("index não carrega %s", asset) }
+	}
+	if strings.Index(html, "ui230.js") < strings.Index(html, "ui220.js") || strings.Index(html, "ui230.css") < strings.Index(html, "ui220.css") {
+		t.Fatal("automação 2.3.0 deve ser carregada depois da Central de Projetos 2.2.x")
+	}
+	jsb, err := os.ReadFile("frontend/dist/ui230.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"AUTOMAÇÃO TÉCNICA • 2.3.0",
+		"RunRuralProjectAutomation",
+		"ExportRuralProjectDossierPDF",
+		"Configurar fontes",
+		"SATVeg • NDVI",
+		"ANA • HidroWebService",
+	} {
+		if !strings.Contains(js, marker) { t.Fatalf("interface 2.3.0 sem marcador %q", marker) }
+	}
+	srcb, err := os.ReadFile("project_integrations.go")
+	if err != nil { t.Fatal(err) }
+	src := string(srcb)
+	for _, marker := range []string{
+		"api.cnptia.embrapa.br/agritec/v2",
+		"api.cnptia.embrapa.br/satveg/v2",
+		"hidrowebservice/EstacoesTelemetricas",
+		"OAUth/v1",
+		"seriespoligono",
+	} {
+		if !strings.Contains(src, marker) { t.Fatalf("integração 2.3.0 sem marcador %q", marker) }
+	}
+}
+
+
+func TestRelease231CreditExports(t *testing.T) {
+	for _, path := range []string{"credit_exports.go", "credit_exports_test.go", "frontend/dist/ui211.js"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("exportação de crédito 2.3.1 ausente: %s", path)
+		}
+	}
+	jsb, err := os.ReadFile("frontend/dist/ui211.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"KML das glebas",
+		"PDF completo",
+		"ExportSICORGlebasKML",
+		"ExportCreditIntelligencePDF",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.3.1 sem marcador %q", marker)
+		}
+	}
+	srcb, err := os.ReadFile("credit_exports.go")
+	if err != nil { t.Fatal(err) }
+	src := string(srcb)
+	for _, marker := range []string{
+		"buildSICORGlebasKML",
+		"Glebas_SICOR_",
+		"buildCreditIntelligencePDF",
+		"Credito_Rural_SICOR_",
+		"GLEBAS FINANCIADAS PUBLICADAS",
+	} {
+		if !strings.Contains(src, marker) {
+			t.Fatalf("backend 2.3.1 sem marcador %q", marker)
+		}
 	}
 }

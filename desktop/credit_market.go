@@ -27,6 +27,7 @@ type CreditMarketContext struct {
 	MunicipalProducts  []CreditMarketItem `json:"municipal_products"`
 	StateInstitutions  []CreditMarketItem `json:"state_institutions"`
 	StatePrograms      []CreditMarketItem `json:"state_programs"`
+	NationalSources    []CreditMarketItem `json:"national_sources"`
 	SourceURL          string             `json:"source_url"`
 	Message            string             `json:"message"`
 	Warnings           []string           `json:"warnings"`
@@ -74,10 +75,23 @@ func queryCreditMarketContext(ctx context.Context, municipality, uf, municipalit
 			rows = filterMarketUFRows(rows, uf, strconv.Itoa(year))
 			out.StatePrograms = append(out.StatePrograms, aggregateMarketRows(rows, "UF", "Programa", strconv.Itoa(year), "program")...)
 		}
+
+		rows, err = queryMarketRows(ctx, "FonteRecursos", []string{
+			fmt.Sprintf("AnoEmissao eq '%s'", strconv.Itoa(year)),
+			"",
+		})
+		if err != nil {
+			out.Warnings = append(out.Warnings, fmt.Sprintf("fontes de recursos %d: %v", year, err))
+		} else {
+			anySuccess = true
+			rows = filterMarketYearRows(rows, strconv.Itoa(year))
+			out.NationalSources = append(out.NationalSources, aggregateMarketRows(rows, "Brasil", "Fonte de recursos", strconv.Itoa(year), "resource")...)
+		}
 	}
 	out.MunicipalProducts = topMarketItems(out.MunicipalProducts, 12)
 	out.StateInstitutions = topMarketItems(out.StateInstitutions, 10)
 	out.StatePrograms = topMarketItems(out.StatePrograms, 10)
+	out.NationalSources = topMarketItems(out.NationalSources, 10)
 	out.Available = anySuccess
 	if anySuccess {
 		out.Message = "Contexto agregado da MDCR. Produtos são filtrados pelo município; instituições e programas usam as visões públicas por UF. Esses dados descrevem o mercado, não o risco de crédito individual do produtor."
@@ -176,6 +190,18 @@ func filterMarketUFRows(rows []map[string]any, uf, year string) []map[string]any
 	return out
 }
 
+func filterMarketYearRows(rows []map[string]any, year string) []map[string]any {
+	var out []map[string]any
+	for _, r := range rows {
+		y := marketYear(r)
+		if year != "" && y != "" && y != year {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out
+}
+
 func aggregateMarketRows(rows []map[string]any, scope, kind, year, mode string) []CreditMarketItem {
 	type key struct{ label,detail string }
 	grouped:=map[key]*CreditMarketItem{}
@@ -202,6 +228,8 @@ func marketLabels(r map[string]any, mode string)(string,string){
 		return firstNonEmptyStringMapValue(r,"nomeIF","NomeIF","IF","InstituicaoFinanceira","Instituição Financeira","NomeInstituicao","NomeInstituição"), firstNonEmptyStringMapValue(r,"Segmento","segmento","nomeSegmento","NomeSegmento")
 	case "program":
 		return firstNonEmptyStringMapValue(r,"Programa","programa","nomePrograma","NomePrograma","DESCRICAO_PROGRAMA"), firstNonEmptyStringMapValue(r,"Subprograma","subprograma","nomeSubprograma","NomeSubprograma","DESCRICAO_SUBPROGRAMA")
+	case "resource":
+		return firstNonEmptyStringMapValue(r,"FonteRecursos","FonteRecurso","fonteRecursos","nomeFonteRecursos","NomeFonteRecursos","DESCRICAO_FONTE_RECURSOS"), firstNonEmptyStringMapValue(r,"Finalidade","Atividade","Segmento")
 	default:
 		return "",""
 	}

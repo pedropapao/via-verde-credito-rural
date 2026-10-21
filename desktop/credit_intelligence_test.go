@@ -182,3 +182,72 @@ func TestCreditIntelligenceProgress171(t *testing.T) {
 		t.Fatalf("progresso final inesperado: %+v", p)
 	}
 }
+
+
+func TestCreditOperationExtraFields211(t *testing.T) {
+	key := sicorOperationKey("211", "3")
+	ops := map[string]*CreditOperationIntelligence{key: {RefBacen: "211", Order: "3"}}
+	header := "#REF_BACEN;NU_ORDEM;VL_PARC_CREDITO;VL_PERC_RISCO_STN;VL_PERC_RISCO_FUNDO_CONST;VL_REC_PROPRIO_SRV;CD_CONTRATO_STN;CD_CNPJ_CADASTRANTE"
+	row := "211;3;150000,50;12,5;7,25;3200;STN-ABC;12345678000100"
+	path := writeCreditFixture170(t, "op-extra.gz", header, row)
+	if err := scanCreditOperationDetails(path, ops, creditDomains{}); err != nil {
+		t.Fatal(err)
+	}
+	got := ops[key]
+	if got.CreditInstallment != 150000.50 || got.STNRiskPct != 12.5 || got.ConstitutionalFundRiskPct != 7.25 ||
+		got.MinimumIncomeGuarantee != 3200 || got.STNContractCode != "STN-ABC" || got.RegisteringInstitution != "12345678000100" {
+		t.Fatalf("campos adicionais inesperados: %+v", got)
+	}
+}
+
+func TestCreditOperationComplement211(t *testing.T) {
+	key := sicorOperationKey("211", "3")
+	ops := map[string]*CreditOperationIntelligence{key: {RefBacen: "211", Order: "3"}}
+	path := writeCreditFixture170(t, "op-complement.gz",
+		"#REF_BACEN;NU_ORDEM;AGENCIA_IF;CD_IBGE_MUNICIPIO;REF_BACEN_EFETIVO",
+		"211;3;1234;3147907;9988776655")
+	if err := scanCreditOperationComplement(path, ops); err != nil {
+		t.Fatal(err)
+	}
+	got := ops[key]
+	if got.AgencyCode != "1234" || got.MunicipalityCode != "3147907" || got.EffectiveRefBacen != "9988776655" {
+		t.Fatalf("complemento inesperado: %+v", got)
+	}
+}
+
+func TestCreditIntelligenceResultCache211(t *testing.T) {
+	dir := t.TempDir()
+	path := creditIntelligenceResultCachePath(dir, "MG-123")
+	want := CreditIntelligenceResult{
+		CacheVersion: creditIntelligenceCacheVersion,
+		CAR: "MG-123",
+		GeneratedAt: time.Now().Format(time.RFC3339),
+		Operations: []CreditOperationIntelligence{{RefBacen: "1", Order: "1", CreditValue: 1000}},
+	}
+	if err := saveCreditIntelligenceResultCache(path, want); err != nil {
+		t.Fatal(err)
+	}
+	got, ok := loadCreditIntelligenceResultCache(path, time.Hour)
+	if !ok {
+		t.Fatal("cache recente deveria ser reutilizado")
+	}
+	if !got.UsedCache || got.CAR != want.CAR || len(got.Operations) != 1 || got.Operations[0].CreditValue != 1000 {
+		t.Fatalf("cache inesperado: %+v", got)
+	}
+}
+
+func TestCreditIntelligenceResultCacheRejectsExpired211(t *testing.T) {
+	dir := t.TempDir()
+	path := creditIntelligenceResultCachePath(dir, "MG-OLD")
+	old := CreditIntelligenceResult{
+		CacheVersion: creditIntelligenceCacheVersion,
+		CAR: "MG-OLD",
+		GeneratedAt: time.Now().Add(-2 * time.Hour).Format(time.RFC3339),
+	}
+	if err := saveCreditIntelligenceResultCache(path, old); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := loadCreditIntelligenceResultCache(path, time.Hour); ok {
+		t.Fatal("cache vencido não pode ser reutilizado")
+	}
+}

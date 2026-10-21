@@ -163,13 +163,23 @@ async function lookupCAR(){
   $('lookupCarBtn').disabled=true;$('lookupCarBtn').textContent='Consultando...';
   try{
     const propertyID=state.selectedProperty?.id||0;const r=propertyID?await api().AnalyzePropertyCAR(propertyID,number):await api().LookupCAR(number);state.car=r;renderCAR(r);if(r.geojson)drawGeoJSON('car',r.geojson);if(propertyID){await Promise.all([loadProperties(),loadDashboard()]);state.selectedProperty=state.properties.find(p=>p.id===propertyID)||state.selectedProperty;await loadHistory()}
-    if(state.kml)await compareGeometries();else updateProfessional();toast(r.found?'CAR consultado com sucesso.':'Código válido, mas não localizado na camada pública.',!r.found);
+    if(state.kml)await compareGeometries();else updateProfessional();
+    const lookup=String(r.lookup_status||'').toLowerCase();
+    if(lookup==='cached')toast('SICAR indisponível agora; usando a última geometria pública salva para continuar a análise.',true);
+    else if(lookup==='partial')toast('CAR e geometria localizados; a ficha SICAR veio parcial nesta consulta.');
+    else if(lookup==='unavailable')toast('A base pública SICAR está indisponível nesta tentativa.',true);
+    else toast(r.found?'CAR consultado com sucesso.':'Código válido, mas não localizado na camada pública.',!r.found);
   }catch(e){toast(String(e),true);renderChecks([{level:'error',title:'Falha na consulta',detail:String(e)}])}
   finally{$('lookupCarBtn').disabled=false;$('lookupCarBtn').textContent='Consultar SICAR'}
 }
 function renderCAR(r){
-  $('rCar').textContent=r.car||'—';$('rMunicipality').textContent=[r.municipality,r.uf].filter(Boolean).join(' / ')||'—';$('rPropertyName').textContent=r.property_name||state.selectedProperty?.name||'—';$('rArea').textContent=r.area_ha?fmt(r.area_ha,4)+' ha':'—';$('rGeoArea').textContent=r.geometry_area_ha?fmt(r.geometry_area_ha,4)+' ha':'—';$('rPerimeter').textContent=r.perimeter_m?fmt(r.perimeter_m/1000,3)+' km':'—';$('rCenter').textContent=(r.center_lat||r.center_lon)?`${Number(r.center_lat).toFixed(6)}, ${Number(r.center_lon).toFixed(6)}`:'—';$('rPropertyType').textContent=r.property_type||'—';$('rModules').textContent=r.fiscal_modules?fmt(r.fiscal_modules,2):'—';$('rCondition').textContent=r.condition||'—';$('rCreatedDate').textContent=formatSourceDate(r.data_cadastro);$('rUpdatedDate').textContent=formatSourceDate(r.data_atualizacao);$('rAutoKML').textContent=r.auto_kml_path?'Salvo automaticamente':'Disponível para exportar';$('rOwnerAccess').textContent=r.owner_data_access||'Acesso autorizado necessário';
-  const badge=$('carStatusBadge');badge.textContent=r.status||(!r.found?'Não localizado':'Localizado');badge.className='status-badge '+(r.status==='Ativo'?'ok':r.found?'warning':'error');
+  $('rCar').textContent=r.car||'—';$('rMunicipality').textContent=[r.municipality,r.uf].filter(Boolean).join(' / ')||'—';$('rPropertyName').textContent=r.property_name||state.selectedProperty?.name||'—';$('rArea').textContent=r.area_ha?fmt(r.area_ha,4)+' ha':'—';$('rGeoArea').textContent=r.geometry_area_ha?fmt(r.geometry_area_ha,4)+' ha':'—';$('rPerimeter').textContent=r.perimeter_m?fmt(r.perimeter_m/1000,3)+' km':'—';$('rCenter').textContent=(r.center_lat||r.center_lon)?`${Number(r.center_lat).toFixed(6)}, ${Number(r.center_lon).toFixed(6)}`:'—';$('rPropertyType').textContent=r.property_type||'—';$('rModules').textContent=r.fiscal_modules?fmt(r.fiscal_modules,2):'—';$('rCondition').textContent=r.condition||'—';$('rCreatedDate').textContent=formatSourceDate(r.data_cadastro);$('rUpdatedDate').textContent=formatSourceDate(r.data_atualizacao);$('rAutoKML').textContent=r.auto_kml_path?'Salvo automaticamente':r.has_geometry?'Disponível para exportar':'—';$('rOwnerAccess').textContent=r.owner_data_access||'Acesso autorizado necessário';
+  const badge=$('carStatusBadge');const lookup=String(r.lookup_status||'').toLowerCase();
+  if(lookup==='cached'){badge.textContent='Cache local';badge.className='status-badge warning'}
+  else if(lookup==='partial'){badge.textContent='SICAR parcial';badge.className='status-badge warning'}
+  else if(lookup==='unavailable'){badge.textContent='Base indisponível';badge.className='status-badge error'}
+  else if(lookup==='not_found'||!r.found){badge.textContent='Não localizado';badge.className='status-badge error'}
+  else{badge.textContent=r.status||'Localizado';badge.className='status-badge '+(r.status==='Ativo'?'ok':'warning')}
   $('openOfficialBtn').disabled=!r.official_url;$('openMeuImovelBtn').disabled=!r.meu_imovel_url;$('openMapsBtn').disabled=!r.google_maps_url;$('exportKmlBtn').disabled=!r.has_geometry;$('reportBtn').disabled=!state.selectedProperty||!r.found;$('packageBtn').disabled=!state.selectedProperty||!r.found;$('copyCarBtn').disabled=!r.car;$('copyCenterBtn').disabled=!(r.center_lat||r.center_lon);
   renderEnvironment(r.environment||{});renderThemes(r.themes||{});renderChecks(r.checks||[]);updateProfessional()
 }

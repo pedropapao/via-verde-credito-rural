@@ -121,13 +121,13 @@ func TestEnvironmentalReportPDF180(t *testing.T) {
 	if !bytes.HasPrefix(pdf, []byte("%PDF-1.4")) {
 		t.Fatal("cabeçalho PDF inválido")
 	}
-	if !bytes.Contains(pdf, []byte("/Count 6")) {
-		t.Fatal("esperava 6 páginas no laudo consolidado com página de focos de calor")
+	if !bytes.Contains(pdf, []byte("/Count 5")) {
+		t.Fatal("sem WorldCover utilizável, o laudo consolidado deve omitir a página vazia de cobertura e manter 5 páginas")
 	}
 
 	single := buildEnvironmentalTechnicalPDF(p,car,intel,"12345")
-	if !bytes.Contains(single, []byte("/Count 6")) {
-		t.Fatal("laudo individual deveria manter capa, perfil, focos, mapa, alerta e metodologia")
+	if !bytes.Contains(single, []byte("/Count 5")) {
+		t.Fatal("laudo individual sem WorldCover deve manter capa, focos, mapa, alerta e metodologia")
 	}
 }
 
