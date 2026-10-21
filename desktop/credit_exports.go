@@ -17,9 +17,6 @@ func (a *App) ExportSICORGlebasKML(propertyID int64, force bool) (string, error)
 	if a.ctx == nil {
 		return "", errors.New("aplicativo ainda não inicializado")
 	}
-	if propertyID <= 0 {
-		return "", errors.New("selecione um imóvel antes de gerar o KML das glebas SICOR")
-	}
 	result, err := a.GetCreditIntelligence(propertyID, force)
 	if err != nil {
 		return "", err
@@ -148,12 +145,11 @@ func (a *App) ExportCreditIntelligencePDF(propertyID int64, force bool) (string,
 	if a.ctx == nil {
 		return "", errors.New("aplicativo ainda não inicializado")
 	}
-	if propertyID <= 0 {
-		return "", errors.New("selecione um imóvel antes de gerar o relatório de crédito")
-	}
-	property, err := a.GetProperty(propertyID)
-	if err != nil {
-		return "", err
+	var property Property
+	if propertyID > 0 {
+		if saved, getErr := a.GetProperty(propertyID); getErr == nil {
+			property = saved
+		}
 	}
 	result, err := a.GetCreditIntelligence(propertyID, force)
 	if err != nil {

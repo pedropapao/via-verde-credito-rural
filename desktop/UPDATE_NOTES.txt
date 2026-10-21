@@ -1,3 +1,12 @@
+ViaVerdeCAR 2.3.2 — Correção de Exportação do Crédito
+
+• Corrige os botões “KML das glebas” e “PDF completo” quando o CAR foi consultado de forma avulsa, sem imóvel salvo.
+• Crédito Rural já aceitava propertyID zero usando a última sessão do CAR; a 2.3.1 adicionou um bloqueio indevido apenas nos novos exportadores.
+• O KML e o PDF agora usam diretamente a sessão atual do CAR e a inteligência SICOR/BCB já disponível.
+• Se houver imóvel salvo, nome, cliente e matrícula continuam sendo aproveitados no PDF; se não houver, a exportação segue normalmente com CAR, município, UF e operações públicas.
+• Não altera o motor SICOR, as operações encontradas, as glebas, o banco local nem os dados existentes.
+• Nenhuma migração de banco; schema permanece 11.
+
 ViaVerdeCAR 2.3.1 — Exportações de Crédito Rural
 
 • Adiciona exportação KML das glebas publicadas no SICOR/BCB para operações vinculadas ao CAR.
