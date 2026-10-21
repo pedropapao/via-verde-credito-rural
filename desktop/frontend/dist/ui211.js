@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 2.3.1 - ficha completa de credito rural + exportacoes */
+/* ViaVerdeCAR 2.3.2 - exportacao de credito tambem em consulta avulsa */
 (function(){
   'use strict';
 
@@ -104,7 +104,6 @@
   async function exportCredit211(kind,r){
     if(S.loading)return;
     var propertyID=Number(r&&r.property_id)||0;
-    if(!propertyID){try{toast('Salve ou selecione o imóvel antes de exportar.',true)}catch(_e){}return}
     S.loading=true;S.car=String(r&&r.car&&r.car.car||'');
     showProgress211();startProgress211();
     try{
