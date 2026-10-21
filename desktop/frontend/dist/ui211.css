@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 2.1.1 - ficha completa da operacao de credito rural */
+/* ViaVerdeCAR 2.3.1 - ficha completa de credito rural + exportacoes */
 .vv211-icon{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .vv211-panel{grid-column:1/-1;margin-bottom:16px;border:1px solid #d8e4dc;background:linear-gradient(180deg,#fbfefc 0%,#f7fbf8 100%)}
 .vv211-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
@@ -64,3 +64,8 @@
 
 @media(max-width:1100px){.vv211-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.vv211-op-row{grid-template-columns:36px minmax(0,1fr) auto}.vv211-op-value{display:none}.vv211-fields{grid-template-columns:repeat(3,minmax(0,1fr))}.vv211-progress-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.vv211-panel-head,.vv211-hero{flex-direction:column}.vv211-panel-head button{width:100%;justify-content:center}.vv211-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.vv211-op-row{grid-template-columns:1fr}.vv211-op-index{display:none}.vv211-op-row>button{justify-content:center}.vv211-fields,.vv211-kpis,.vv211-progress-steps{grid-template-columns:1fr}.vv211-modal{padding:8px}.vv211-modal-card{max-height:97vh}.vv211-hero>div:last-child{text-align:left}.vv211-map{height:280px}}
+.vv211-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap;max-width:560px}
+.vv211-head-actions button{display:flex;align-items:center;gap:7px;border:1px solid #cddbd2;border-radius:9px;background:#fff;color:#245c38;padding:9px 11px;font-weight:800;font-size:10px;cursor:pointer;white-space:nowrap}
+.vv211-head-actions button:first-child{background:#1f6a40;color:#fff;border-color:#1f6a40}
+.vv211-head-actions button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:760px){.vv211-head-actions{width:100%;max-width:none}.vv211-head-actions button{width:100%;justify-content:center}}
