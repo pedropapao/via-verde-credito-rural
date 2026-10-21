@@ -1,4 +1,4 @@
-/* ViaVerdeCAR 2.3.1 - interface operacional em uma única tela */
+/* ViaVerdeCAR 2.3.2 - interface operacional em uma única tela */
 (()=>{
   const E=id=>document.getElementById(id);
   const A=v=>Array.isArray(v)?v:[];
