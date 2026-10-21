@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion230(t *testing.T) {
-	if AppVersion != "2.3.0" {
+func TestReleaseVersion231(t *testing.T) {
+	if AppVersion != "2.3.1" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.3.0"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.3.0")
+	if !strings.Contains(string(b), `"productVersion": "2.3.1"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.3.1")
 	}
 }
 
@@ -453,5 +453,41 @@ func TestRelease230TechnicalAutomation(t *testing.T) {
 		"seriespoligono",
 	} {
 		if !strings.Contains(src, marker) { t.Fatalf("integração 2.3.0 sem marcador %q", marker) }
+	}
+}
+
+
+func TestRelease231CreditExports(t *testing.T) {
+	for _, path := range []string{"credit_exports.go", "credit_exports_test.go", "frontend/dist/ui211.js"} {
+		if st, err := os.Stat(path); err != nil || st.Size() == 0 {
+			t.Fatalf("exportação de crédito 2.3.1 ausente: %s", path)
+		}
+	}
+	jsb, err := os.ReadFile("frontend/dist/ui211.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	for _, marker := range []string{
+		"KML das glebas",
+		"PDF completo",
+		"ExportSICORGlebasKML",
+		"ExportCreditIntelligencePDF",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.3.1 sem marcador %q", marker)
+		}
+	}
+	srcb, err := os.ReadFile("credit_exports.go")
+	if err != nil { t.Fatal(err) }
+	src := string(srcb)
+	for _, marker := range []string{
+		"buildSICORGlebasKML",
+		"Glebas_SICOR_",
+		"buildCreditIntelligencePDF",
+		"Credito_Rural_SICOR_",
+		"GLEBAS FINANCIADAS PUBLICADAS",
+	} {
+		if !strings.Contains(src, marker) {
+			t.Fatalf("backend 2.3.1 sem marcador %q", marker)
+		}
 	}
 }
