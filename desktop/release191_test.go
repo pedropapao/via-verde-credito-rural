@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-func TestReleaseVersion231(t *testing.T) {
-	if AppVersion != "2.3.1" {
+func TestReleaseVersion232(t *testing.T) {
+	if AppVersion != "2.3.2" {
 		t.Fatalf("AppVersion inesperada: %s", AppVersion)
 	}
 	b, err := os.ReadFile("wails.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), `"productVersion": "2.3.1"`) {
-		t.Fatal("wails.json não está alinhado com a versão 2.3.1")
+	if !strings.Contains(string(b), `"productVersion": "2.3.2"`) {
+		t.Fatal("wails.json não está alinhado com a versão 2.3.2")
 	}
 }
 
@@ -488,6 +488,33 @@ func TestRelease231CreditExports(t *testing.T) {
 	} {
 		if !strings.Contains(src, marker) {
 			t.Fatalf("backend 2.3.1 sem marcador %q", marker)
+		}
+	}
+}
+
+
+func TestRelease232CreditExportsUnsavedCAR(t *testing.T) {
+	srcb, err := os.ReadFile("credit_exports.go")
+	if err != nil { t.Fatal(err) }
+	src := string(srcb)
+	if strings.Contains(src, "selecione um imóvel antes de gerar o KML das glebas SICOR") {
+		t.Fatal("KML SICOR não pode exigir imóvel salvo na consulta avulsa")
+	}
+	if strings.Contains(src, "selecione um imóvel antes de gerar o relatório de crédito") {
+		t.Fatal("PDF de crédito não pode exigir imóvel salvo na consulta avulsa")
+	}
+	if !strings.Contains(src, "if propertyID > 0") || !strings.Contains(src, "GetCreditIntelligence(propertyID, force)") {
+		t.Fatal("exportação 2.3.2 deve usar imóvel salvo apenas como metadado opcional e manter a inteligência pela sessão do CAR")
+	}
+	jsb, err := os.ReadFile("frontend/dist/ui211.js")
+	if err != nil { t.Fatal(err) }
+	js := string(jsb)
+	if strings.Contains(js, "Salve ou selecione o imóvel antes de exportar.") {
+		t.Fatal("interface 2.3.2 ainda bloqueia exportação de consulta avulsa")
+	}
+	for _, marker := range []string{"ExportSICORGlebasKML(propertyID,false)", "ExportCreditIntelligencePDF(propertyID,false)"} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("interface 2.3.2 sem marcador %q", marker)
 		}
 	}
 }
